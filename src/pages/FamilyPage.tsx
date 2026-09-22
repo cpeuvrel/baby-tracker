@@ -41,6 +41,7 @@ export function FamilyPage() {
             <input
               id="baby-name"
               type="text"
+              required
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -50,6 +51,7 @@ export function FamilyPage() {
             <input
               id="baby-birth-date"
               type="date"
+              required
               value={birthDate}
               onChange={(event) => setBirthDate(event.target.value)}
             />

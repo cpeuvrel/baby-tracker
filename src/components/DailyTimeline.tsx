@@ -1,5 +1,5 @@
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useTodayTimeline } from '../hooks/useTodayTimeline'
+import { useDayTimeline } from '../hooks/useDayTimeline'
 import { formatDuration } from '../lib/duration'
 import type { TimelineEntry } from '../lib/timeline'
 
@@ -30,15 +30,20 @@ function describeEntry(item: TimelineEntry): string {
   }
 }
 
-export function DailyTimeline() {
+interface DailyTimelineProps {
+  date?: Date
+  title?: string
+}
+
+export function DailyTimeline({ date, title = "Aujourd'hui" }: DailyTimelineProps) {
   const { household, selectedBaby } = useHousehold()
-  const timeline = useTodayTimeline(household?.id ?? null, selectedBaby?.id ?? null)
+  const timeline = useDayTimeline(household?.id ?? null, selectedBaby?.id ?? null, date ?? new Date())
 
   if (!household || !selectedBaby) return null
 
   return (
     <section aria-label="Journal du jour">
-      <h2>Aujourd'hui</h2>
+      <h2>{title}</h2>
       {timeline.length === 0 ? (
         <p>Aucune entrée pour l'instant.</p>
       ) : (

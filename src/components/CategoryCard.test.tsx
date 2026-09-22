@@ -2,36 +2,42 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { CategoryCard } from './CategoryCard'
+import { SleepIcon } from './icons'
 
 describe('CategoryCard', () => {
-  it('shows the empty label when there are no entries', () => {
+  it('shows the empty label when there is no primary entry', () => {
     render(
       <CategoryCard
         title="Sommeil"
         colorVar="--category-sleep"
         addLabel="Ajouter une entrée sommeil"
         onAdd={vi.fn()}
-        lines={[]}
+        icon={<SleepIcon />}
+        primary={null}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
       />,
     )
 
     expect(screen.getByText('Aucune entrée')).toBeInTheDocument()
   })
 
-  it('shows only the most recent line without a Voir plus link when there is a single entry', () => {
+  it('shows the primary label and meta without a Voir plus link when there is nothing more', () => {
     render(
       <CategoryCard
         title="Sommeil"
         colorVar="--category-sleep"
         addLabel="Ajouter une entrée sommeil"
         onAdd={vi.fn()}
-        lines={['1h 00min — il y a 30min']}
+        icon={<SleepIcon />}
+        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
       />,
     )
 
-    expect(screen.getByText('1h 00min — il y a 30min')).toBeInTheDocument()
+    expect(screen.getByText('Réveillé')).toBeInTheDocument()
+    expect(screen.getByText('il y a 30min')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
   })
 
@@ -43,8 +49,10 @@ describe('CategoryCard', () => {
         colorVar="--category-sleep"
         addLabel="Ajouter une entrée sommeil"
         onAdd={vi.fn()}
-        lines={['Entrée récente', 'Entrée plus ancienne']}
+        icon={<SleepIcon />}
+        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
+        moreLines={['Entrée plus ancienne']}
       />,
     )
 
@@ -64,8 +72,10 @@ describe('CategoryCard', () => {
         colorVar="--category-sleep"
         addLabel="Ajouter une entrée sommeil"
         onAdd={onAdd}
-        lines={[]}
+        icon={<SleepIcon />}
+        primary={null}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
       />,
     )
 
@@ -83,8 +93,10 @@ describe('CategoryCard', () => {
         colorVar="--category-medication"
         addLabel="Ajouter une prise"
         onAdd={vi.fn()}
-        lines={[]}
+        icon={<SleepIcon />}
+        primary={null}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
         secondaryAction={{ label: 'Régler le rappel', onClick: onSecondary }}
       />,
     )
@@ -94,15 +106,17 @@ describe('CategoryCard', () => {
     expect(onSecondary).toHaveBeenCalled()
   })
 
-  it('shows the highlight value next to the most recent entry', () => {
+  it('shows the highlight value next to the primary entry', () => {
     render(
       <CategoryCard
         title="Nourriture"
         colorVar="--category-feeding"
         addLabel="Ajouter une entrée nourriture"
         onAdd={vi.fn()}
-        lines={['120 mL — il y a 30min']}
+        icon={<SleepIcon />}
+        primary={{ label: 'Dernier biberon', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
         highlight={{ value: '120', unit: 'mL' }}
       />,
     )
@@ -111,15 +125,17 @@ describe('CategoryCard', () => {
     expect(screen.getByText('mL')).toBeInTheDocument()
   })
 
-  it('does not show a highlight value when there is no entry', () => {
+  it('does not show a highlight value when there is no primary entry', () => {
     render(
       <CategoryCard
         title="Nourriture"
         colorVar="--category-feeding"
         addLabel="Ajouter une entrée nourriture"
         onAdd={vi.fn()}
-        lines={[]}
+        icon={<SleepIcon />}
+        primary={null}
         emptyLabel="Aucune entrée"
+        moreLines={[]}
         highlight={{ value: '120', unit: 'mL' }}
       />,
     )

@@ -316,16 +316,33 @@ main {
   padding: 12px 16px;
 }
 
-.category-card-first-row {
+.category-card-primary {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
 }
 
-.category-card-body p {
+.category-card-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.category-card-primary-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-card-label {
   font-family: var(--serif);
   font-size: 16px;
+  margin: 0;
+}
+
+.category-card-meta {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
 }
 
 .category-card-highlight {
@@ -516,6 +533,113 @@ dl.stat-grid dd {
   font-size: 18px;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+/* Calendrier hebdomadaire (écran History) */
+.week-chart-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.week-chart-nav button {
+  background: none;
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+  padding: 4px 12px;
+}
+
+.week-chart-month {
+  font-family: var(--serif);
+  font-size: 16px;
+  text-transform: capitalize;
+  min-width: 140px;
+  text-align: center;
+}
+
+.week-chart-grid {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.week-chart-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 24px;
+  flex-shrink: 0;
+  height: 480px;
+  margin-top: 40px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.week-chart-day {
+  flex: 1;
+  min-width: 34px;
+  display: flex;
+  flex-direction: column;
+}
+
+.week-chart-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 4px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  width: 100%;
+}
+
+.week-chart-day-header.is-today {
+  color: var(--text);
+}
+
+.week-chart-day-header.is-selected {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.week-chart-column {
+  position: relative;
+  height: 480px;
+  background: var(--surface);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.week-chart-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border);
+}
+
+.week-chart-block {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  border-radius: 3px;
+  min-height: 2px;
+}
+
+.week-chart-mark {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 4px;
+  border-radius: 2px;
+  transform: translateY(-50%);
 }
 
 /* Jetons de dataviz (voir skill dataviz) */

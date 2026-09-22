@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
-import { useTodayTimeline } from './useTodayTimeline'
+import { useDayTimeline } from './useDayTimeline'
 
 const useEntriesInRange = vi.fn()
 
@@ -37,28 +37,33 @@ const diaper: DiaperEntry = {
   createdAt: '2026-03-05T07:00:00.000Z',
 }
 
-describe('useTodayTimeline', () => {
+describe('useDayTimeline', () => {
   beforeEach(() => {
     useEntriesInRange.mockReset()
   })
 
-  it('merges today entries into a timeline sorted most-recent first', () => {
+  it('merges entries for the given reference date into a timeline', () => {
     useEntriesInRange.mockReturnValue({ feeding: [feeding], sleep: [sleep], diaper: [diaper] })
 
-    const { result } = renderHook(() => useTodayTimeline('h1', 'b1'))
+    const { result } = renderHook(() =>
+      useDayTimeline('h1', 'b1', new Date('2026-03-05T12:00:00.000Z')),
+    )
 
     expect(result.current.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper'])
   })
 
-  it('requests entries for the household, baby and today range', () => {
+  it('requests the day range for the given reference date', () => {
     useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [] })
+    const reference = new Date('2026-03-04T15:00:00.000Z')
 
-    renderHook(() => useTodayTimeline('h1', 'b1'))
+    renderHook(() => useDayTimeline('h1', 'b1', reference))
 
     expect(useEntriesInRange).toHaveBeenCalledWith(
       'h1',
       'b1',
       expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
     )
+    const rangeArg = useEntriesInRange.mock.calls[0][2]
+    expect(rangeArg.start.getDate()).toBe(reference.getDate())
   })
 })
