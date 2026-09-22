@@ -29,6 +29,14 @@ describe('formatDuration', () => {
   it('formats hours and minutes at or above an hour', () => {
     expect(formatDuration(3725)).toBe('1h 02min')
   })
+
+  it('formats days and hours at or above 24h', () => {
+    expect(formatDuration(90000)).toBe('1j 01h')
+  })
+
+  it('treats exactly 24h as 1 day', () => {
+    expect(formatDuration(86400)).toBe('1j 00h')
+  })
 })
 
 describe('formatRelativeTime', () => {
