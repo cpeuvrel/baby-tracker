@@ -1,5 +1,6 @@
 import {
   addDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -7,6 +8,7 @@ import {
   Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
 import { medicationEntriesCollection } from '../lib/paths'
 import type { MedicationEntry } from '../types/models'
@@ -38,6 +40,30 @@ export function subscribeToRecentMedicationEntries(
   return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data())))
   })
+}
+
+export async function getAllMedicationEntries(
+  householdId: string,
+  babyId: string,
+): Promise<MedicationEntry[]> {
+  const allQuery = query(medicationEntriesCollection(householdId, babyId), orderBy('givenAt'))
+  const snapshot = await getDocs(allQuery)
+  return snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data()))
+}
+
+export async function importMedicationEntries(
+  householdId: string,
+  babyId: string,
+  entries: MedicationEntry[],
+): Promise<void> {
+  await batchInsert(medicationEntriesCollection(householdId, babyId), entries, (entry) => ({
+    name: entry.name,
+    givenAt: Timestamp.fromDate(new Date(entry.givenAt)),
+    dose: entry.dose,
+    notes: entry.notes,
+    createdBy: entry.createdBy,
+    createdAt: Timestamp.fromDate(new Date(entry.createdAt)),
+  }))
 }
 
 export interface LogMedicationInput {

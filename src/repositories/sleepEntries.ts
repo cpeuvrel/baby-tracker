@@ -1,6 +1,7 @@
 import {
   addDoc,
   doc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -11,6 +12,7 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import { secondsBetween } from '../lib/duration'
+import { batchInsert } from '../lib/firestoreBatch'
 import { nullableTimestampToIso, timestampToIso } from '../lib/firestoreDates'
 import { sleepEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
@@ -78,6 +80,30 @@ export function subscribeToRecentSleepEntries(
   return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data())))
   })
+}
+
+export async function getAllSleepEntries(
+  householdId: string,
+  babyId: string,
+): Promise<SleepEntry[]> {
+  const allQuery = query(sleepEntriesCollection(householdId, babyId), orderBy('startedAt'))
+  const snapshot = await getDocs(allQuery)
+  return snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data()))
+}
+
+export async function importSleepEntries(
+  householdId: string,
+  babyId: string,
+  entries: SleepEntry[],
+): Promise<void> {
+  await batchInsert(sleepEntriesCollection(householdId, babyId), entries, (entry) => ({
+    startedAt: Timestamp.fromDate(new Date(entry.startedAt)),
+    endedAt: entry.endedAt ? Timestamp.fromDate(new Date(entry.endedAt)) : null,
+    durationSeconds: entry.durationSeconds,
+    notes: entry.notes,
+    createdBy: entry.createdBy,
+    createdAt: Timestamp.fromDate(new Date(entry.createdAt)),
+  }))
 }
 
 export async function startSleep(

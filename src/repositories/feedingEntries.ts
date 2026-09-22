@@ -1,5 +1,6 @@
 import {
   addDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -8,6 +9,7 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
 import { feedingEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
@@ -59,6 +61,31 @@ export function subscribeToRecentFeedingEntries(
   return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
   })
+}
+
+export async function getAllFeedingEntries(
+  householdId: string,
+  babyId: string,
+): Promise<FeedingEntry[]> {
+  const allQuery = query(feedingEntriesCollection(householdId, babyId), orderBy('occurredAt'))
+  const snapshot = await getDocs(allQuery)
+  return snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data()))
+}
+
+export async function importFeedingEntries(
+  householdId: string,
+  babyId: string,
+  entries: FeedingEntry[],
+): Promise<void> {
+  await batchInsert(feedingEntriesCollection(householdId, babyId), entries, (entry) => ({
+    type: entry.type,
+    occurredAt: Timestamp.fromDate(new Date(entry.occurredAt)),
+    volumeMl: entry.volumeMl,
+    foodType: entry.foodType,
+    notes: entry.notes,
+    createdBy: entry.createdBy,
+    createdAt: Timestamp.fromDate(new Date(entry.createdAt)),
+  }))
 }
 
 export interface LogFeedingInput {

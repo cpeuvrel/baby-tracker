@@ -1,5 +1,6 @@
 import {
   addDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
@@ -8,6 +9,7 @@ import {
   where,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
 import { diaperEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
@@ -57,6 +59,29 @@ export function subscribeToRecentDiaperEntries(
   return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toDiaperEntry(docSnap.id, docSnap.data())))
   })
+}
+
+export async function getAllDiaperEntries(
+  householdId: string,
+  babyId: string,
+): Promise<DiaperEntry[]> {
+  const allQuery = query(diaperEntriesCollection(householdId, babyId), orderBy('occurredAt'))
+  const snapshot = await getDocs(allQuery)
+  return snapshot.docs.map((docSnap) => toDiaperEntry(docSnap.id, docSnap.data()))
+}
+
+export async function importDiaperEntries(
+  householdId: string,
+  babyId: string,
+  entries: DiaperEntry[],
+): Promise<void> {
+  await batchInsert(diaperEntriesCollection(householdId, babyId), entries, (entry) => ({
+    type: entry.type,
+    occurredAt: Timestamp.fromDate(new Date(entry.occurredAt)),
+    notes: entry.notes,
+    createdBy: entry.createdBy,
+    createdAt: Timestamp.fromDate(new Date(entry.createdAt)),
+  }))
 }
 
 export async function logDiaper(

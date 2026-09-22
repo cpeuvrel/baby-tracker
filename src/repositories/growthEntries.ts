@@ -1,4 +1,13 @@
-import { addDoc, onSnapshot, orderBy, query, Timestamp, type Unsubscribe } from 'firebase/firestore'
+import {
+  addDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  type Unsubscribe,
+} from 'firebase/firestore'
+import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
 import { growthEntriesCollection } from '../lib/paths'
 import type { GrowthEntry } from '../types/models'
@@ -32,6 +41,31 @@ export function subscribeToGrowthEntries(
   return onSnapshot(growthQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toGrowthEntry(docSnap.id, docSnap.data())))
   })
+}
+
+export async function getAllGrowthEntries(
+  householdId: string,
+  babyId: string,
+): Promise<GrowthEntry[]> {
+  const allQuery = query(growthEntriesCollection(householdId, babyId), orderBy('measuredAt'))
+  const snapshot = await getDocs(allQuery)
+  return snapshot.docs.map((docSnap) => toGrowthEntry(docSnap.id, docSnap.data()))
+}
+
+export async function importGrowthEntries(
+  householdId: string,
+  babyId: string,
+  entries: GrowthEntry[],
+): Promise<void> {
+  await batchInsert(growthEntriesCollection(householdId, babyId), entries, (entry) => ({
+    measuredAt: Timestamp.fromDate(new Date(entry.measuredAt)),
+    weightG: entry.weightG,
+    heightMm: entry.heightMm,
+    headCircumferenceMm: entry.headCircumferenceMm,
+    notes: entry.notes,
+    createdBy: entry.createdBy,
+    createdAt: Timestamp.fromDate(new Date(entry.createdAt)),
+  }))
 }
 
 export async function addGrowthEntry(
