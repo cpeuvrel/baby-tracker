@@ -28,6 +28,7 @@ const addGrowthEntry = vi.fn()
 vi.mock('../repositories/sleepEntries', () => ({
   startSleep: (...args: unknown[]) => startSleep(...args),
   stopSleep: vi.fn(),
+  logSleep: vi.fn(),
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
   deleteSleepEntry: (...args: unknown[]) => deleteSleepEntry(...args),
 }))
@@ -104,18 +105,19 @@ describe('ActivityPage', () => {
     expect(screen.getByRole('region', { name: 'Croissance' })).toBeInTheDocument()
   })
 
-  it('starts a sleep entry and opens the timer modal when idle', async () => {
+  it('opens the sleep modal without starting anything when idle', async () => {
     setupHooks(null)
     const user = userEvent.setup()
 
     render(<ActivityPage />)
     await user.click(screen.getByRole('button', { name: 'Ajouter une entrée sommeil' }))
 
-    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1')
+    expect(startSleep).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument()
   })
 
-  it('does not start a new sleep entry when one is already active', async () => {
+  it('opens the sleep modal directly in live mode when one is already active', async () => {
     const activeEntry: SleepEntry = {
       id: 'sleep1',
       startedAt: '2026-03-05T20:00:00.000Z',
@@ -133,6 +135,7 @@ describe('ActivityPage', () => {
 
     expect(startSleep).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument()
   })
 
   it('opens the feeding modal and closes it once saved', async () => {

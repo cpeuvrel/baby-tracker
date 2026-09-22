@@ -111,15 +111,37 @@ export async function startSleep(
   householdId: string,
   babyId: string,
   createdBy: string,
+  startedAt: Date = new Date(),
 ): Promise<void> {
-  const now = Timestamp.now()
   await addDoc(sleepEntriesCollection(householdId, babyId), {
-    startedAt: now,
+    startedAt: Timestamp.fromDate(startedAt),
     endedAt: null,
     durationSeconds: null,
     notes: '',
     createdBy,
-    createdAt: now,
+    createdAt: Timestamp.now(),
+  })
+}
+
+export interface LogSleepInput {
+  startedAt: Date
+  endedAt: Date
+  notes: string
+}
+
+export async function logSleep(
+  householdId: string,
+  babyId: string,
+  createdBy: string,
+  input: LogSleepInput,
+): Promise<void> {
+  await addDoc(sleepEntriesCollection(householdId, babyId), {
+    startedAt: Timestamp.fromDate(input.startedAt),
+    endedAt: Timestamp.fromDate(input.endedAt),
+    durationSeconds: secondsBetween(input.startedAt, input.endedAt),
+    notes: input.notes,
+    createdBy,
+    createdAt: Timestamp.now(),
   })
 }
 

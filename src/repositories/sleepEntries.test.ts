@@ -7,6 +7,7 @@ import {
   deleteSleepEntry,
   getAllSleepEntries,
   importSleepEntries,
+  logSleep,
   startSleep,
   stopSleep,
   subscribeToActiveSleep,
@@ -57,6 +58,28 @@ describe('sleepEntries repository', () => {
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
     expect(payload).toMatchObject({ endedAt: null, durationSeconds: null, createdBy: 'uid1' })
+  })
+
+  it('creates an in-progress sleep entry with a given start time', async () => {
+    await startSleep('h1', 'b1', 'uid1', new Date('2026-03-05T20:00:00.000Z'))
+
+    expect(addDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = addDocMock.mock.calls[0]
+    expect((payload as { startedAt: Timestamp }).startedAt.toDate()).toEqual(
+      new Date('2026-03-05T20:00:00.000Z'),
+    )
+  })
+
+  it('logs a completed sleep entry directly, computing the duration', async () => {
+    await logSleep('h1', 'b1', 'uid1', {
+      startedAt: new Date('2026-03-05T20:00:00.000Z'),
+      endedAt: new Date('2026-03-05T21:30:00.000Z'),
+      notes: 'sieste',
+    })
+
+    expect(addDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = addDocMock.mock.calls[0]
+    expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'sieste', createdBy: 'uid1' })
   })
 
   it('closes a sleep entry with the elapsed duration on stop', async () => {

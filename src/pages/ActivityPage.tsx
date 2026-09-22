@@ -11,7 +11,6 @@ import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
@@ -30,7 +29,6 @@ import {
   summarizeSleepPrimary,
 } from '../lib/entrySummary'
 import { isToday } from '../lib/timeline'
-import { startSleep } from '../repositories/sleepEntries'
 import type {
   DiaperEntry,
   FeedingEntry,
@@ -77,7 +75,6 @@ export function ActivityPage() {
   const { household, selectedBaby } = useHousehold()
   const [modal, setModal] = useState<ModalState>(null)
 
-  const activeSleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const recentSleep = useRecentSleepEntries(
     household?.id ?? null,
     selectedBaby?.id ?? null,
@@ -111,9 +108,6 @@ export function ActivityPage() {
       : undefined
 
   const handleAddSleep = () => {
-    if (!activeSleepEntry) {
-      void startSleep(household.id, selectedBaby.id, user.uid)
-    }
     setModal({ kind: 'sleep-active' })
   }
 
