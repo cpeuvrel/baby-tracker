@@ -39,7 +39,7 @@ const sleep: SleepEntry = {
 }
 const diaper: DiaperEntry = {
   id: 'd1',
-  type: 'pee',
+  type: 'wet',
   occurredAt: '2026-03-05T07:00:00.000Z',
   notes: '',
   createdBy: 'uid1',

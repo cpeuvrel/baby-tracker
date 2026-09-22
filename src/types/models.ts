@@ -33,7 +33,7 @@ export interface SleepEntry {
   createdAt: string
 }
 
-export type DiaperType = 'pee' | 'poop' | 'both'
+export type DiaperType = 'wet' | 'dirty' | 'both' | 'dry'
 
 export interface DiaperEntry {
   id: string

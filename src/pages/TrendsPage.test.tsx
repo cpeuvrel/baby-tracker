@@ -39,7 +39,7 @@ const feeding: FeedingEntry[] = [
 const diaper: DiaperEntry[] = [
   {
     id: 'd1',
-    type: 'pee',
+    type: 'wet',
     occurredAt: now.toISOString(),
     notes: '',
     createdBy: 'uid1',

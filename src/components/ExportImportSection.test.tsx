@@ -1,30 +1,46 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import { ExportImportSection } from './ExportImportSection'
 
 const exportBabyData = vi.fn()
 const importBabyData = vi.fn()
-const parseBabyExport = vi.fn()
+const parseImportFile = vi.fn()
 const serializeBabyExport = vi.fn()
 
 vi.mock('../lib/babyExport', () => ({
   exportBabyData: (...args: unknown[]) => exportBabyData(...args),
   importBabyData: (...args: unknown[]) => importBabyData(...args),
-  parseBabyExport: (...args: unknown[]) => parseBabyExport(...args),
+  parseImportFile: (...args: unknown[]) => parseImportFile(...args),
   serializeBabyExport: (...args: unknown[]) => serializeBabyExport(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
+const emptyExport = {
+  feedingEntries: [],
+  sleepEntries: [],
+  diaperEntries: [],
+  growthEntries: [],
+  medicationEntries: [],
+}
+
 describe('ExportImportSection', () => {
   beforeEach(() => {
     exportBabyData.mockReset()
     importBabyData.mockReset()
-    parseBabyExport.mockReset()
+    parseImportFile.mockReset()
     serializeBabyExport.mockReset()
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      user: { uid: 'uid1' } as User,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    })
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [baby],
@@ -50,13 +66,13 @@ describe('ExportImportSection', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('exports and downloads a JSON file, then shows a success message', async () => {
-    exportBabyData.mockResolvedValue({ formatVersion: 1 })
-    serializeBabyExport.mockReturnValue('{"formatVersion":1}')
+  it('exports and downloads a CSV file, then shows a success message', async () => {
+    exportBabyData.mockResolvedValue(emptyExport)
+    serializeBabyExport.mockReturnValue('category,at\n')
     const user = userEvent.setup()
 
     render(<ExportImportSection />)
-    await user.click(screen.getByRole('button', { name: 'Exporter les données (JSON)' }))
+    await user.click(screen.getByRole('button', { name: 'Exporter les données (CSV)' }))
 
     expect(exportBabyData).toHaveBeenCalledWith('h1', baby)
     expect(await screen.findByRole('status')).toHaveTextContent('Export téléchargé.')
@@ -67,35 +83,53 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
 
     render(<ExportImportSection />)
-    await user.click(screen.getByRole('button', { name: 'Exporter les données (JSON)' }))
+    await user.click(screen.getByRole('button', { name: 'Exporter les données (CSV)' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent("Échec de l'export.")
   })
 
-  it('imports the uploaded file and shows a success message', async () => {
-    parseBabyExport.mockReturnValue({ formatVersion: 1 })
+  it('imports the uploaded file and shows a success message with the entry count', async () => {
+    parseImportFile.mockReturnValue({
+      data: { ...emptyExport, feedingEntries: [{}, {}] },
+      skipped: 0,
+    })
     importBabyData.mockResolvedValue(undefined)
     const user = userEvent.setup()
-    const file = new File(['{"formatVersion":1}'], 'export.json', { type: 'application/json' })
+    const file = new File(['category,at\nfeeding,2026-01-01'], 'export.csv', { type: 'text/csv' })
 
     render(<ExportImportSection />)
-    await user.upload(screen.getByLabelText('Importer un fichier JSON'), file)
+    await user.upload(screen.getByLabelText('Importer un fichier CSV (natif ou export Nara)'), file)
 
-    expect(importBabyData).toHaveBeenCalledWith('h1', 'b1', { formatVersion: 1 })
-    expect(await screen.findByRole('status')).toHaveTextContent('Import terminé.')
+    expect(parseImportFile).toHaveBeenCalledWith(expect.any(String), 'uid1')
+    expect(importBabyData).toHaveBeenCalledWith('h1', 'b1', { ...emptyExport, feedingEntries: [{}, {}] })
+    expect(await screen.findByRole('status')).toHaveTextContent('Import terminé : 2 entrées importées.')
+  })
+
+  it('mentions skipped rows in the success message', async () => {
+    parseImportFile.mockReturnValue({ data: emptyExport, skipped: 3 })
+    importBabyData.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    const file = new File(['Type,...'], 'export.csv', { type: 'text/csv' })
+
+    render(<ExportImportSection />)
+    await user.upload(screen.getByLabelText('Importer un fichier CSV (natif ou export Nara)'), file)
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Import terminé : 0 entrées importées, 3 ignorées',
+    )
   })
 
   it('shows the parse error message when the file format is invalid', async () => {
-    parseBabyExport.mockImplementation(() => {
-      throw new Error("Format d'export non reconnu ou version incompatible.")
+    parseImportFile.mockImplementation(() => {
+      throw new Error('Format de fichier CSV non reconnu.')
     })
     const user = userEvent.setup()
-    const file = new File(['not json'], 'export.json', { type: 'application/json' })
+    const file = new File(['not a csv'], 'export.csv', { type: 'text/csv' })
 
     render(<ExportImportSection />)
-    await user.upload(screen.getByLabelText('Importer un fichier JSON'), file)
+    await user.upload(screen.getByLabelText('Importer un fichier CSV (natif ou export Nara)'), file)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent("Format d'export non reconnu")
+    expect(await screen.findByRole('alert')).toHaveTextContent('Format de fichier CSV non reconnu')
     expect(importBabyData).not.toHaveBeenCalled()
   })
 })

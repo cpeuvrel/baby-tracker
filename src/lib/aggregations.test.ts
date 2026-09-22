@@ -44,7 +44,7 @@ function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
 function diaperEntry(overrides: Partial<DiaperEntry>): DiaperEntry {
   return {
     id: 'd1',
-    type: 'pee',
+    type: 'wet',
     occurredAt: '2026-03-05T10:00:00.000Z',
     notes: '',
     createdBy: 'uid1',
@@ -113,12 +113,12 @@ describe('computeFeedingStats', () => {
 describe('computeDiaperStats', () => {
   it('counts entries per diaper type, defaulting to zero', () => {
     const entries = [
-      diaperEntry({ type: 'pee' }),
-      diaperEntry({ type: 'pee' }),
-      diaperEntry({ type: 'poop' }),
+      diaperEntry({ type: 'wet' }),
+      diaperEntry({ type: 'wet' }),
+      diaperEntry({ type: 'dirty' }),
     ]
 
-    expect(computeDiaperStats(entries)).toEqual({ pee: 2, poop: 1, both: 0 })
+    expect(computeDiaperStats(entries)).toEqual({ wet: 2, dirty: 1, both: 0, dry: 0 })
   })
 })
 

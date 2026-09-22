@@ -38,7 +38,17 @@ describe('DiaperForm', () => {
     await user.type(screen.getByLabelText('Notes (optionnel)'), 'un peu rouge')
     await user.click(screen.getByRole('button', { name: 'Caca' }))
 
-    expect(logDiaper).toHaveBeenCalledWith('h1', 'b1', 'uid1', 'poop', 'un peu rouge')
+    expect(logDiaper).toHaveBeenCalledWith('h1', 'b1', 'uid1', 'dirty', 'un peu rouge')
     expect(onSaved).toHaveBeenCalled()
+  })
+
+  it('logs a dry diaper check', async () => {
+    const onSaved = vi.fn()
+    const user = userEvent.setup()
+
+    render(<DiaperForm onSaved={onSaved} />)
+    await user.click(screen.getByRole('button', { name: 'Sec' }))
+
+    expect(logDiaper).toHaveBeenCalledWith('h1', 'b1', 'uid1', 'dry', '')
   })
 })

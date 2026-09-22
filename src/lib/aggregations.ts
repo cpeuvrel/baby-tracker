@@ -52,7 +52,7 @@ export function computeFeedingStats(entries: FeedingEntry[]): FeedingStats {
 export type DiaperStats = Record<DiaperType, number>
 
 export function computeDiaperStats(entries: DiaperEntry[]): DiaperStats {
-  const stats: DiaperStats = { pee: 0, poop: 0, both: 0 }
+  const stats: DiaperStats = { wet: 0, dirty: 0, both: 0, dry: 0 }
   for (const entry of entries) {
     stats[entry.type] += 1
   }

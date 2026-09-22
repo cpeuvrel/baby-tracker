@@ -45,7 +45,7 @@ describe('diaperEntries repository', () => {
           {
             id: 'entry1',
             data: {
-              type: 'pee',
+              type: 'wet',
               occurredAt: Timestamp.fromDate(new Date('2026-03-05T08:00:00.000Z')),
               notes: '',
               createdBy: 'uid1',
@@ -64,7 +64,7 @@ describe('diaperEntries repository', () => {
       onChange,
     )
 
-    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1', type: 'pee' })])
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1', type: 'wet' })])
   })
 
   it('maps the most recent diaper entries regardless of date range', () => {
@@ -75,7 +75,7 @@ describe('diaperEntries repository', () => {
           {
             id: 'entry1',
             data: {
-              type: 'poop',
+              type: 'dirty',
               occurredAt: Timestamp.fromDate(new Date('2026-02-01T08:00:00.000Z')),
               notes: '',
               createdBy: 'uid1',
@@ -98,7 +98,7 @@ describe('diaperEntries repository', () => {
         {
           id: 'entry1',
           data: {
-            type: 'pee',
+            type: 'wet',
             occurredAt: Timestamp.fromDate(new Date('2026-01-01T08:00:00.000Z')),
             notes: '',
             createdBy: 'uid1',
@@ -110,7 +110,7 @@ describe('diaperEntries repository', () => {
 
     const entries = await getAllDiaperEntries('h1', 'b1')
 
-    expect(entries).toEqual([expect.objectContaining({ id: 'entry1', type: 'pee' })])
+    expect(entries).toEqual([expect.objectContaining({ id: 'entry1', type: 'wet' })])
   })
 
   it('imports diaper entries in a batch', async () => {

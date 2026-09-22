@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { exportBabyData, importBabyData, parseBabyExport, serializeBabyExport } from '../lib/babyExport'
+import { exportBabyData, importBabyData, parseImportFile, serializeBabyExport } from '../lib/babyExport'
 
 type Status =
   | { kind: 'idle' }
@@ -9,8 +10,8 @@ type Status =
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string }
 
-function downloadJsonFile(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: 'application/json' })
+function downloadCsvFile(filename: string, contents: string) {
+  const blob = new Blob([contents], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
@@ -19,18 +20,29 @@ function downloadJsonFile(filename: string, contents: string) {
   URL.revokeObjectURL(url)
 }
 
+function countEntries(data: { feedingEntries: unknown[]; sleepEntries: unknown[]; diaperEntries: unknown[]; growthEntries: unknown[]; medicationEntries: unknown[] }) {
+  return (
+    data.feedingEntries.length +
+    data.sleepEntries.length +
+    data.diaperEntries.length +
+    data.growthEntries.length +
+    data.medicationEntries.length
+  )
+}
+
 export function ExportImportSection() {
+  const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  if (!household || !selectedBaby) return null
+  if (!household || !selectedBaby || !user) return null
 
   const handleExport = async () => {
     setStatus({ kind: 'exporting' })
     try {
       const data = await exportBabyData(household.id, selectedBaby)
-      downloadJsonFile(`${selectedBaby.name}-export.json`, serializeBabyExport(data))
+      downloadCsvFile(`${selectedBaby.name}-export.csv`, serializeBabyExport(data))
       setStatus({ kind: 'success', message: 'Export téléchargé.' })
     } catch {
       setStatus({ kind: 'error', message: "Échec de l'export." })
@@ -43,9 +55,14 @@ export function ExportImportSection() {
     setStatus({ kind: 'importing' })
     try {
       const text = await file.text()
-      const data = parseBabyExport(text)
+      const { data, skipped } = parseImportFile(text, user.uid)
       await importBabyData(household.id, selectedBaby.id, data)
-      setStatus({ kind: 'success', message: 'Import terminé.' })
+      const imported = countEntries(data)
+      const message =
+        skipped > 0
+          ? `Import terminé : ${imported} entrées importées, ${skipped} ignorées (non prises en charge).`
+          : `Import terminé : ${imported} entrées importées.`
+      setStatus({ kind: 'success', message })
     } catch (error) {
       const message = error instanceof Error ? error.message : "Échec de l'import."
       setStatus({ kind: 'error', message })
@@ -63,15 +80,15 @@ export function ExportImportSection() {
         onClick={() => void handleExport()}
         disabled={status.kind === 'exporting'}
       >
-        Exporter les données (JSON)
+        Exporter les données (CSV)
       </button>
       <div>
-        <label htmlFor="import-file">Importer un fichier JSON</label>
+        <label htmlFor="import-file">Importer un fichier CSV (natif ou export Nara)</label>
         <input
           id="import-file"
           ref={fileInputRef}
           type="file"
-          accept="application/json"
+          accept=".csv,text/csv"
           onChange={(event) => void handleImport(event)}
           disabled={status.kind === 'importing'}
         />
