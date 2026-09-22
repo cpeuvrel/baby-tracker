@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import type { DiaperEntry, FeedingEntry, GrowthEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, GrowthEntry, MedicationEntry, SleepEntry } from '../types/models'
 import {
   summarizeDiaperEntry,
   summarizeFeedingEntry,
   summarizeGrowthEntry,
+  summarizeMedicationEntry,
   summarizeSleepEntry,
 } from './entrySummary'
 
@@ -83,6 +84,36 @@ describe('summarizeDiaperEntry', () => {
     }
 
     expect(summarizeDiaperEntry(entry, now)).toBe('Pipi + caca — il y a 30min')
+  })
+})
+
+describe('summarizeMedicationEntry', () => {
+  it('shows the dose when present', () => {
+    const entry: MedicationEntry = {
+      id: 'm1',
+      name: 'Vitamine D',
+      givenAt: '2026-03-05T11:30:00.000Z',
+      dose: '2 gouttes',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T11:30:00.000Z',
+    }
+
+    expect(summarizeMedicationEntry(entry, now)).toBe('Vitamine D — 2 gouttes — il y a 30min')
+  })
+
+  it('omits the dose when absent', () => {
+    const entry: MedicationEntry = {
+      id: 'm2',
+      name: 'Vitamine D',
+      givenAt: '2026-03-05T11:30:00.000Z',
+      dose: '',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T11:30:00.000Z',
+    }
+
+    expect(summarizeMedicationEntry(entry, now)).toBe('Vitamine D — il y a 30min')
   })
 })
 

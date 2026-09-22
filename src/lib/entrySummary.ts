@@ -1,5 +1,12 @@
 import { formatDuration, formatRelativeTime } from './duration'
-import type { DiaperEntry, DiaperType, FeedingEntry, GrowthEntry, SleepEntry } from '../types/models'
+import type {
+  DiaperEntry,
+  DiaperType,
+  FeedingEntry,
+  GrowthEntry,
+  MedicationEntry,
+  SleepEntry,
+} from '../types/models'
 
 const DIAPER_LABELS: Record<DiaperType, string> = { pee: 'Pipi', poop: 'Caca', both: 'Pipi + caca' }
 
@@ -20,6 +27,11 @@ export function summarizeSleepEntry(entry: SleepEntry, now: Date): string {
 
 export function summarizeDiaperEntry(entry: DiaperEntry, now: Date): string {
   return `${DIAPER_LABELS[entry.type]} — ${formatRelativeTime(new Date(entry.occurredAt), now)}`
+}
+
+export function summarizeMedicationEntry(entry: MedicationEntry, now: Date): string {
+  const relative = formatRelativeTime(new Date(entry.givenAt), now)
+  return entry.dose ? `${entry.name} — ${entry.dose} — ${relative}` : `${entry.name} — ${relative}`
 }
 
 export function summarizeGrowthEntry(entry: GrowthEntry, now: Date): string {

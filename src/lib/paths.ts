@@ -24,3 +24,18 @@ export function diaperEntriesCollection(householdId: string, babyId: string): Co
 export function growthEntriesCollection(householdId: string, babyId: string): CollectionReference {
   return collection(db, 'households', householdId, 'babies', babyId, 'growthEntries')
 }
+
+export function medicationEntriesCollection(
+  householdId: string,
+  babyId: string,
+): CollectionReference {
+  return collection(db, 'households', householdId, 'babies', babyId, 'medicationEntries')
+}
+
+export function remindersCollection(householdId: string, babyId: string): CollectionReference {
+  return collection(db, 'households', householdId, 'babies', babyId, 'reminders')
+}
+
+export function fcmTokensCollection(uid: string): CollectionReference {
+  return collection(db, 'users', uid, 'fcmTokens')
+}

@@ -32,3 +32,9 @@ emulator-data
 
 # Test coverage
 coverage
+
+# Cloud Functions build output
+functions/lib
+
+# Local Claude Code session settings
+.claude/settings.json

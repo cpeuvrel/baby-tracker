@@ -8,13 +8,17 @@ import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
 import * as useRecentDiaperEntriesModule from '../hooks/useRecentDiaperEntries'
 import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries'
+import * as useRecentMedicationEntriesModule from '../hooks/useRecentMedicationEntries'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
+import * as useReminderModule from '../hooks/useReminder'
 import type { SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
 const startSleep = vi.fn()
 const logFeeding = vi.fn()
 const logDiaper = vi.fn()
+const logMedication = vi.fn()
+const setReminder = vi.fn()
 const addGrowthEntry = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
@@ -26,6 +30,12 @@ vi.mock('../repositories/feedingEntries', () => ({
 }))
 vi.mock('../repositories/diaperEntries', () => ({
   logDiaper: (...args: unknown[]) => logDiaper(...args),
+}))
+vi.mock('../repositories/medicationEntries', () => ({
+  logMedication: (...args: unknown[]) => logMedication(...args),
+}))
+vi.mock('../repositories/reminders', () => ({
+  setReminder: (...args: unknown[]) => setReminder(...args),
 }))
 vi.mock('../repositories/growthEntries', () => ({
   addGrowthEntry: (...args: unknown[]) => addGrowthEntry(...args),
@@ -52,6 +62,8 @@ function setupHooks(activeSleepEntry: SleepEntry | null = null) {
   vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([])
   vi.spyOn(useRecentFeedingEntriesModule, 'useRecentFeedingEntries').mockReturnValue([])
   vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntries').mockReturnValue([])
+  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue([])
+  vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
   vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
 }
 
@@ -60,6 +72,8 @@ describe('ActivityPage', () => {
     startSleep.mockReset()
     logFeeding.mockReset()
     logDiaper.mockReset()
+    logMedication.mockReset()
+    setReminder.mockReset()
     addGrowthEntry.mockReset()
   })
 
@@ -71,6 +85,7 @@ describe('ActivityPage', () => {
     expect(screen.getByRole('region', { name: 'Sommeil' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Nourriture' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Couches' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Médicament' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Croissance' })).toBeInTheDocument()
   })
 
@@ -118,5 +133,18 @@ describe('ActivityPage', () => {
 
     expect(logFeeding).toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('opens the medication modal and the reminder settings modal', async () => {
+    setupHooks()
+    const user = userEvent.setup()
+
+    render(<ActivityPage />)
+    await user.click(screen.getByRole('button', { name: 'Ajouter une prise' }))
+    expect(screen.getByRole('dialog', { name: 'Médicament' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Fermer' }))
+
+    await user.click(screen.getByRole('button', { name: 'Régler le rappel' }))
+    expect(screen.getByRole('dialog', { name: 'Rappel Vitamine D' })).toBeInTheDocument()
   })
 })

@@ -73,4 +73,24 @@ describe('CategoryCard', () => {
 
     expect(onAdd).toHaveBeenCalled()
   })
+
+  it('renders and triggers the secondary action when provided', async () => {
+    const onSecondary = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Médicament"
+        colorVar="--category-medication"
+        addLabel="Ajouter une prise"
+        onAdd={vi.fn()}
+        lines={[]}
+        emptyLabel="Aucune entrée"
+        secondaryAction={{ label: 'Régler le rappel', onClick: onSecondary }}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Régler le rappel' }))
+
+    expect(onSecondary).toHaveBeenCalled()
+  })
 })

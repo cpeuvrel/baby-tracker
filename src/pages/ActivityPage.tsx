@@ -3,7 +3,9 @@ import { CategoryCard } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
 import { GrowthForm } from '../components/GrowthForm'
+import { MedicationForm } from '../components/MedicationForm'
 import { Modal } from '../components/Modal'
+import { ReminderSettingsModal } from '../components/ReminderSettingsModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
@@ -11,18 +13,21 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
+import { useRecentMedicationEntries } from '../hooks/useRecentMedicationEntries'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import {
   summarizeDiaperEntry,
   summarizeFeedingEntry,
   summarizeGrowthEntry,
+  summarizeMedicationEntry,
   summarizeSleepEntry,
 } from '../lib/entrySummary'
 import { startSleep } from '../repositories/sleepEntries'
 
 const RECENT_COUNT = 5
+const DEFAULT_MEDICATION_NAME = 'Vitamine D'
 
-type ModalKind = 'sleep' | 'feeding' | 'diaper' | 'growth' | null
+type ModalKind = 'sleep' | 'feeding' | 'diaper' | 'growth' | 'medication' | 'reminder' | null
 
 export function ActivityPage() {
   const { user } = useAuth()
@@ -41,6 +46,11 @@ export function ActivityPage() {
     RECENT_COUNT,
   )
   const recentDiaper = useRecentDiaperEntries(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    RECENT_COUNT,
+  )
+  const recentMedication = useRecentMedicationEntries(
     household?.id ?? null,
     selectedBaby?.id ?? null,
     RECENT_COUNT,
@@ -88,6 +98,15 @@ export function ActivityPage() {
         emptyLabel="Aucune entrée"
       />
       <CategoryCard
+        title="Médicament"
+        colorVar="--category-medication"
+        addLabel="Ajouter une prise"
+        onAdd={() => setOpenModal('medication')}
+        lines={recentMedication.map((entry) => summarizeMedicationEntry(entry, now))}
+        emptyLabel="Aucune prise"
+        secondaryAction={{ label: 'Régler le rappel', onClick: () => setOpenModal('reminder') }}
+      />
+      <CategoryCard
         title="Croissance"
         colorVar="--category-growth"
         addLabel="Ajouter une mesure"
@@ -106,6 +125,14 @@ export function ActivityPage() {
         <Modal title="Couches" bandColorVar="--category-diaper" onClose={closeModal}>
           <DiaperForm onSaved={closeModal} />
         </Modal>
+      )}
+      {openModal === 'medication' && (
+        <Modal title="Médicament" bandColorVar="--category-medication" onClose={closeModal}>
+          <MedicationForm onSaved={closeModal} />
+        </Modal>
+      )}
+      {openModal === 'reminder' && (
+        <ReminderSettingsModal medicationName={DEFAULT_MEDICATION_NAME} onClose={closeModal} />
       )}
       {openModal === 'growth' && (
         <Modal title="Croissance" bandColorVar="--category-growth" onClose={closeModal}>
