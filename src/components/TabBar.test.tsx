@@ -25,6 +25,6 @@ describe('TabBar', () => {
     expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Trends' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
   })
 })

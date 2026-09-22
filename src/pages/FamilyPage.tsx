@@ -1,13 +1,17 @@
 import { useState, type FormEvent } from 'react'
 import { ExportImportSection } from '../components/ExportImportSection'
 import { SettingsSection } from '../components/SettingsSection'
+import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { formatAge } from '../lib/age'
 import { addBaby } from '../repositories/babies'
 
 export function FamilyPage() {
+  const { user } = useAuth()
   const { household, babies } = useHousehold()
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
+  const now = new Date()
 
   if (!household) return null
 
@@ -27,7 +31,7 @@ export function FamilyPage() {
           {babies.map((baby) => (
             <li key={baby.id}>
               <span>{baby.name}</span>
-              <span className="list-group-meta">{baby.birthDate}</span>
+              <span className="list-group-meta">Age {formatAge(baby.birthDate, now)}</span>
             </li>
           ))}
         </ul>
@@ -56,10 +60,20 @@ export function FamilyPage() {
 
       <section aria-label="Parents">
         <h2>Caregivers</h2>
-        <p>
-          {household.name} — {household.memberUids.length} parent
-          {household.memberUids.length > 1 ? 's' : ''}
-        </p>
+        <ul className="list-group">
+          <li>
+            <span>{user?.email}</span>
+            <span className="list-group-meta">Your Profile</span>
+          </li>
+          {household.memberUids
+            .filter((uid) => uid !== user?.uid)
+            .map((uid) => (
+              <li key={uid}>
+                <span>Autre parent</span>
+                <span className="list-group-meta">{uid.slice(0, 8)}…</span>
+              </li>
+            ))}
+        </ul>
         <p className="hint">
           L'ajout d'un parent se fait via la console Firebase (compte email/mot de passe), pas
           depuis l'app.

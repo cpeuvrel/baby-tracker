@@ -61,6 +61,11 @@ export function ActivityPage() {
 
   const now = new Date()
   const recentGrowth = [...growthEntries].reverse().slice(0, RECENT_COUNT)
+  const latestFeeding = recentFeeding[0]
+  const feedingHighlight =
+    latestFeeding?.type === 'bottle' && latestFeeding.volumeMl != null
+      ? { value: String(latestFeeding.volumeMl), unit: 'mL' }
+      : undefined
 
   const handleAddSleep = () => {
     if (!activeSleepEntry) {
@@ -88,6 +93,7 @@ export function ActivityPage() {
         onAdd={() => setOpenModal('feeding')}
         lines={recentFeeding.map((entry) => summarizeFeedingEntry(entry, now))}
         emptyLabel="Aucune entrée"
+        highlight={feedingHighlight}
       />
       <CategoryCard
         title="Couches"

@@ -93,4 +93,37 @@ describe('CategoryCard', () => {
 
     expect(onSecondary).toHaveBeenCalled()
   })
+
+  it('shows the highlight value next to the most recent entry', () => {
+    render(
+      <CategoryCard
+        title="Nourriture"
+        colorVar="--category-feeding"
+        addLabel="Ajouter une entrée nourriture"
+        onAdd={vi.fn()}
+        lines={['120 mL — il y a 30min']}
+        emptyLabel="Aucune entrée"
+        highlight={{ value: '120', unit: 'mL' }}
+      />,
+    )
+
+    expect(screen.getByText('120')).toBeInTheDocument()
+    expect(screen.getByText('mL')).toBeInTheDocument()
+  })
+
+  it('does not show a highlight value when there is no entry', () => {
+    render(
+      <CategoryCard
+        title="Nourriture"
+        colorVar="--category-feeding"
+        addLabel="Ajouter une entrée nourriture"
+        onAdd={vi.fn()}
+        lines={[]}
+        emptyLabel="Aucune entrée"
+        highlight={{ value: '120', unit: 'mL' }}
+      />,
+    )
+
+    expect(screen.queryByText('120')).not.toBeInTheDocument()
+  })
 })

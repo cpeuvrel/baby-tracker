@@ -1,6 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import { FamilyPage } from './FamilyPage'
 
@@ -18,6 +20,12 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 describe('FamilyPage', () => {
   beforeEach(() => {
     addBaby.mockReset()
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      user: { uid: 'uid1', email: 'parent1@example.com' } as User,
+      loading: false,
+      login: vi.fn(),
+      logout: vi.fn(),
+    })
   })
 
   it('renders nothing without a resolved household', () => {
@@ -34,7 +42,7 @@ describe('FamilyPage', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('lists the babies of the household and the member count', () => {
+  it('lists the babies of the household with their age', () => {
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [baby],
@@ -46,7 +54,23 @@ describe('FamilyPage', () => {
     render(<FamilyPage />)
 
     expect(screen.getByText('Léo')).toBeInTheDocument()
-    expect(screen.getByText('Famille Test — 2 parents')).toBeInTheDocument()
+    expect(screen.getByText(/^Age /)).toBeInTheDocument()
+  })
+
+  it('lists the current user as "Your Profile" and other members generically', () => {
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household,
+      babies: [baby],
+      loading: false,
+      selectedBaby: baby,
+      selectBaby: vi.fn(),
+    })
+
+    render(<FamilyPage />)
+
+    expect(screen.getByText('parent1@example.com')).toBeInTheDocument()
+    expect(screen.getByText('Your Profile')).toBeInTheDocument()
+    expect(screen.getByText('Autre parent')).toBeInTheDocument()
   })
 
   it('adds a new child with the entered name and birth date', async () => {

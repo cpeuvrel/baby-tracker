@@ -8,6 +8,7 @@ interface CategoryCardProps {
   lines: string[]
   emptyLabel: string
   secondaryAction?: { label: string; onClick: () => void }
+  highlight?: { value: string; unit: string }
 }
 
 export function CategoryCard({
@@ -18,6 +19,7 @@ export function CategoryCard({
   lines,
   emptyLabel,
   secondaryAction,
+  highlight,
 }: CategoryCardProps) {
   const [expanded, setExpanded] = useState(false)
   const [firstLine, ...remainingLines] = lines
@@ -31,7 +33,15 @@ export function CategoryCard({
         </button>
       </header>
       <div className="category-card-body">
-        <p>{firstLine ?? emptyLabel}</p>
+        <div className="category-card-first-row">
+          <p>{firstLine ?? emptyLabel}</p>
+          {highlight && firstLine && (
+            <p className="category-card-highlight">
+              {highlight.value}
+              <span>{highlight.unit}</span>
+            </p>
+          )}
+        </div>
         {secondaryAction && (
           <button type="button" className="link-button" onClick={secondaryAction.onClick}>
             {secondaryAction.label}

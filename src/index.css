@@ -8,14 +8,19 @@
   --accent-contrast: #ffffff;
   --action: #f2703b;
   --action-contrast: #ffffff;
+  --button-add: #4a6fa5;
+  --button-add-contrast: #ffffff;
   --danger: #b3261e;
   --danger-bg: #fbeaea;
+  --card-shadow: 0 4px 10px rgba(31, 58, 92, 0.08);
 
-  --category-feeding: #f0c14b;
+  /* Bandeaux de catégorie : couleurs fixes, ne changent pas avec le thème
+     (confirmé sur l'app réelle — seul le fond de page passe en sombre). */
+  --category-feeding: #f5c242;
   --category-sleep: #afd0ea;
   --category-growth: #b7d98f;
   --category-medication: #c7c0e6;
-  --category-diaper: #f3c9d6;
+  --category-diaper: #e8dfc8;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --serif: Georgia, 'Times New Roman', serif;
@@ -29,23 +34,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #14202f;
-    --surface: #1b2a3d;
-    --text: #eef2f6;
-    --text-muted: #9fb0c3;
-    --border: #2c3d53;
+    --bg: #1e2233;
+    --surface: #1e2233;
+    --text: #f5f6fa;
+    --text-muted: #9aa3b8;
+    --border: #363b52;
     --accent: #afd0ea;
     --accent-contrast: #0e1116;
     --action: #f2703b;
     --action-contrast: #16171b;
+    --button-add: #5e7fa0;
+    --button-add-contrast: #ffffff;
     --danger: #f2b8b5;
     --danger-bg: #3a2222;
-
-    --category-feeding: #b3922e;
-    --category-sleep: #4c6f8c;
-    --category-growth: #5c7a45;
-    --category-medication: #6d63a6;
-    --category-diaper: #a3697c;
+    --card-shadow: none;
   }
 }
 
@@ -278,7 +280,14 @@ main {
   border-radius: 16px;
   overflow: hidden;
   margin-bottom: 16px;
-  box-shadow: 0 4px 10px rgba(31, 58, 92, 0.08);
+  box-shadow: var(--card-shadow);
+  border: 1px solid transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  .category-card {
+    border-color: var(--border);
+  }
 }
 
 .category-card header {
@@ -293,8 +302,8 @@ main {
   height: 32px;
   padding: 0;
   border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-contrast);
+  background: var(--button-add);
+  color: var(--button-add-contrast);
   font-size: 18px;
   line-height: 1;
   display: flex;
@@ -307,8 +316,29 @@ main {
   padding: 12px 16px;
 }
 
+.category-card-first-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .category-card-body p {
+  font-family: var(--serif);
+  font-size: 16px;
+}
+
+.category-card-highlight {
+  font-size: 32px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.category-card-highlight span {
   font-size: 14px;
+  font-weight: 400;
+  margin-left: 2px;
 }
 
 .category-card-body .link-button {
@@ -380,6 +410,7 @@ main {
 }
 
 .modal-counter {
+  font-family: var(--serif);
   text-align: center;
   font-size: 40px;
   font-weight: 600;
@@ -425,6 +456,8 @@ main {
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
+  font-family: var(--serif);
+  font-size: 16px;
 }
 
 .list-group-meta {
