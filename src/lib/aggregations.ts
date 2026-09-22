@@ -86,3 +86,62 @@ export function sumVolumeByDay(dayKeys: string[], entries: FeedingEntry[]): Dail
   }
   return dayKeys.map((key) => ({ dayKey: key, value: totals.get(key) ?? 0 }))
 }
+
+export function averageVolumeByDay(dayKeys: string[], entries: FeedingEntry[]): DailyPoint[] {
+  const volumesByDay = new Map<string, number[]>(dayKeys.map((key) => [key, []]))
+  for (const entry of entries) {
+    if (entry.type !== 'bottle' || entry.volumeMl == null) continue
+    const key = dayKey(new Date(entry.occurredAt))
+    volumesByDay.get(key)?.push(entry.volumeMl)
+  }
+  return dayKeys.map((key) => {
+    const volumes = volumesByDay.get(key) ?? []
+    const value = volumes.length > 0 ? volumes.reduce((sum, v) => sum + v, 0) / volumes.length : 0
+    return { dayKey: key, value }
+  })
+}
+
+export function countFeedingSessionsByDay(dayKeys: string[], entries: FeedingEntry[]): DailyPoint[] {
+  const counts = new Map<string, number>(dayKeys.map((key) => [key, 0]))
+  for (const entry of entries) {
+    if (entry.type !== 'bottle') continue
+    const key = dayKey(new Date(entry.occurredAt))
+    if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return dayKeys.map((key) => ({ dayKey: key, value: counts.get(key) ?? 0 }))
+}
+
+export function countNightWakingsByDay(dayKeys: string[], entries: SleepEntry[]): DailyPoint[] {
+  const counts = new Map<string, number>(dayKeys.map((key) => [key, 0]))
+  for (const entry of entries) {
+    if (!startsDuringNight(entry.startedAt)) continue
+    const key = dayKey(new Date(entry.startedAt))
+    if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return dayKeys.map((key) => ({ dayKey: key, value: counts.get(key) ?? 0 }))
+}
+
+export function countDiapersByDay(dayKeys: string[], entries: DiaperEntry[]): DailyPoint[] {
+  const counts = new Map<string, number>(dayKeys.map((key) => [key, 0]))
+  for (const entry of entries) {
+    const key = dayKey(new Date(entry.occurredAt))
+    if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  return dayKeys.map((key) => ({ dayKey: key, value: counts.get(key) ?? 0 }))
+}
+
+export function averageOfPoints(points: DailyPoint[]): number {
+  if (points.length === 0) return 0
+  return points.reduce((sum, point) => sum + point.value, 0) / points.length
+}
+
+export interface Delta {
+  value: number
+  direction: 'up' | 'down' | 'flat'
+}
+
+export function computeDelta(current: number, previous: number): Delta {
+  const value = current - previous
+  const direction = value > 0 ? 'up' : value < 0 ? 'down' : 'flat'
+  return { value, direction }
+}

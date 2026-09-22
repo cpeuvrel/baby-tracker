@@ -43,6 +43,25 @@ export function lastNDayKeys(reference: Date, days: number): string[] {
   return keys
 }
 
+/** Day keys for every calendar day touched by [range.start, range.end). */
+export function dayKeysInRange(range: DateRange): string[] {
+  const keys: string[] = []
+  const cursor = new Date(range.start)
+  cursor.setHours(0, 0, 0, 0)
+  const end = new Date(range.end)
+  while (cursor.getTime() < end.getTime()) {
+    keys.push(dayKey(cursor))
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return keys
+}
+
+/** The range immediately preceding `range`, of the same length. */
+export function precedingRange(range: DateRange): DateRange {
+  const length = range.end.getTime() - range.start.getTime()
+  return { start: new Date(range.start.getTime() - length), end: new Date(range.start) }
+}
+
 export type TimelineEntry =
   | { kind: 'feeding'; at: string; entry: FeedingEntry }
   | { kind: 'sleep'; at: string; entry: SleepEntry }

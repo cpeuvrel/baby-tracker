@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
-import { buildTimeline, dayKey, dayRange, lastNDayKeys, lastNDaysRange, parseDayKey } from './timeline'
+import {
+  buildTimeline,
+  dayKey,
+  dayKeysInRange,
+  dayRange,
+  lastNDayKeys,
+  lastNDaysRange,
+  parseDayKey,
+  precedingRange,
+} from './timeline'
 
 describe('dayRange', () => {
   it('returns midnight to midnight for the reference date', () => {
@@ -47,6 +56,32 @@ describe('parseDayKey', () => {
     expect(date.getMonth()).toBe(2)
     expect(date.getDate()).toBe(5)
     expect(date.getHours()).toBe(0)
+  })
+})
+
+describe('dayKeysInRange', () => {
+  it('lists every calendar day touched by the range', () => {
+    const range = { start: new Date('2026-03-04T18:00:00'), end: new Date('2026-03-07T06:00:00') }
+
+    expect(dayKeysInRange(range)).toEqual(['2026-03-04', '2026-03-05', '2026-03-06', '2026-03-07'])
+  })
+
+  it('returns a single key for a same-day range', () => {
+    const range = dayRange(new Date('2026-03-05T14:00:00'))
+
+    expect(dayKeysInRange(range)).toEqual(['2026-03-05'])
+  })
+})
+
+describe('precedingRange', () => {
+  it('returns the range of the same length immediately before', () => {
+    const range = lastNDaysRange(new Date('2026-03-05T14:00:00'), 7)
+    const preceding = precedingRange(range)
+
+    expect(preceding.end.getTime()).toBe(range.start.getTime())
+    expect(preceding.end.getTime() - preceding.start.getTime()).toBe(
+      range.end.getTime() - range.start.getTime(),
+    )
   })
 })
 

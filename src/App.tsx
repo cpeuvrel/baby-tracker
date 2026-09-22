@@ -6,6 +6,7 @@ import { ActivityPage } from './pages/ActivityPage'
 import { FamilyPage } from './pages/FamilyPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LoginPage } from './pages/LoginPage'
+import { TrendDetailPage } from './pages/TrendDetailPage'
 import { TrendsPage } from './pages/TrendsPage'
 
 function AppShell() {
@@ -29,6 +30,7 @@ function AppShell() {
             <Route index element={<ActivityPage />} />
             <Route path="history" element={<HistoryPage />} />
             <Route path="trends" element={<TrendsPage />} />
+            <Route path="trends/:metricId" element={<TrendDetailPage />} />
             <Route path="family" element={<FamilyPage />} />
           </Route>
         </Routes>

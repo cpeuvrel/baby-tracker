@@ -508,33 +508,6 @@ main {
   border-color: var(--accent);
 }
 
-/* Tuiles de statistiques */
-dl.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-  margin: 0 0 24px;
-}
-
-dl.stat-grid > div {
-  padding: 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-dl.stat-grid dt {
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 4px;
-}
-
-dl.stat-grid dd {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
 /* Calendrier hebdomadaire (écran History) */
 .week-chart-nav {
   display: flex;
@@ -640,6 +613,108 @@ dl.stat-grid dd {
   height: 4px;
   border-radius: 2px;
   transform: translateY(-50%);
+}
+
+/* Écran Trends : liste de métriques par section */
+.trend-section-title {
+  font-family: var(--serif);
+  font-size: 16px;
+  margin: 20px 0 8px;
+}
+
+.trend-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.trend-row:last-child {
+  border-bottom: none;
+}
+
+.trend-row-icon {
+  flex-shrink: 0;
+  display: flex;
+}
+
+.trend-row-text {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.trend-row-title {
+  font-family: var(--serif);
+  font-size: 15px;
+}
+
+.trend-row-subtitle {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.trend-row-delta {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-contrast);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+/* Écran de détail d'une métrique (Trends > sous-écran) */
+.detail-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detail-header button {
+  background: none;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  padding: 4px 8px;
+}
+
+.detail-header h2 {
+  font-family: var(--serif);
+  font-size: 18px;
+  margin: 0;
+}
+
+.detail-headline {
+  font-family: var(--serif);
+  font-size: 28px;
+  margin: 0 0 16px;
+}
+
+.detail-entries {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+}
+
+.detail-entries li {
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.detail-entries li:last-child {
+  border-bottom: none;
+}
+
+.detail-delta-caption {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* Jetons de dataviz (voir skill dataviz) */

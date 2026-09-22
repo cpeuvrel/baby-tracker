@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
@@ -10,39 +11,49 @@ import { TrendsPage } from './TrendsPage'
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
+const now = new Date()
+
 const sleep: SleepEntry[] = [
   {
     id: 's1',
-    startedAt: '2026-03-05T21:00:00.000Z',
-    endedAt: '2026-03-05T22:00:00.000Z',
+    startedAt: now.toISOString(),
+    endedAt: new Date(now.getTime() + 3600_000).toISOString(),
     durationSeconds: 3600,
     notes: '',
     createdBy: 'uid1',
-    createdAt: '2026-03-05T21:00:00.000Z',
+    createdAt: now.toISOString(),
   },
 ]
 const feeding: FeedingEntry[] = [
   {
     id: 'f1',
     type: 'bottle',
-    occurredAt: '2026-03-05T10:00:00.000Z',
+    occurredAt: now.toISOString(),
     volumeMl: 120,
     foodType: null,
     notes: '',
     createdBy: 'uid1',
-    createdAt: '2026-03-05T10:00:00.000Z',
+    createdAt: now.toISOString(),
   },
 ]
 const diaper: DiaperEntry[] = [
   {
     id: 'd1',
     type: 'pee',
-    occurredAt: '2026-03-05T10:00:00.000Z',
+    occurredAt: now.toISOString(),
     notes: '',
     createdBy: 'uid1',
-    createdAt: '2026-03-05T10:00:00.000Z',
+    createdAt: now.toISOString(),
   },
 ]
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <TrendsPage />
+    </MemoryRouter>,
+  )
+}
 
 describe('TrendsPage', () => {
   beforeEach(() => {
@@ -66,27 +77,30 @@ describe('TrendsPage', () => {
       selectBaby: vi.fn(),
     })
 
-    const { container } = render(<TrendsPage />)
+    const { container } = renderPage()
 
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows aggregated stat tiles for the selected range', () => {
-    render(<TrendsPage />)
+  it('renders a row per metric, grouped by section, linking to its detail page', () => {
+    renderPage()
 
-    const valueFor = (label: string) => screen.getByText(label).nextElementSibling?.textContent
+    const feedRow = screen.getByRole('link', { name: /Biberons/ })
+    expect(feedRow).toHaveAttribute('href', '/trends/feedSessions')
 
-    expect(valueFor('Sommeil total')).toBe('1h 00min')
-    expect(valueFor('Réveils nocturnes')).toBe('1')
-    expect(valueFor('Biberons')).toBe('1')
-    expect(valueFor('Volume total')).toBe('120 mL')
+    const sleepRow = screen.getByRole('link', { name: /Sommeil total/ })
+    expect(sleepRow).toHaveAttribute('href', '/trends/sleepTotal')
+
+    expect(screen.getByRole('heading', { name: 'Nourriture' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Couches' })).toBeInTheDocument()
   })
 
-  it('switches to the week range and recomputes the average per day', async () => {
+  it('switches range and re-queries entries for the new period', async () => {
     const user = userEvent.setup()
-    render(<TrendsPage />)
+    renderPage()
 
-    await user.click(screen.getByRole('button', { name: 'Semaine' }))
+    await user.click(screen.getByRole('button', { name: '14j' }))
 
     expect(useEntriesInRangeModule.useEntriesInRange).toHaveBeenLastCalledWith(
       'h1',
@@ -96,7 +110,7 @@ describe('TrendsPage', () => {
   })
 
   it('also renders the growth section', () => {
-    render(<TrendsPage />)
+    renderPage()
 
     expect(screen.getByRole('region', { name: 'Courbe de croissance' })).toBeInTheDocument()
   })

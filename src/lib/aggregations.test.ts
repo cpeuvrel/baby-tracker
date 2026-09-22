@@ -1,9 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import {
+  averageOfPoints,
+  averageVolumeByDay,
+  computeDelta,
   computeDiaperStats,
   computeFeedingStats,
   computeSleepStats,
+  countDiapersByDay,
+  countFeedingSessionsByDay,
+  countNightWakingsByDay,
   sumSecondsByDay,
   sumVolumeByDay,
 } from './aggregations'
@@ -144,5 +150,89 @@ describe('sumVolumeByDay', () => {
     const buckets = sumVolumeByDay(['2026-03-05'], entries)
 
     expect(buckets).toEqual([{ dayKey: '2026-03-05', value: 150 }])
+  })
+})
+
+describe('averageVolumeByDay', () => {
+  it('averages bottle volume per day, ignoring solids and days with no bottle', () => {
+    const entries = [
+      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00' }),
+      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00' }),
+    ]
+
+    const buckets = averageVolumeByDay(['2026-03-04', '2026-03-05'], entries)
+
+    expect(buckets).toEqual([
+      { dayKey: '2026-03-04', value: 0 },
+      { dayKey: '2026-03-05', value: 75 },
+    ])
+  })
+})
+
+describe('countFeedingSessionsByDay', () => {
+  it('counts bottle entries per day, ignoring solids', () => {
+    const entries = [
+      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T10:00:00' }),
+      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T18:00:00' }),
+      feedingEntry({ type: 'solid', occurredAt: '2026-03-05T12:00:00' }),
+    ]
+
+    expect(countFeedingSessionsByDay(['2026-03-05'], entries)).toEqual([
+      { dayKey: '2026-03-05', value: 2 },
+    ])
+  })
+})
+
+describe('countNightWakingsByDay', () => {
+  it('counts only entries starting during the night window per day', () => {
+    const entries = [
+      sleepEntry({ startedAt: '2026-03-05T21:00:00.000Z' }),
+      sleepEntry({ startedAt: '2026-03-05T14:00:00.000Z' }),
+    ]
+
+    expect(countNightWakingsByDay(['2026-03-05'], entries)).toEqual([
+      { dayKey: '2026-03-05', value: 1 },
+    ])
+  })
+})
+
+describe('countDiapersByDay', () => {
+  it('counts diaper entries per day', () => {
+    const entries = [
+      diaperEntry({ occurredAt: '2026-03-05T08:00:00' }),
+      diaperEntry({ occurredAt: '2026-03-05T18:00:00' }),
+    ]
+
+    expect(countDiapersByDay(['2026-03-05'], entries)).toEqual([{ dayKey: '2026-03-05', value: 2 }])
+  })
+})
+
+describe('averageOfPoints', () => {
+  it('averages the values of a list of points', () => {
+    expect(
+      averageOfPoints([
+        { dayKey: '2026-03-04', value: 10 },
+        { dayKey: '2026-03-05', value: 20 },
+      ]),
+    ).toBe(15)
+  })
+
+  it('returns zero for an empty list', () => {
+    expect(averageOfPoints([])).toBe(0)
+  })
+})
+
+describe('computeDelta', () => {
+  it('reports an upward direction when current exceeds previous', () => {
+    expect(computeDelta(10, 6)).toEqual({ value: 4, direction: 'up' })
+  })
+
+  it('reports a downward direction when current is below previous', () => {
+    expect(computeDelta(6, 10)).toEqual({ value: -4, direction: 'down' })
+  })
+
+  it('reports a flat direction when equal', () => {
+    expect(computeDelta(5, 5)).toEqual({ value: 0, direction: 'flat' })
   })
 })
