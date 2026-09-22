@@ -209,4 +209,42 @@ describe('ActivityPage', () => {
     expect(screen.getByLabelText('Durée (minutes)')).toHaveValue(60)
     expect(startSleep).not.toHaveBeenCalled()
   })
+
+  it('shows earlier entries from today directly, and hides entries from before today behind Voir plus', async () => {
+    const now = new Date()
+    const earlierToday = new Date(now)
+    earlierToday.setHours(0, 30, 0, 0)
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    const makeEntry = (id: string, occurredAt: Date): FeedingEntry => ({
+      id,
+      type: 'bottle',
+      occurredAt: occurredAt.toISOString(),
+      volumeMl: 100,
+      foodType: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: occurredAt.toISOString(),
+    })
+
+    setupHooks(null, {
+      recentFeeding: [
+        makeEntry('latest', now),
+        makeEntry('earlier-today', earlierToday),
+        makeEntry('yesterday', yesterday),
+      ],
+    })
+    const user = userEvent.setup()
+
+    render(<ActivityPage />)
+
+    expect(screen.getByText(/100 mL/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Voir plus' })).toBeInTheDocument()
+    expect(screen.queryByText(/il y a 1j/)).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+
+    expect(screen.getByText(/il y a 1j/)).toBeInTheDocument()
+  })
 })

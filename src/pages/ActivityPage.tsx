@@ -29,6 +29,7 @@ import {
   summarizeSleepEntry,
   summarizeSleepPrimary,
 } from '../lib/entrySummary'
+import { isToday } from '../lib/timeline'
 import { startSleep } from '../repositories/sleepEntries'
 import type {
   DiaperEntry,
@@ -40,6 +41,26 @@ import type {
 
 const RECENT_COUNT = 5
 const DEFAULT_MEDICATION_NAME = 'Vitamine D'
+
+function splitTodayLines<T>(
+  entries: T[],
+  now: Date,
+  getIso: (entry: T) => string,
+  summarize: (entry: T) => string,
+  onSelect: (entry: T) => void,
+): { today: CategoryCardMoreLine[]; older: CategoryCardMoreLine[] } {
+  const today: CategoryCardMoreLine[] = []
+  const older: CategoryCardMoreLine[] = []
+  for (const entry of entries) {
+    const line = { text: summarize(entry), onClick: () => onSelect(entry) }
+    if (isToday(getIso(entry), now)) {
+      today.push(line)
+    } else {
+      older.push(line)
+    }
+  }
+  return { today, older }
+}
 
 type ModalState =
   | { kind: 'sleep-active' }
@@ -102,25 +123,41 @@ export function ActivityPage() {
 
   const closeModal = () => setModal(null)
 
-  const sleepMoreLines: CategoryCardMoreLine[] = recentSleep
-    .slice(1)
-    .map((entry) => ({ text: summarizeSleepEntry(entry, now), onClick: () => handleSelectSleep(entry) }))
-  const feedingMoreLines: CategoryCardMoreLine[] = recentFeeding.slice(1).map((entry) => ({
-    text: summarizeFeedingEntry(entry, now),
-    onClick: () => setModal({ kind: 'feeding', entry }),
-  }))
-  const diaperMoreLines: CategoryCardMoreLine[] = recentDiaper.slice(1).map((entry) => ({
-    text: summarizeDiaperEntry(entry, now),
-    onClick: () => setModal({ kind: 'diaper', entry }),
-  }))
-  const medicationMoreLines: CategoryCardMoreLine[] = recentMedication.slice(1).map((entry) => ({
-    text: summarizeMedicationEntry(entry, now),
-    onClick: () => setModal({ kind: 'medication', entry }),
-  }))
-  const growthMoreLines: CategoryCardMoreLine[] = recentGrowth.slice(1).map((entry) => ({
-    text: summarizeGrowthEntry(entry, now),
-    onClick: () => setModal({ kind: 'growth', entry }),
-  }))
+  const { today: sleepTodayLines, older: sleepMoreLines } = splitTodayLines(
+    recentSleep.slice(1),
+    now,
+    (entry) => entry.startedAt,
+    (entry) => summarizeSleepEntry(entry, now),
+    handleSelectSleep,
+  )
+  const { today: feedingTodayLines, older: feedingMoreLines } = splitTodayLines(
+    recentFeeding.slice(1),
+    now,
+    (entry) => entry.occurredAt,
+    (entry) => summarizeFeedingEntry(entry, now),
+    (entry) => setModal({ kind: 'feeding', entry }),
+  )
+  const { today: diaperTodayLines, older: diaperMoreLines } = splitTodayLines(
+    recentDiaper.slice(1),
+    now,
+    (entry) => entry.occurredAt,
+    (entry) => summarizeDiaperEntry(entry, now),
+    (entry) => setModal({ kind: 'diaper', entry }),
+  )
+  const { today: medicationTodayLines, older: medicationMoreLines } = splitTodayLines(
+    recentMedication.slice(1),
+    now,
+    (entry) => entry.givenAt,
+    (entry) => summarizeMedicationEntry(entry, now),
+    (entry) => setModal({ kind: 'medication', entry }),
+  )
+  const { today: growthTodayLines, older: growthMoreLines } = splitTodayLines(
+    recentGrowth.slice(1),
+    now,
+    (entry) => entry.measuredAt,
+    (entry) => summarizeGrowthEntry(entry, now),
+    (entry) => setModal({ kind: 'growth', entry }),
+  )
 
   return (
     <div>
@@ -133,6 +170,7 @@ export function ActivityPage() {
         primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
         onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
         emptyLabel="Aucune entrée"
+        todayLines={sleepTodayLines}
         moreLines={sleepMoreLines}
       />
       <CategoryCard
@@ -144,6 +182,7 @@ export function ActivityPage() {
         primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
         onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
         emptyLabel="Aucune entrée"
+        todayLines={feedingTodayLines}
         moreLines={feedingMoreLines}
         highlight={feedingHighlight}
       />
@@ -156,6 +195,7 @@ export function ActivityPage() {
         primary={recentDiaper[0] ? summarizeDiaperPrimary(recentDiaper[0], now) : null}
         onSelectPrimary={recentDiaper[0] ? () => setModal({ kind: 'diaper', entry: recentDiaper[0] }) : undefined}
         emptyLabel="Aucune entrée"
+        todayLines={diaperTodayLines}
         moreLines={diaperMoreLines}
       />
       <CategoryCard
@@ -169,6 +209,7 @@ export function ActivityPage() {
           recentMedication[0] ? () => setModal({ kind: 'medication', entry: recentMedication[0] }) : undefined
         }
         emptyLabel="Aucune prise"
+        todayLines={medicationTodayLines}
         moreLines={medicationMoreLines}
         secondaryAction={{ label: 'Régler le rappel', onClick: () => setModal({ kind: 'reminder' }) }}
       />
@@ -181,6 +222,7 @@ export function ActivityPage() {
         primary={recentGrowth[0] ? summarizeGrowthPrimary(recentGrowth[0], now) : null}
         onSelectPrimary={recentGrowth[0] ? () => setModal({ kind: 'growth', entry: recentGrowth[0] }) : undefined}
         emptyLabel="Aucune mesure"
+        todayLines={growthTodayLines}
         moreLines={growthMoreLines}
       />
 

@@ -32,6 +32,10 @@ export function parseDayKey(key: string): Date {
   return new Date(year, month - 1, day)
 }
 
+export function isToday(iso: string, now: Date): boolean {
+  return dayKey(new Date(iso)) === dayKey(now)
+}
+
 export function lastNDayKeys(reference: Date, days: number): string[] {
   const keys: string[] = []
   for (let i = days - 1; i >= 0; i -= 1) {

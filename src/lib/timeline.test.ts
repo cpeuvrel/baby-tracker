@@ -5,6 +5,7 @@ import {
   dayKey,
   dayKeysInRange,
   dayRange,
+  isToday,
   lastNDayKeys,
   lastNDaysRange,
   parseDayKey,
@@ -56,6 +57,18 @@ describe('parseDayKey', () => {
     expect(date.getMonth()).toBe(2)
     expect(date.getDate()).toBe(5)
     expect(date.getHours()).toBe(0)
+  })
+})
+
+describe('isToday', () => {
+  it('returns true for a timestamp on the same local day as now', () => {
+    const now = new Date('2026-03-05T22:00:00')
+    expect(isToday('2026-03-05T06:00:00', now)).toBe(true)
+  })
+
+  it('returns false for a timestamp on a different day', () => {
+    const now = new Date('2026-03-05T06:00:00')
+    expect(isToday('2026-03-04T23:59:00', now)).toBe(false)
   })
 })
 

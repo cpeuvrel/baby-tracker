@@ -85,6 +85,31 @@ describe('CategoryCard', () => {
     expect(onSelect).toHaveBeenCalled()
   })
 
+  it('shows today lines directly, without a Voir plus toggle', async () => {
+    const onSelectToday = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Sommeil"
+        colorVar="--category-sleep"
+        addLabel="Ajouter une entrée sommeil"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
+        emptyLabel="Aucune entrée"
+        todayLines={[{ text: 'Entrée du jour', onClick: onSelectToday }]}
+        moreLines={[]}
+      />,
+    )
+
+    expect(screen.getByText('Entrée du jour')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Entrée du jour' }))
+
+    expect(onSelectToday).toHaveBeenCalled()
+  })
+
   it('calls onSelectPrimary when the primary entry is clicked', async () => {
     const onSelectPrimary = vi.fn()
     const user = userEvent.setup()

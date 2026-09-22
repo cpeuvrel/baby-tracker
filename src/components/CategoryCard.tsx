@@ -14,6 +14,7 @@ interface CategoryCardProps {
   primary: { label: string; meta: string } | null
   onSelectPrimary?: () => void
   emptyLabel: string
+  todayLines?: CategoryCardMoreLine[]
   moreLines: CategoryCardMoreLine[]
   secondaryAction?: { label: string; onClick: () => void }
   highlight?: { value: string; unit: string }
@@ -28,6 +29,7 @@ export function CategoryCard({
   primary,
   onSelectPrimary,
   emptyLabel,
+  todayLines = [],
   moreLines,
   secondaryAction,
   highlight,
@@ -76,6 +78,17 @@ export function CategoryCard({
           <button type="button" className="link-button" onClick={secondaryAction.onClick}>
             {secondaryAction.label}
           </button>
+        )}
+        {todayLines.length > 0 && (
+          <ul>
+            {todayLines.map((line, index) => (
+              <li key={index}>
+                <button type="button" className="category-card-more-line" onClick={line.onClick}>
+                  {line.text}
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         {moreLines.length > 0 && (
           <>
