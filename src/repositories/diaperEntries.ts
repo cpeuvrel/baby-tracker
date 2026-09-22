@@ -1,11 +1,14 @@
 import {
   addDoc,
+  deleteDoc,
+  doc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   where,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -84,19 +87,44 @@ export async function importDiaperEntries(
   }))
 }
 
+export interface LogDiaperInput {
+  type: DiaperType
+  occurredAt: Date
+  notes: string
+}
+
 export async function logDiaper(
   householdId: string,
   babyId: string,
   createdBy: string,
-  type: DiaperType,
-  notes: string,
+  input: LogDiaperInput,
 ): Promise<void> {
-  const now = Timestamp.now()
   await addDoc(diaperEntriesCollection(householdId, babyId), {
-    type,
-    occurredAt: now,
-    notes,
+    type: input.type,
+    occurredAt: Timestamp.fromDate(input.occurredAt),
+    notes: input.notes,
     createdBy,
-    createdAt: now,
+    createdAt: Timestamp.now(),
   })
+}
+
+export async function updateDiaperEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  input: LogDiaperInput,
+): Promise<void> {
+  await updateDoc(doc(diaperEntriesCollection(householdId, babyId), entryId), {
+    type: input.type,
+    occurredAt: Timestamp.fromDate(input.occurredAt),
+    notes: input.notes,
+  })
+}
+
+export async function deleteDiaperEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+): Promise<void> {
+  await deleteDoc(doc(diaperEntriesCollection(householdId, babyId), entryId))
 }

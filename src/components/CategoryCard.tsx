@@ -1,5 +1,10 @@
 import { useState, type ReactNode } from 'react'
 
+export interface CategoryCardMoreLine {
+  text: string
+  onClick: () => void
+}
+
 interface CategoryCardProps {
   title: string
   colorVar: string
@@ -7,8 +12,9 @@ interface CategoryCardProps {
   onAdd: () => void
   icon: ReactNode
   primary: { label: string; meta: string } | null
+  onSelectPrimary?: () => void
   emptyLabel: string
-  moreLines: string[]
+  moreLines: CategoryCardMoreLine[]
   secondaryAction?: { label: string; onClick: () => void }
   highlight?: { value: string; unit: string }
 }
@@ -20,12 +26,24 @@ export function CategoryCard({
   onAdd,
   icon,
   primary,
+  onSelectPrimary,
   emptyLabel,
   moreLines,
   secondaryAction,
   highlight,
 }: CategoryCardProps) {
   const [expanded, setExpanded] = useState(false)
+
+  const primaryText = primary ? (
+    <div className="category-card-primary-text">
+      <p className="category-card-label">{primary.label}</p>
+      <p className="category-card-meta">{primary.meta}</p>
+    </div>
+  ) : (
+    <div className="category-card-primary-text">
+      <p className="category-card-label">{emptyLabel}</p>
+    </div>
+  )
 
   return (
     <section className="category-card" aria-label={title}>
@@ -40,16 +58,13 @@ export function CategoryCard({
           <span className="category-card-icon" style={{ color: `var(${colorVar})` }}>
             {icon}
           </span>
-          <div className="category-card-primary-text">
-            {primary ? (
-              <>
-                <p className="category-card-label">{primary.label}</p>
-                <p className="category-card-meta">{primary.meta}</p>
-              </>
-            ) : (
-              <p className="category-card-label">{emptyLabel}</p>
-            )}
-          </div>
+          {primary && onSelectPrimary ? (
+            <button type="button" className="category-card-primary-button" onClick={onSelectPrimary}>
+              {primaryText}
+            </button>
+          ) : (
+            primaryText
+          )}
           {highlight && primary && (
             <p className="category-card-highlight">
               {highlight.value}
@@ -70,7 +85,11 @@ export function CategoryCard({
             {expanded && (
               <ul>
                 {moreLines.map((line, index) => (
-                  <li key={index}>{line}</li>
+                  <li key={index}>
+                    <button type="button" className="category-card-more-line" onClick={line.onClick}>
+                      {line.text}
+                    </button>
+                  </li>
                 ))}
               </ul>
             )}

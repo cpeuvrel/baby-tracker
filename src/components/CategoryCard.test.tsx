@@ -52,7 +52,7 @@ describe('CategoryCard', () => {
         icon={<SleepIcon />}
         primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
-        moreLines={['Entrée plus ancienne']}
+        moreLines={[{ text: 'Entrée plus ancienne', onClick: vi.fn() }]}
       />,
     )
 
@@ -61,6 +61,50 @@ describe('CategoryCard', () => {
 
     expect(screen.getByText('Entrée plus ancienne')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Réduire' })).toBeInTheDocument()
+  })
+
+  it('calls the onClick of a more-line entry when clicked', async () => {
+    const onSelect = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Sommeil"
+        colorVar="--category-sleep"
+        addLabel="Ajouter une entrée sommeil"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
+        emptyLabel="Aucune entrée"
+        moreLines={[{ text: 'Entrée plus ancienne', onClick: onSelect }]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+    await user.click(screen.getByRole('button', { name: 'Entrée plus ancienne' }))
+
+    expect(onSelect).toHaveBeenCalled()
+  })
+
+  it('calls onSelectPrimary when the primary entry is clicked', async () => {
+    const onSelectPrimary = vi.fn()
+    const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Sommeil"
+        colorVar="--category-sleep"
+        addLabel="Ajouter une entrée sommeil"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
+        onSelectPrimary={onSelectPrimary}
+        emptyLabel="Aucune entrée"
+        moreLines={[]}
+      />,
+    )
+
+    await user.click(screen.getByText('Réveillé'))
+
+    expect(onSelectPrimary).toHaveBeenCalled()
   })
 
   it('calls onAdd when the + button is clicked', async () => {

@@ -11,11 +11,15 @@ import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries
 import * as useRecentMedicationEntriesModule from '../hooks/useRecentMedicationEntries'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
-import type { SleepEntry } from '../types/models'
+import type { FeedingEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
 const startSleep = vi.fn()
+const updateSleepEntry = vi.fn()
+const deleteSleepEntry = vi.fn()
 const logFeeding = vi.fn()
+const updateFeedingEntry = vi.fn()
+const deleteFeedingEntry = vi.fn()
 const logDiaper = vi.fn()
 const logMedication = vi.fn()
 const setReminder = vi.fn()
@@ -24,9 +28,13 @@ const addGrowthEntry = vi.fn()
 vi.mock('../repositories/sleepEntries', () => ({
   startSleep: (...args: unknown[]) => startSleep(...args),
   stopSleep: vi.fn(),
+  updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
+  deleteSleepEntry: (...args: unknown[]) => deleteSleepEntry(...args),
 }))
 vi.mock('../repositories/feedingEntries', () => ({
   logFeeding: (...args: unknown[]) => logFeeding(...args),
+  updateFeedingEntry: (...args: unknown[]) => updateFeedingEntry(...args),
+  deleteFeedingEntry: (...args: unknown[]) => deleteFeedingEntry(...args),
 }))
 vi.mock('../repositories/diaperEntries', () => ({
   logDiaper: (...args: unknown[]) => logDiaper(...args),
@@ -44,7 +52,10 @@ vi.mock('../repositories/growthEntries', () => ({
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
-function setupHooks(activeSleepEntry: SleepEntry | null = null) {
+function setupHooks(
+  activeSleepEntry: SleepEntry | null = null,
+  options: { recentSleep?: SleepEntry[]; recentFeeding?: FeedingEntry[] } = {},
+) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
     loading: false,
@@ -59,8 +70,12 @@ function setupHooks(activeSleepEntry: SleepEntry | null = null) {
     selectBaby: vi.fn(),
   })
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeSleepEntry)
-  vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([])
-  vi.spyOn(useRecentFeedingEntriesModule, 'useRecentFeedingEntries').mockReturnValue([])
+  vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue(
+    options.recentSleep ?? [],
+  )
+  vi.spyOn(useRecentFeedingEntriesModule, 'useRecentFeedingEntries').mockReturnValue(
+    options.recentFeeding ?? [],
+  )
   vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntries').mockReturnValue([])
   vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue([])
   vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
@@ -146,5 +161,52 @@ describe('ActivityPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Régler le rappel' }))
     expect(screen.getByRole('dialog', { name: 'Rappel Vitamine D' })).toBeInTheDocument()
+  })
+
+  it('opens the feeding entry for edit when the primary entry is clicked, and deletes it', async () => {
+    const feedingEntry: FeedingEntry = {
+      id: 'f1',
+      type: 'bottle',
+      occurredAt: '2026-03-05T09:00:00.000Z',
+      volumeMl: 120,
+      foodType: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T09:00:00.000Z',
+    }
+    setupHooks(null, { recentFeeding: [feedingEntry] })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const user = userEvent.setup()
+
+    render(<ActivityPage />)
+    await user.click(screen.getByText('Dernier biberon'))
+    expect(screen.getByRole('dialog', { name: 'Nourriture' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Volume (mL, optionnel)')).toHaveValue(120)
+
+    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+
+    expect(deleteFeedingEntry).toHaveBeenCalledWith('h1', 'b1', 'f1')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('opens the completed sleep entry for edit, not the active timer, when clicked from the list', async () => {
+    const completedEntry: SleepEntry = {
+      id: 's1',
+      startedAt: '2026-03-04T20:00:00.000Z',
+      endedAt: '2026-03-04T21:00:00.000Z',
+      durationSeconds: 3600,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-04T20:00:00.000Z',
+    }
+    setupHooks(null, { recentSleep: [completedEntry] })
+    const user = userEvent.setup()
+
+    render(<ActivityPage />)
+    await user.click(screen.getByText('Réveillé'))
+
+    expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Durée (minutes)')).toHaveValue(60)
+    expect(startSleep).not.toHaveBeenCalled()
   })
 })

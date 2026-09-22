@@ -1,10 +1,13 @@
 import {
   addDoc,
+  deleteDoc,
+  doc,
   getDocs,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
@@ -13,9 +16,11 @@ import { growthEntriesCollection } from '../lib/paths'
 import type { GrowthEntry } from '../types/models'
 
 export interface GrowthMeasurement {
+  measuredAt: Date
   weightG: number | null
   heightMm: number | null
   headCircumferenceMm: number | null
+  notes: string
 }
 
 function toGrowthEntry(id: string, data: Record<string, unknown>): GrowthEntry {
@@ -74,14 +79,36 @@ export async function addGrowthEntry(
   createdBy: string,
   measurement: GrowthMeasurement,
 ): Promise<void> {
-  const now = Timestamp.now()
   await addDoc(growthEntriesCollection(householdId, babyId), {
-    measuredAt: now,
+    measuredAt: Timestamp.fromDate(measurement.measuredAt),
     weightG: measurement.weightG,
     heightMm: measurement.heightMm,
     headCircumferenceMm: measurement.headCircumferenceMm,
-    notes: '',
+    notes: measurement.notes,
     createdBy,
-    createdAt: now,
+    createdAt: Timestamp.now(),
   })
+}
+
+export async function updateGrowthEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  measurement: GrowthMeasurement,
+): Promise<void> {
+  await updateDoc(doc(growthEntriesCollection(householdId, babyId), entryId), {
+    measuredAt: Timestamp.fromDate(measurement.measuredAt),
+    weightG: measurement.weightG,
+    heightMm: measurement.heightMm,
+    headCircumferenceMm: measurement.headCircumferenceMm,
+    notes: measurement.notes,
+  })
+}
+
+export async function deleteGrowthEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+): Promise<void> {
+  await deleteDoc(doc(growthEntriesCollection(householdId, babyId), entryId))
 }

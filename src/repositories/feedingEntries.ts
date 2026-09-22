@@ -1,11 +1,14 @@
 import {
   addDoc,
+  deleteDoc,
+  doc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   where,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -111,4 +114,27 @@ export async function logFeeding(
     createdBy,
     createdAt: Timestamp.now(),
   })
+}
+
+export async function updateFeedingEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  input: LogFeedingInput,
+): Promise<void> {
+  await updateDoc(doc(feedingEntriesCollection(householdId, babyId), entryId), {
+    type: input.type,
+    occurredAt: Timestamp.fromDate(input.occurredAt),
+    volumeMl: input.volumeMl,
+    foodType: input.foodType,
+    notes: input.notes,
+  })
+}
+
+export async function deleteFeedingEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+): Promise<void> {
+  await deleteDoc(doc(feedingEntriesCollection(householdId, babyId), entryId))
 }

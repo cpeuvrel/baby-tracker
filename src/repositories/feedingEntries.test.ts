@@ -1,22 +1,34 @@
-import { addDoc, getDocs, onSnapshot, Timestamp, writeBatch } from 'firebase/firestore'
+import { addDoc, deleteDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import type { FeedingEntry } from '../types/models'
 import {
+  deleteFeedingEntry,
   getAllFeedingEntries,
   importFeedingEntries,
   logFeeding,
   subscribeToFeedingEntriesInRange,
   subscribeToRecentFeedingEntries,
+  updateFeedingEntry,
 } from './feedingEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
-  return { ...actual, addDoc: vi.fn(), onSnapshot: vi.fn(), getDocs: vi.fn(), writeBatch: vi.fn() }
+  return {
+    ...actual,
+    addDoc: vi.fn(),
+    updateDoc: vi.fn(),
+    deleteDoc: vi.fn(),
+    onSnapshot: vi.fn(),
+    getDocs: vi.fn(),
+    writeBatch: vi.fn(),
+  }
 })
 
 const addDocMock = vi.mocked(addDoc)
+const updateDocMock = vi.mocked(updateDoc)
+const deleteDocMock = vi.mocked(deleteDoc)
 const onSnapshotMock = vi.mocked(onSnapshot)
 const getDocsMock = vi.mocked(getDocs)
 const writeBatchMock = vi.mocked(writeBatch)
@@ -24,6 +36,8 @@ const writeBatchMock = vi.mocked(writeBatch)
 describe('feedingEntries repository', () => {
   beforeEach(() => {
     addDocMock.mockReset()
+    updateDocMock.mockReset()
+    deleteDocMock.mockReset()
     onSnapshotMock.mockReset()
     getDocsMock.mockReset()
     writeBatchMock.mockReset()
@@ -62,6 +76,26 @@ describe('feedingEntries repository', () => {
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
     expect(payload).toMatchObject({ type: 'solid', volumeMl: null, foodType: 'purée carotte' })
+  })
+
+  it('updates a feeding entry', async () => {
+    await updateFeedingEntry('h1', 'b1', 'f1', {
+      type: 'bottle',
+      occurredAt: new Date('2026-03-05T09:45:00.000Z'),
+      volumeMl: 150,
+      foodType: null,
+      notes: 'corrigé',
+    })
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = updateDocMock.mock.calls[0]
+    expect(payload).toMatchObject({ volumeMl: 150, notes: 'corrigé' })
+  })
+
+  it('deletes a feeding entry', async () => {
+    await deleteFeedingEntry('h1', 'b1', 'f1')
+
+    expect(deleteDocMock).toHaveBeenCalledTimes(1)
   })
 
   it('maps feeding entries from a snapshot in range', () => {

@@ -1,38 +1,49 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { logMedication } from '../repositories/medicationEntries'
+import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import {
+  deleteMedicationEntry,
+  logMedication,
+  updateMedicationEntry,
+} from '../repositories/medicationEntries'
+import type { MedicationEntry } from '../types/models'
 
 const DEFAULT_MEDICATION_NAME = 'Vitamine D'
 
-function toDatetimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
-
 interface MedicationFormProps {
+  entry?: MedicationEntry
   onSaved: () => void
 }
 
-export function MedicationForm({ onSaved }: MedicationFormProps) {
+export function MedicationForm({ entry, onSaved }: MedicationFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const [name, setName] = useState(DEFAULT_MEDICATION_NAME)
-  const [givenAt, setGivenAt] = useState(() => toDatetimeLocalValue(new Date()))
-  const [dose, setDose] = useState('')
-  const [notes, setNotes] = useState('')
+  const [name, setName] = useState(entry?.name ?? DEFAULT_MEDICATION_NAME)
+  const [givenAt, setGivenAt] = useState(() =>
+    toDatetimeLocalValue(entry ? new Date(entry.givenAt) : new Date()),
+  )
+  const [dose, setDose] = useState(entry?.dose ?? '')
+  const [notes, setNotes] = useState(entry?.notes ?? '')
 
   if (!household || !selectedBaby || !user) return null
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (name.trim() === '') return
-    void logMedication(household.id, selectedBaby.id, user.uid, {
-      name: name.trim(),
-      givenAt: new Date(givenAt),
-      dose,
-      notes,
-    })
+    const input = { name: name.trim(), givenAt: new Date(givenAt), dose, notes }
+    if (entry) {
+      void updateMedicationEntry(household.id, selectedBaby.id, entry.id, input)
+    } else {
+      void logMedication(household.id, selectedBaby.id, user.uid, input)
+    }
+    onSaved()
+  }
+
+  const handleDelete = () => {
+    if (!entry) return
+    if (!window.confirm('Supprimer cette entrée ?')) return
+    void deleteMedicationEntry(household.id, selectedBaby.id, entry.id)
     onSaved()
   }
 
@@ -75,6 +86,11 @@ export function MedicationForm({ onSaved }: MedicationFormProps) {
         />
       </div>
       <button type="submit">Enregistrer</button>
+      {entry && (
+        <button type="button" className="button-delete" onClick={handleDelete}>
+          Supprimer
+        </button>
+      )}
     </form>
   )
 }

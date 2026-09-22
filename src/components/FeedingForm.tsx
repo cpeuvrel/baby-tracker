@@ -1,38 +1,49 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { logFeeding } from '../repositories/feedingEntries'
-import type { FeedingType } from '../types/models'
-
-function toDatetimeLocalValue(date: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-}
+import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { deleteFeedingEntry, logFeeding, updateFeedingEntry } from '../repositories/feedingEntries'
+import type { FeedingEntry, FeedingType } from '../types/models'
 
 interface FeedingFormProps {
+  entry?: FeedingEntry
   onSaved: () => void
 }
 
-export function FeedingForm({ onSaved }: FeedingFormProps) {
+export function FeedingForm({ entry, onSaved }: FeedingFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const [type, setType] = useState<FeedingType>('bottle')
-  const [occurredAt, setOccurredAt] = useState(() => toDatetimeLocalValue(new Date()))
-  const [volumeMl, setVolumeMl] = useState('')
-  const [foodType, setFoodType] = useState('')
-  const [notes, setNotes] = useState('')
+  const [type, setType] = useState<FeedingType>(entry?.type ?? 'bottle')
+  const [occurredAt, setOccurredAt] = useState(() =>
+    toDatetimeLocalValue(entry ? new Date(entry.occurredAt) : new Date()),
+  )
+  const [volumeMl, setVolumeMl] = useState(entry?.volumeMl != null ? String(entry.volumeMl) : '')
+  const [foodType, setFoodType] = useState(entry?.foodType ?? '')
+  const [notes, setNotes] = useState(entry?.notes ?? '')
 
   if (!household || !selectedBaby || !user) return null
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void logFeeding(household.id, selectedBaby.id, user.uid, {
+    const input = {
       type,
       occurredAt: new Date(occurredAt),
       volumeMl: type === 'bottle' && volumeMl.trim() !== '' ? Number(volumeMl) : null,
       foodType: type === 'solid' && foodType.trim() !== '' ? foodType.trim() : null,
       notes,
-    })
+    }
+    if (entry) {
+      void updateFeedingEntry(household.id, selectedBaby.id, entry.id, input)
+    } else {
+      void logFeeding(household.id, selectedBaby.id, user.uid, input)
+    }
+    onSaved()
+  }
+
+  const handleDelete = () => {
+    if (!entry) return
+    if (!window.confirm('Supprimer cette entrée ?')) return
+    void deleteFeedingEntry(household.id, selectedBaby.id, entry.id)
     onSaved()
   }
 
@@ -88,6 +99,11 @@ export function FeedingForm({ onSaved }: FeedingFormProps) {
         />
       </div>
       <button type="submit">Enregistrer</button>
+      {entry && (
+        <button type="button" className="button-delete" onClick={handleDelete}>
+          Supprimer
+        </button>
+      )}
     </form>
   )
 }

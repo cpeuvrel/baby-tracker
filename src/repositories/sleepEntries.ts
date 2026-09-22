@@ -1,5 +1,6 @@
 import {
   addDoc,
+  deleteDoc,
   doc,
   getDocs,
   limit,
@@ -133,4 +134,32 @@ export async function stopSleep(
     endedAt: Timestamp.fromDate(now),
     durationSeconds: secondsBetween(startedAt, now),
   })
+}
+
+export interface UpdateSleepInput {
+  startedAt: Date
+  endedAt: Date | null
+  notes: string
+}
+
+export async function updateSleepEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  input: UpdateSleepInput,
+): Promise<void> {
+  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
+    startedAt: Timestamp.fromDate(input.startedAt),
+    endedAt: input.endedAt ? Timestamp.fromDate(input.endedAt) : null,
+    durationSeconds: input.endedAt ? secondsBetween(input.startedAt, input.endedAt) : null,
+    notes: input.notes,
+  })
+}
+
+export async function deleteSleepEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+): Promise<void> {
+  await deleteDoc(doc(sleepEntriesCollection(householdId, babyId), entryId))
 }

@@ -1,20 +1,32 @@
-import { addDoc, getDocs, onSnapshot, Timestamp, writeBatch } from 'firebase/firestore'
+import { addDoc, deleteDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import type { MedicationEntry } from '../types/models'
 import {
+  deleteMedicationEntry,
   getAllMedicationEntries,
   importMedicationEntries,
   logMedication,
   subscribeToRecentMedicationEntries,
+  updateMedicationEntry,
 } from './medicationEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
-  return { ...actual, addDoc: vi.fn(), onSnapshot: vi.fn(), getDocs: vi.fn(), writeBatch: vi.fn() }
+  return {
+    ...actual,
+    addDoc: vi.fn(),
+    updateDoc: vi.fn(),
+    deleteDoc: vi.fn(),
+    onSnapshot: vi.fn(),
+    getDocs: vi.fn(),
+    writeBatch: vi.fn(),
+  }
 })
 
 const addDocMock = vi.mocked(addDoc)
+const updateDocMock = vi.mocked(updateDoc)
+const deleteDocMock = vi.mocked(deleteDoc)
 const onSnapshotMock = vi.mocked(onSnapshot)
 const getDocsMock = vi.mocked(getDocs)
 const writeBatchMock = vi.mocked(writeBatch)
@@ -22,6 +34,8 @@ const writeBatchMock = vi.mocked(writeBatch)
 describe('medicationEntries repository', () => {
   beforeEach(() => {
     addDocMock.mockReset()
+    updateDocMock.mockReset()
+    deleteDocMock.mockReset()
     onSnapshotMock.mockReset()
     getDocsMock.mockReset()
     writeBatchMock.mockReset()
@@ -45,6 +59,25 @@ describe('medicationEntries repository', () => {
     const [, payload] = addDocMock.mock.calls[0]
     expect(payload).toMatchObject({ name: 'Vitamine D', dose: '2 gouttes', createdBy: 'uid1' })
     expect((payload as { givenAt: Timestamp }).givenAt).toBeInstanceOf(Timestamp)
+  })
+
+  it('updates a medication entry', async () => {
+    await updateMedicationEntry('h1', 'b1', 'm1', {
+      name: 'Vitamine D',
+      givenAt: new Date('2026-03-05T09:00:00.000Z'),
+      dose: '3 gouttes',
+      notes: 'corrigé',
+    })
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = updateDocMock.mock.calls[0]
+    expect(payload).toMatchObject({ dose: '3 gouttes', notes: 'corrigé' })
+  })
+
+  it('deletes a medication entry', async () => {
+    await deleteMedicationEntry('h1', 'b1', 'm1')
+
+    expect(deleteDocMock).toHaveBeenCalledTimes(1)
   })
 
   it('maps the most recent medication entries from a snapshot', () => {

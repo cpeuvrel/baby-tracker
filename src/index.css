@@ -157,6 +157,13 @@ button:disabled {
   border-radius: 0;
 }
 
+.button-delete {
+  background: none;
+  color: var(--danger);
+  font-weight: 600;
+  margin-top: 8px;
+}
+
 form > div {
   margin-bottom: 16px;
 }
@@ -371,8 +378,30 @@ main {
 }
 
 .category-card-body li {
-  padding: 4px 0;
+  padding: 0;
   border-top: 1px solid var(--border);
+}
+
+.category-card-primary-button {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  text-align: left;
+  color: inherit;
+}
+
+.category-card-more-line {
+  display: block;
+  width: 100%;
+  background: none;
+  padding: 4px 0;
+  border-radius: 0;
+  text-align: left;
+  font: inherit;
+  font-weight: 400;
+  color: inherit;
 }
 
 /* Modale plein écran (chrono sommeil, saisies) */

@@ -1,9 +1,10 @@
-import { addDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
+import { addDoc, deleteDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import type { SleepEntry } from '../types/models'
 import {
+  deleteSleepEntry,
   getAllSleepEntries,
   importSleepEntries,
   startSleep,
@@ -11,6 +12,7 @@ import {
   subscribeToActiveSleep,
   subscribeToRecentSleepEntries,
   subscribeToSleepEntriesInRange,
+  updateSleepEntry,
 } from './sleepEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
@@ -19,6 +21,7 @@ vi.mock('firebase/firestore', async (importActual) => {
     ...actual,
     addDoc: vi.fn(),
     updateDoc: vi.fn(),
+    deleteDoc: vi.fn(),
     onSnapshot: vi.fn(),
     getDocs: vi.fn(),
     writeBatch: vi.fn(),
@@ -27,6 +30,7 @@ vi.mock('firebase/firestore', async (importActual) => {
 
 const addDocMock = vi.mocked(addDoc)
 const updateDocMock = vi.mocked(updateDoc)
+const deleteDocMock = vi.mocked(deleteDoc)
 const onSnapshotMock = vi.mocked(onSnapshot)
 const getDocsMock = vi.mocked(getDocs)
 const writeBatchMock = vi.mocked(writeBatch)
@@ -35,6 +39,7 @@ describe('sleepEntries repository', () => {
   beforeEach(() => {
     addDocMock.mockReset()
     updateDocMock.mockReset()
+    deleteDocMock.mockReset()
     onSnapshotMock.mockReset()
     getDocsMock.mockReset()
     writeBatchMock.mockReset()
@@ -62,6 +67,35 @@ describe('sleepEntries repository', () => {
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
     expect(payload).toMatchObject({ durationSeconds: 90 * 60 })
+  })
+
+  it('updates a sleep entry, recomputing the duration from start/end', async () => {
+    await updateSleepEntry('h1', 'b1', 'entry1', {
+      startedAt: new Date('2026-03-05T20:00:00.000Z'),
+      endedAt: new Date('2026-03-05T21:30:00.000Z'),
+      notes: 'corrigé',
+    })
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = updateDocMock.mock.calls[0]
+    expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'corrigé' })
+  })
+
+  it('updates a sleep entry back to in-progress when the end time is cleared', async () => {
+    await updateSleepEntry('h1', 'b1', 'entry1', {
+      startedAt: new Date('2026-03-05T20:00:00.000Z'),
+      endedAt: null,
+      notes: '',
+    })
+
+    const [, payload] = updateDocMock.mock.calls[0]
+    expect(payload).toMatchObject({ endedAt: null, durationSeconds: null })
+  })
+
+  it('deletes a sleep entry', async () => {
+    await deleteSleepEntry('h1', 'b1', 'entry1')
+
+    expect(deleteDocMock).toHaveBeenCalledTimes(1)
   })
 
   it('reports the active sleep entry when one exists', () => {

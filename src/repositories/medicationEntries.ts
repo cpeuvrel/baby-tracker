@@ -1,11 +1,14 @@
 import {
   addDoc,
+  deleteDoc,
+  doc,
   getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   Timestamp,
+  updateDoc,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
@@ -87,4 +90,26 @@ export async function logMedication(
     createdBy,
     createdAt: Timestamp.now(),
   })
+}
+
+export async function updateMedicationEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  input: LogMedicationInput,
+): Promise<void> {
+  await updateDoc(doc(medicationEntriesCollection(householdId, babyId), entryId), {
+    name: input.name,
+    givenAt: Timestamp.fromDate(input.givenAt),
+    dose: input.dose,
+    notes: input.notes,
+  })
+}
+
+export async function deleteMedicationEntry(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+): Promise<void> {
+  await deleteDoc(doc(medicationEntriesCollection(householdId, babyId), entryId))
 }
