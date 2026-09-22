@@ -1,6 +1,9 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
-import { HomePage } from './pages/HomePage'
+import { HouseholdProvider } from './contexts/HouseholdContext'
 import { LoginPage } from './pages/LoginPage'
+import { TrackingPage } from './pages/TrackingPage'
 
 function AppShell() {
   const { user, loading } = useAuth()
@@ -13,7 +16,19 @@ function AppShell() {
     )
   }
 
-  return user ? <HomePage /> : <LoginPage />
+  if (!user) return <LoginPage />
+
+  return (
+    <HouseholdProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route element={<Layout />}>
+            <Route index element={<TrackingPage />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </HouseholdProvider>
+  )
 }
 
 function App() {

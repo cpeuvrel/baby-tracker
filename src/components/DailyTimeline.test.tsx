@@ -1,0 +1,73 @@
+import { render, screen } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as HouseholdContext from '../contexts/HouseholdContext'
+import * as useTodayTimelineModule from '../hooks/useTodayTimeline'
+import type { TimelineEntry } from '../lib/timeline'
+import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import { DailyTimeline } from './DailyTimeline'
+
+const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+
+describe('DailyTimeline', () => {
+  beforeEach(() => {
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household,
+      babies: [baby],
+      loading: false,
+      selectedBaby: baby,
+      selectBaby: vi.fn(),
+    })
+  })
+
+  it('shows a placeholder when there are no entries today', () => {
+    vi.spyOn(useTodayTimelineModule, 'useTodayTimeline').mockReturnValue([])
+
+    render(<DailyTimeline />)
+
+    expect(screen.getByText("Aucune entrée pour l'instant.")).toBeInTheDocument()
+  })
+
+  it('describes feeding, sleep and diaper entries', () => {
+    const sleep: SleepEntry = {
+      id: 's1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: '2026-03-05T21:30:00.000Z',
+      durationSeconds: 5400,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    const feeding: FeedingEntry = {
+      id: 'f1',
+      type: 'bottle',
+      startedAt: '2026-03-05T18:00:00.000Z',
+      endedAt: '2026-03-05T18:10:00.000Z',
+      durationSeconds: 600,
+      volumeMl: 120,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T18:00:00.000Z',
+    }
+    const diaper: DiaperEntry = {
+      id: 'd1',
+      type: 'both',
+      occurredAt: '2026-03-05T17:00:00.000Z',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T17:00:00.000Z',
+    }
+    const timeline: TimelineEntry[] = [
+      { kind: 'sleep', at: sleep.startedAt, entry: sleep },
+      { kind: 'feeding', at: feeding.startedAt, entry: feeding },
+      { kind: 'diaper', at: diaper.occurredAt, entry: diaper },
+    ]
+    vi.spyOn(useTodayTimelineModule, 'useTodayTimeline').mockReturnValue(timeline)
+
+    render(<DailyTimeline />)
+
+    expect(screen.getByText(/Sommeil \(1h 30min\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Biberon 120 mL/)).toBeInTheDocument()
+    expect(screen.getByText(/Couche \(Pipi \+ caca\)/)).toBeInTheDocument()
+  })
+})
