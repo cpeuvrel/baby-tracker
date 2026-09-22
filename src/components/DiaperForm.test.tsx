@@ -36,7 +36,7 @@ describe('DiaperForm', () => {
 
     render(<DiaperForm onSaved={onSaved} />)
     await user.type(screen.getByLabelText('Notes (optionnel)'), 'un peu rouge')
-    await user.click(screen.getByRole('button', { name: 'Caca' }))
+    await user.click(screen.getByRole('button', { name: 'Dirty' }))
 
     expect(logDiaper).toHaveBeenCalledWith('h1', 'b1', 'uid1', 'dirty', 'un peu rouge')
     expect(onSaved).toHaveBeenCalled()
@@ -47,7 +47,7 @@ describe('DiaperForm', () => {
     const user = userEvent.setup()
 
     render(<DiaperForm onSaved={onSaved} />)
-    await user.click(screen.getByRole('button', { name: 'Sec' }))
+    await user.click(screen.getByRole('button', { name: 'Dry' }))
 
     expect(logDiaper).toHaveBeenCalledWith('h1', 'b1', 'uid1', 'dry', '')
   })

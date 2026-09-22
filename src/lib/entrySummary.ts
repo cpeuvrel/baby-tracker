@@ -8,7 +8,7 @@ import type {
   SleepEntry,
 } from '../types/models'
 
-const DIAPER_LABELS: Record<DiaperType, string> = { wet: 'Pipi', dirty: 'Caca', both: 'Pipi + caca', dry: 'Sec' }
+const DIAPER_LABELS: Record<DiaperType, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
 
 export interface PrimarySummary {
   label: string

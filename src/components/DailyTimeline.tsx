@@ -3,7 +3,7 @@ import { useDayTimeline } from '../hooks/useDayTimeline'
 import { formatDuration } from '../lib/duration'
 import type { TimelineEntry } from '../lib/timeline'
 
-const DIAPER_LABELS: Record<string, string> = { wet: 'Pipi', dirty: 'Caca', both: 'Pipi + caca', dry: 'Sec' }
+const DIAPER_LABELS: Record<string, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
 
 function describeEntry(item: TimelineEntry): string {
   const time = new Date(item.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })

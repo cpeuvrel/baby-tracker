@@ -67,7 +67,7 @@ describe('DailyTimeline', () => {
 
     expect(screen.getByText(/Sommeil \(1h 30min\)/)).toBeInTheDocument()
     expect(screen.getByText(/Biberon 120 mL/)).toBeInTheDocument()
-    expect(screen.getByText(/Couche \(Pipi \+ caca\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Couche \(Wet \+ Dirty\)/)).toBeInTheDocument()
   })
 
   it('shows the food type for a solid feeding entry', () => {

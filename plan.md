@@ -6,6 +6,10 @@
 
 > **Note de recherche (confirmée)** : app identifiée = *Nara Baby & Pregnancy Tracker* (App Store, id1444639029) alias "Nara Baby & Mom Tracker" sur nara.com, éditeur Nara Organics, Inc. (US), en anglais uniquement, aucune version française. Paywall freemium + achats intégrés/abonnement **déjà actif**, pas "à venir" (confirmé via la fiche App Store : "Free with in-app purchases").
 
+> **État (2026-09-22)** : les 7 phases (section 10) sont implémentées. Deux ajouts faits après coup, hors phasage initial, ont mis à jour ce document :
+> 1. **Refonte UX de History et Trends** à partir de vraies captures d'écran de l'app Nara de l'utilisatrice (thème sombre réel, bébé "Maëlys") partagées en cours de route — plus précises que les captures marketing utilisées pour écrire la section 6 initialement. Sections 6.1, 6.5 et 7 mises à jour en conséquence.
+> 2. **Import/export basculé en CSV seul** (JSON abandonné) avec import direct d'un vrai export RGPD Nara, format découvert et vérifié sur un fichier réel de 1882 lignes. Section 9 mise à jour, détail complet dans `docs/export-format.md`.
+
 ## 0. Prérequis avant de commencer (poste Windows) — pas à pas
 
 ✅ Déjà fait : VS Code, Claude Code, Git for Windows.
@@ -98,7 +102,7 @@ Une fois tout ça fait, donner ce `plan.md` (déjà dans le repo depuis l'étape
 6. **Suivi médicament** (ex : vitamine D) **avec rappel/alerte** si la prise du jour n'a pas été enregistrée. Détails en section 8.
 7. **Plusieurs bébés** dans le même foyer (ex : plusieurs enfants) — sélecteur de bébé dans l'app, chaque écran/graph filtré sur le bébé sélectionné.
 8. **Courbes de croissance** (poids/taille) — voir sections 4 et 7.
-9. **Suivi couches** (pipi/caca/les deux) — voir section 4.
+9. **Suivi couches** (mouillée/sale/les deux/sèche) — voir section 4. Vocabulaire `wet`/`dirty`/`both`/`dry` (et non `pee`/`poop`), aligné sur les 4 états réels observés dans l'export Nara plutôt que sur une supposition initiale à 3 états. Boutons de saisie affichés en anglais (Wet/Dirty/Both/Dry, comme les onglets de navigation section 6.3) plutôt qu'en français.
 
 ## 3. Nourriture : mode de saisie (résolu)
 
@@ -140,7 +144,7 @@ households/{householdId}/babies/{babyId}/sleepEntries/{entryId}
   notes, createdBy, createdAt
 
 households/{householdId}/babies/{babyId}/diaperEntries/{entryId}
-  type: "pee" | "poop" | "both"
+  type: "wet" | "dirty" | "both" | "dry"   -- 4 états réels Nara (pas 3) ; "dry" = couche vérifiée/changée sans rien dedans
   occurredAt, notes, createdBy, createdAt
 
 households/{householdId}/babies/{babyId}/growthEntries/{entryId}
@@ -191,6 +195,7 @@ Le suivi se fait souvent sans bonne connexion (nuit, chambre). Avec Firebase :
   - Couches → pas de couleur Nara confirmée dans les captures inspectées ; prendre une pastel non utilisée ailleurs (ex. rose poudré) pour éviter toute collision.
 - Typo : police à empattements (serif, ex. Georgia/Lora) pour les titres d'écran et le nom du bébé ("Nara ⌵", "Family", "Growth") ; sans-serif système pour le texte courant des listes.
 - Coins très arrondis partout (cartes, boutons, pilules), ombres douces, beaucoup d'espace blanc.
+- **Thème sombre (confirmé sur captures réelles, remplace toute supposition antérieure)** : les couleurs d'accent par catégorie ci-dessus **ne changent pas** entre thème clair et sombre — seul le fond de page/texte/bordures bascule (fond crème `#F7F1E4`→marine profond `#1E2233`, texte marine→blanc cassé, pas de surface de carte "élevée" distincte du fond en sombre, ombres supprimées).
 
 ### 6.2 Écran d'accueil ("Activity")
 - En-tête : avatar rond illustré du bébé + son nom + petit chevron ⌵ (tap = sélecteur multi-bébé, 6.7) + date du jour, à gauche ; deux boutons pilule à droite (notes, "…").
@@ -207,8 +212,11 @@ Ne s'applique qu'au sommeil (biberon/solide utilisent le formulaire de saisie in
 
 **Nuance pour l'implémentation PWA** : ces captures montrent la modale *à l'ouverture*, pas un bandeau visible en permanence par-dessus les autres écrans. Sur iOS, Nara couvre ce besoin via les **Live Activities** (écran verrouillé/Dynamic Island), inutilisables depuis une PWA. Le choix déjà pris section 5 (bandeau persistant in-app + notification FCM avec le temps écoulé) reste donc le bon substitut — reprendre dans ce bandeau la même densité d'info que la modale (icône catégorie, compteur live, bouton stop) pour rester cohérent visuellement quand on rouvre la modale complète depuis le bandeau.
 
-### 6.5 Historique ("History")
-Vue calendrier hebdomadaire en haut (7 jours, jour courant en pastille marine pleine) ; en dessous, une timeline verticale par jour (une colonne par jour, heures 12AM→12AM sur l'axe de gauche), avec un bloc coloré par entrée positionné à son heure et dont la hauteur reflète la durée (couleur = catégorie, palette 6.1). C'est le rendu concret de la "vue journalière timeline" de la section 7 — en v1 un seul jour à la fois reste valide (non bloquant), la vue multi-colonnes/semaine est une amélioration naturelle une fois ça marche.
+### 6.5 Historique ("History") — confirmé et complété sur capture réelle
+Vue calendrier hebdomadaire en haut (7 jours, jour courant en pastille marine pleine), avec un **filtre par type d'entrée en haut** (Sommeil/Nourriture/Couches, boutons togglables) qui masque/affiche les blocs correspondants sans changer de semaine. Chaque jour de la semaine = une colonne avec un bloc coloré par entrée positionné à son heure et dont la hauteur reflète la durée (couleur = catégorie, palette 6.1). **Tap sur un jour** → affiche en dessous le détail de cette journée (timeline verticale, une ligne par entrée). Navigation semaine précédente/suivante (‹ mois année ›).
+
+### 6.5b Tendances ("Trends") — écran à sous-écrans, ajouté après coup sur exemples réels
+Liste de lignes groupées par section (Nourriture / Sommeil / Couches), chaque ligne = icône catégorie + titre + moyenne/jour sur la période + badge delta (↑/↓ vs période précédente, coloré catégorie). Pilules de période en haut (1j/7j/14j), **pas de filtre par type** ici (contrairement à History). Tap sur une ligne → sous-écran dédié à cette métrique : bouton retour, gros chiffre (moyenne période), onglets Calendrier/Graphique/Entrées (le calendrier réutilise le rendu de 6.5 sur une seule métrique), mêmes pilules de période, légende de delta vs période précédente en bas.
 
 ### 6.6 Réglages de rappel (patron à réutiliser section 8)
 Même modale qu'en 6.4 mais fond crème : titre "Nap Reminders" (→ adapter en "Rappel [médicament]"), lignes de réglage en haut, puis une **liste verticale type stepper** — une icône par évènement programmé (soleil = réveil, lune/zzz = sieste, étoile = coucher) reliée par un connecteur vertical, champ heure éditable à droite de chaque ligne. Pour le rappel médicament (un seul horaire par médicament), une seule ligne de ce type suffit.
@@ -227,12 +235,10 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 
 ## 7. Graphes & agrégations
 
-- Vue journalière "timeline" (comme Nara) : succession des entrées nourriture/sommeil/couches sur la journée.
-- Vue stats agrégées (jour/semaine) :
-  - durée totale et moyenne de sommeil,
-  - nombre de biberons, volume total et moyen si suivi,
-  - nombre de réveils nocturnes (déductible du nombre d'entrées sommeil sur la plage nuit),
-  - nombre de couches (pipi/caca) par jour.
+- Vue journalière "timeline" (comme Nara) : succession des entrées nourriture/sommeil/couches sur la journée (section 6.5, détail d'un jour sous le calendrier hebdo).
+- **Écran Trends, structure finale (voir 6.5b)** : liste de métriques par section (pas des tuiles de stats brutes) — `Biberons`/`Volume total`/`Volume moyen` (Nourriture), `Sommeil total`/`Réveils nocturnes` (Sommeil), `Couches` (Couches). Chaque métrique = moyenne/jour sur la période sélectionnée (1j/7j/14j) + delta vs la période précédente de même longueur, et se déplie en sous-écran (calendrier/graphique/liste d'entrées).
+  - nombre de réveils nocturnes = entrées sommeil dont l'heure de début tombe dans la plage nuit (20h–7h).
+  - nombre de couches par jour, tous types confondus (wet/dirty/both/dry, section 4).
 - Courbe de croissance (poids/taille/périmètre crânien) : ligne simple valeur/temps en v1. Nara affiche des courbes de percentiles OMS/CDC (fines lignes dorées, une par tranche 2/5/10/25/50/75/90/95/98%) avec la mesure réelle en ligne verte foncée à points cliquables (tooltip bandeau marine + détails, palette section 6.1) — reproductible mais nécessite d'embarquer les tables de référence OMS/CDC (LMS) ; à traiter comme **extension v1.1**, pas bloquant pour le lancement.
 - **Calcul des agrégations côté client** (Firestore n'a pas de `GROUP BY` serveur) : récupérer les entrées de la période concernée et calculer moyennes/totaux en JavaScript. Aucun souci de perf à cette échelle (2 utilisateurs, peu de données).
 - Lib graphique suggérée : Recharts. **Appliquer le skill `dataviz` du repo Claude Code au moment de l'implémentation** pour les couleurs/mise en forme.
@@ -247,21 +253,26 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
   - Si absent, elle envoie une notification **FCM** à tous les `fcmTokens` du foyer.
   - Le service worker du PWA doit gérer l'enregistrement du token FCM (demande de permission à l'installation) et l'affichage de la notification reçue — même brique technique que le bandeau persistant du chrono sommeil (section 6).
 
-## 9. Import/export
+## 9. Import/export — format final : CSV (JSON abandonné)
 
-- **Export** : bouton dans l'app → parcourt les sous-collections Firestore d'un bébé et dump en CSV/JSON côté client (pas besoin de Cloud Function à ce volume de données).
-- **Import** : upload d'un fichier au même format (CSV/JSON) → écriture batch dans Firestore. Documenter le format dans `docs/export-format.md` pour garder export et import synchronisés dans le temps.
-- Si l'utilisatrice récupère un export RGPD de Nara avant la bascule payante, prévoir un script d'import ponctuel adapté à ce format une fois qu'on le connaît (pas de développement générique tant que le format Nara n'est pas vu).
+- **Export** : bouton dans l'app → parcourt les sous-collections Firestore d'un bébé et dump en **un seul CSV** côté client (pas besoin de Cloud Function à ce volume de données), colonne `category` en discriminant, une ligne par entrée toutes catégories mélangées. Format détaillé dans `docs/export-format.md`.
+- **Import** : upload d'un fichier CSV → écriture batch dans Firestore (nouveaux ids systématiquement, pas de déduplication). L'import **détecte automatiquement le format** à l'en-tête et accepte deux formats :
+  1. le format natif ci-dessus (round-trip export→import) ;
+  2. **l'export RGPD réel de Nara** (récupéré et fourni par l'utilisatrice le 2026-09-22, fichier `export_narababy_malys_20260922.csv`, 1882 lignes) — colonnes `Type` + préfixes `[Bottle Feed]`/`[Sleep]`/`[Diaper]`/`[Growth]`/`[Solid Feed]`/`[Routine]`/`[Profile]`, avec conversion d'unités (KG/CM/OZ → g/mm/mL) et mapping vers nos catégories (ex. routine `Vitamin/Probiotic` → entrée médicament). Vérifié sur ce fichier réel : 1864 entrées importées, 18 lignes ignorées sans équivalent dans l'app (bain, ligne de métadonnées profil) — voir `docs/export-format.md` pour le détail des correspondances colonne par colonne.
+- Documenter tout changement de format dans `docs/export-format.md` pour garder export et import synchronisés dans le temps.
 
 ## 10. Phasage (à traiter dans l'ordre)
 
-1. **Setup** (après Phase 0 uniquement) — dans cet ordre : `npm create vite@latest` (scaffold React+TS) → `npm install` → `firebase init` (Firestore + Auth) → Security Rules (section 4/12) → Auth à 2 comptes → création manuelle du household et des 2 membres.
-2. **Suivi nourriture + sommeil + couches** — formulaire de saisie instantanée (nourriture section 3, couches) + chrono start/stop (sommeil uniquement, section 6.4) avec bandeau persistant "en cours" (section 6.9), liste/timeline du jour, sélecteur de bébé (multi-bébé).
-3. **Sync temps réel & offline** — `onSnapshot()`, cache persistant Firestore (section 5).
-4. **Graphes & agrégations + croissance** — vues journalière et hebdo, agrégations côté client, courbe de croissance simple (section 7).
-5. **Médicament & rappel** — saisie + passage au plan Blaze + Cloud Function programmée + FCM (section 8), en réutilisant le service worker déjà mis en place en phase 2.
-6. **Import/export** — section 9.
-7. **Polish** — icônes/manifest PWA, réglages (profil bébé, unités).
+✅ Toutes les phases 1-7 sont implémentées (état 2026-09-22, voir note en tête de document).
+
+1. ✅ **Setup** (après Phase 0 uniquement) — dans cet ordre : `npm create vite@latest` (scaffold React+TS) → `npm install` → `firebase init` (Firestore + Auth) → Security Rules (section 4/12) → Auth à 2 comptes → création manuelle du household et des 2 membres.
+2. ✅ **Suivi nourriture + sommeil + couches** — formulaire de saisie instantanée (nourriture section 3, couches) + chrono start/stop (sommeil uniquement, section 6.4) avec bandeau persistant "en cours" (section 6.9), liste/timeline du jour, sélecteur de bébé (multi-bébé).
+3. ✅ **Sync temps réel & offline** — `onSnapshot()`, cache persistant Firestore (section 5).
+4. ✅ **Graphes & agrégations + croissance** — vues journalière et hebdo, agrégations côté client, courbe de croissance simple (section 7).
+5. ✅ **Médicament & rappel** — saisie + passage au plan Blaze + Cloud Function programmée + FCM (section 8), en réutilisant le service worker déjà mis en place en phase 2. Reste manuel avant usage réel : upgrade Blaze + génération de la clé VAPID (voir `docs/notifications-setup.md`).
+6. ✅ **Import/export** — section 9 (format final CSV, revu après la phase initiale — voir note en tête de document).
+7. ✅ **Polish** — icônes/manifest PWA, réglages (profil bébé, unités).
+8. ✅ **Fidélité UX post-lancement (hors phasage initial)** — refonte de History (calendrier hebdo + filtre par type, 6.5) et Trends (liste + delta + sous-écrans par métrique, 6.5b) à partir de vraies captures d'écran Nara ; ajout du 4e état de couche `dry` ; import CSV de l'export RGPD Nara réel (section 9).
 
 ## 11. Hors scope v1 (explicitement)
 

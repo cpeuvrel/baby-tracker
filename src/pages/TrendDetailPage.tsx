@@ -29,7 +29,7 @@ function describeSleepEntry(entry: { startedAt: string; durationSeconds: number 
 
 function describeDiaperEntry(entry: { occurredAt: string; type: string }): string {
   const time = new Date(entry.occurredAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  const labels: Record<string, string> = { wet: 'Pipi', dirty: 'Caca', both: 'Pipi + caca', dry: 'Sec' }
+  const labels: Record<string, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
   return `${time} — Couche (${labels[entry.type]})`
 }
 

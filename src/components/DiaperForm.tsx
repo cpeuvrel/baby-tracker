@@ -5,10 +5,10 @@ import { logDiaper } from '../repositories/diaperEntries'
 import type { DiaperType } from '../types/models'
 
 const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
-  { value: 'wet', label: 'Pipi' },
-  { value: 'dirty', label: 'Caca' },
-  { value: 'both', label: 'Les deux' },
-  { value: 'dry', label: 'Sec' },
+  { value: 'wet', label: 'Wet' },
+  { value: 'dirty', label: 'Dirty' },
+  { value: 'both', label: 'Both' },
+  { value: 'dry', label: 'Dry' },
 ]
 
 interface DiaperFormProps {

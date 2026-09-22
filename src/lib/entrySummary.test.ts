@@ -88,7 +88,7 @@ describe('summarizeDiaperEntry', () => {
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
-    expect(summarizeDiaperEntry(entry, now)).toBe('Pipi + caca — il y a 30min')
+    expect(summarizeDiaperEntry(entry, now)).toBe('Wet + Dirty — il y a 30min')
   })
 })
 
@@ -233,7 +233,7 @@ describe('summarizeDiaperPrimary', () => {
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
-    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Pipi + caca', meta: 'il y a 30min' })
+    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Wet + Dirty', meta: 'il y a 30min' })
   })
 })
 
