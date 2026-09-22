@@ -11,12 +11,13 @@ import {
 } from '../lib/aggregations'
 import { formatDuration } from '../lib/duration'
 import { dayRange, lastNDayKeys, lastNDaysRange } from '../lib/timeline'
+import { GrowthPage } from './GrowthPage'
 
 const WEEK_DAYS = 7
 
 type RangeMode = 'day' | 'week'
 
-export function StatsPage() {
+export function TrendsPage() {
   const { household, selectedBaby } = useHousehold()
   const [mode, setMode] = useState<RangeMode>('day')
   const now = useMemo(() => new Date(), [])
@@ -101,6 +102,8 @@ export function StatsPage() {
         seriesColorVar="--series-2"
         formatValue={(value) => `${value} mL`}
       />
+
+      <GrowthPage />
     </div>
   )
 }

@@ -1,4 +1,13 @@
-import { addDoc, onSnapshot, orderBy, query, Timestamp, where, type Unsubscribe } from 'firebase/firestore'
+import {
+  addDoc,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  where,
+  type Unsubscribe,
+} from 'firebase/firestore'
 import { timestampToIso } from '../lib/firestoreDates'
 import { feedingEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
@@ -31,6 +40,23 @@ export function subscribeToFeedingEntriesInRange(
   )
 
   return onSnapshot(rangeQuery, (snapshot) => {
+    onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
+  })
+}
+
+export function subscribeToRecentFeedingEntries(
+  householdId: string,
+  babyId: string,
+  count: number,
+  onChange: (entries: FeedingEntry[]) => void,
+): Unsubscribe {
+  const recentQuery = query(
+    feedingEntriesCollection(householdId, babyId),
+    orderBy('occurredAt', 'desc'),
+    limit(count),
+  )
+
+  return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
   })
 }

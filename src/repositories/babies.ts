@@ -1,4 +1,4 @@
-import { onSnapshot, orderBy, query, type Unsubscribe } from 'firebase/firestore'
+import { addDoc, onSnapshot, orderBy, query, type Unsubscribe } from 'firebase/firestore'
 import { babiesCollection } from '../lib/paths'
 import type { Baby } from '../types/models'
 
@@ -20,4 +20,8 @@ export function subscribeToBabies(
       }),
     )
   })
+}
+
+export async function addBaby(householdId: string, name: string, birthDate: string): Promise<void> {
+  await addDoc(babiesCollection(householdId), { name, birthDate })
 }

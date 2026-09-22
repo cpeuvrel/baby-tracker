@@ -6,24 +6,25 @@ import { TabBar } from './TabBar'
 describe('TabBar', () => {
   it('marks the current route as active', () => {
     render(
-      <MemoryRouter initialEntries={['/stats']}>
+      <MemoryRouter initialEntries={['/trends']}>
         <TabBar />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: 'Stats' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Suivi' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Trends' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Activity' })).not.toHaveAttribute('aria-current')
   })
 
-  it('lists all three tabs', () => {
+  it('lists all four tabs', () => {
     render(
       <MemoryRouter>
         <TabBar />
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('link', { name: 'Suivi' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Stats' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Croissance' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'History' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Trends' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()
   })
 })

@@ -6,6 +6,7 @@ import {
   startSleep,
   stopSleep,
   subscribeToActiveSleep,
+  subscribeToRecentSleepEntries,
   subscribeToSleepEntriesInRange,
 } from './sleepEntries'
 
@@ -118,5 +119,31 @@ describe('sleepEntries repository', () => {
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'entry1', durationSeconds: 3600 }),
     ])
+  })
+
+  it('maps the most recent sleep entries regardless of date range', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation((_query, callback) => {
+      ;(callback as (snapshot: unknown) => void)(
+        fakeSnapshot([
+          {
+            id: 'entry1',
+            data: {
+              startedAt: Timestamp.fromDate(new Date('2026-02-01T13:00:00.000Z')),
+              endedAt: Timestamp.fromDate(new Date('2026-02-01T14:00:00.000Z')),
+              durationSeconds: 3600,
+              notes: '',
+              createdBy: 'uid1',
+              createdAt: Timestamp.fromDate(new Date('2026-02-01T13:00:00.000Z')),
+            },
+          },
+        ]),
+      )
+      return vi.fn()
+    })
+
+    subscribeToRecentSleepEntries('h1', 'b1', 5, onChange)
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1' })])
   })
 })

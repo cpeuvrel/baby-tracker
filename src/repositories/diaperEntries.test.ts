@@ -2,7 +2,11 @@ import { addDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { logDiaper, subscribeToDiaperEntriesInRange } from './diaperEntries'
+import {
+  logDiaper,
+  subscribeToDiaperEntriesInRange,
+  subscribeToRecentDiaperEntries,
+} from './diaperEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -54,5 +58,30 @@ describe('diaperEntries repository', () => {
     )
 
     expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1', type: 'pee' })])
+  })
+
+  it('maps the most recent diaper entries regardless of date range', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation((_query, callback) => {
+      ;(callback as (snapshot: unknown) => void)(
+        fakeSnapshot([
+          {
+            id: 'entry1',
+            data: {
+              type: 'poop',
+              occurredAt: Timestamp.fromDate(new Date('2026-02-01T08:00:00.000Z')),
+              notes: '',
+              createdBy: 'uid1',
+              createdAt: Timestamp.fromDate(new Date('2026-02-01T08:00:00.000Z')),
+            },
+          },
+        ]),
+      )
+      return vi.fn()
+    })
+
+    subscribeToRecentDiaperEntries('h1', 'b1', 5, onChange)
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1' })])
   })
 })

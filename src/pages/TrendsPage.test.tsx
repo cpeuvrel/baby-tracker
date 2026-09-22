@@ -3,8 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
+import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
-import { StatsPage } from './StatsPage'
+import { TrendsPage } from './TrendsPage'
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
@@ -43,7 +44,7 @@ const diaper: DiaperEntry[] = [
   },
 ]
 
-describe('StatsPage', () => {
+describe('TrendsPage', () => {
   beforeEach(() => {
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
@@ -53,6 +54,7 @@ describe('StatsPage', () => {
       selectBaby: vi.fn(),
     })
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({ feeding, sleep, diaper })
+    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
   })
 
   it('renders nothing without a resolved household and baby', () => {
@@ -64,13 +66,13 @@ describe('StatsPage', () => {
       selectBaby: vi.fn(),
     })
 
-    const { container } = render(<StatsPage />)
+    const { container } = render(<TrendsPage />)
 
     expect(container).toBeEmptyDOMElement()
   })
 
   it('shows aggregated stat tiles for the selected range', () => {
-    render(<StatsPage />)
+    render(<TrendsPage />)
 
     const valueFor = (label: string) => screen.getByText(label).nextElementSibling?.textContent
 
@@ -82,7 +84,7 @@ describe('StatsPage', () => {
 
   it('switches to the week range and recomputes the average per day', async () => {
     const user = userEvent.setup()
-    render(<StatsPage />)
+    render(<TrendsPage />)
 
     await user.click(screen.getByRole('button', { name: 'Semaine' }))
 
@@ -91,5 +93,11 @@ describe('StatsPage', () => {
       'b1',
       expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
     )
+  })
+
+  it('also renders the growth section', () => {
+    render(<TrendsPage />)
+
+    expect(screen.getByRole('region', { name: 'Courbe de croissance' })).toBeInTheDocument()
   })
 })

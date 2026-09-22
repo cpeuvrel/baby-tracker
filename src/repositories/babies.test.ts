@@ -1,17 +1,19 @@
-import { onSnapshot } from 'firebase/firestore'
+import { addDoc, onSnapshot } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { subscribeToBabies } from './babies'
+import { addBaby, subscribeToBabies } from './babies'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
-  return { ...actual, onSnapshot: vi.fn() }
+  return { ...actual, addDoc: vi.fn(), onSnapshot: vi.fn() }
 })
 
+const addDocMock = vi.mocked(addDoc)
 const onSnapshotMock = vi.mocked(onSnapshot)
 
 describe('babies repository', () => {
   beforeEach(() => {
+    addDocMock.mockReset()
     onSnapshotMock.mockReset()
   })
 
@@ -27,5 +29,13 @@ describe('babies repository', () => {
     subscribeToBabies('h1', onChange)
 
     expect(onChange).toHaveBeenCalledWith([{ id: 'b1', name: 'Léo', birthDate: '2025-06-01' }])
+  })
+
+  it('creates a new baby with the given name and birth date', async () => {
+    await addBaby('h1', 'Nina', '2026-01-15')
+
+    expect(addDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = addDocMock.mock.calls[0]
+    expect(payload).toEqual({ name: 'Nina', birthDate: '2026-01-15' })
   })
 })

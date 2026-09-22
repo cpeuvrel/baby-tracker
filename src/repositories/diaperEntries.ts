@@ -1,5 +1,6 @@
 import {
   addDoc,
+  limit,
   onSnapshot,
   orderBy,
   query,
@@ -37,6 +38,23 @@ export function subscribeToDiaperEntriesInRange(
   )
 
   return onSnapshot(rangeQuery, (snapshot) => {
+    onChange(snapshot.docs.map((docSnap) => toDiaperEntry(docSnap.id, docSnap.data())))
+  })
+}
+
+export function subscribeToRecentDiaperEntries(
+  householdId: string,
+  babyId: string,
+  count: number,
+  onChange: (entries: DiaperEntry[]) => void,
+): Unsubscribe {
+  const recentQuery = query(
+    diaperEntriesCollection(householdId, babyId),
+    orderBy('occurredAt', 'desc'),
+    limit(count),
+  )
+
+  return onSnapshot(recentQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toDiaperEntry(docSnap.id, docSnap.data())))
   })
 }

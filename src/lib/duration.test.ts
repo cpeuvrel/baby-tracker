@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, secondsBetween } from './duration'
+import { formatDuration, formatRelativeTime, secondsBetween } from './duration'
 
 describe('secondsBetween', () => {
   it('computes whole seconds between two dates', () => {
@@ -28,5 +28,22 @@ describe('formatDuration', () => {
 
   it('formats hours and minutes at or above an hour', () => {
     expect(formatDuration(3725)).toBe('1h 02min')
+  })
+})
+
+describe('formatRelativeTime', () => {
+  it('reports "à l\'instant" for anything under a minute', () => {
+    const now = new Date('2026-03-05T10:00:30Z')
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe("à l'instant")
+  })
+
+  it('formats minutes only under an hour', () => {
+    const now = new Date('2026-03-05T10:25:00Z')
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('il y a 25min')
+  })
+
+  it('formats hours and minutes at or above an hour', () => {
+    const now = new Date('2026-03-05T12:10:00Z')
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('il y a 2h 10min')
   })
 })

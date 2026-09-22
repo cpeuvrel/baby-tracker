@@ -10,7 +10,11 @@ const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
   { value: 'both', label: 'Les deux' },
 ]
 
-export function DiaperLogCard() {
+interface DiaperFormProps {
+  onSaved: () => void
+}
+
+export function DiaperForm({ onSaved }: DiaperFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [notes, setNotes] = useState('')
@@ -20,11 +24,11 @@ export function DiaperLogCard() {
   const handleLog = (type: DiaperType) => {
     void logDiaper(household.id, selectedBaby.id, user.uid, type, notes)
     setNotes('')
+    onSaved()
   }
 
   return (
-    <section aria-label="Couches">
-      <h2>Couches</h2>
+    <div>
       <label htmlFor="diaper-notes">Notes (optionnel)</label>
       <input
         id="diaper-notes"
@@ -39,6 +43,6 @@ export function DiaperLogCard() {
           </button>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

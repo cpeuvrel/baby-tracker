@@ -6,8 +6,10 @@ export function BabySelector() {
   if (babies.length === 0) return null
 
   return (
-    <div>
-      <label htmlFor="baby-selector">Bébé</label>
+    <div className="baby-selector">
+      <label htmlFor="baby-selector" className="visually-hidden">
+        Bébé
+      </label>
       <select
         id="baby-selector"
         value={selectedBaby?.id ?? ''}
@@ -19,6 +21,9 @@ export function BabySelector() {
           </option>
         ))}
       </select>
+      <span aria-hidden="true" className="baby-selector-chevron">
+        ⌄
+      </span>
     </div>
   )
 }

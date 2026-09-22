@@ -50,7 +50,9 @@ describe('App', () => {
 
     mockAuth.emit({ email: 'parent@example.com' } as User)
 
-    await waitFor(() => expect(screen.getByText('parent@example.com')).toBeInTheDocument())
-    expect(screen.getByRole('button', { name: 'Se déconnecter' })).toBeInTheDocument()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Se déconnecter' })).toBeInTheDocument(),
+    )
+    expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument()
   })
 })

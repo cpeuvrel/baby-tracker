@@ -2,10 +2,11 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { HouseholdProvider } from './contexts/HouseholdContext'
-import { GrowthPage } from './pages/GrowthPage'
+import { ActivityPage } from './pages/ActivityPage'
+import { FamilyPage } from './pages/FamilyPage'
+import { HistoryPage } from './pages/HistoryPage'
 import { LoginPage } from './pages/LoginPage'
-import { StatsPage } from './pages/StatsPage'
-import { TrackingPage } from './pages/TrackingPage'
+import { TrendsPage } from './pages/TrendsPage'
 
 function AppShell() {
   const { user, loading } = useAuth()
@@ -25,9 +26,10 @@ function AppShell() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<TrackingPage />} />
-            <Route path="stats" element={<StatsPage />} />
-            <Route path="growth" element={<GrowthPage />} />
+            <Route index element={<ActivityPage />} />
+            <Route path="history" element={<HistoryPage />} />
+            <Route path="trends" element={<TrendsPage />} />
+            <Route path="family" element={<FamilyPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

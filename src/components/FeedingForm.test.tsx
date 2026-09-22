@@ -4,7 +4,7 @@ import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
-import { FeedingCard } from './FeedingCard'
+import { FeedingForm } from './FeedingForm'
 
 const logFeeding = vi.fn()
 
@@ -15,7 +15,7 @@ vi.mock('../repositories/feedingEntries', () => ({
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
-function renderFeedingCard() {
+function renderFeedingForm(onSaved = vi.fn()) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
     loading: false,
@@ -29,19 +29,20 @@ function renderFeedingCard() {
     selectedBaby: baby,
     selectBaby: vi.fn(),
   })
-  return render(<FeedingCard />)
+  render(<FeedingForm onSaved={onSaved} />)
 }
 
-describe('FeedingCard', () => {
+describe('FeedingForm', () => {
   beforeEach(() => {
     logFeeding.mockReset()
   })
 
-  it('logs a bottle feeding with the entered volume, defaulting the time to now', async () => {
+  it('logs a bottle feeding with the entered volume, defaulting the time to now, then calls onSaved', async () => {
     const before = Date.now()
+    const onSaved = vi.fn()
     const user = userEvent.setup()
 
-    renderFeedingCard()
+    renderFeedingForm(onSaved)
     await user.type(screen.getByLabelText('Volume (mL, optionnel)'), '120')
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
@@ -51,12 +52,13 @@ describe('FeedingCard', () => {
     expect(input.occurredAt).toBeInstanceOf(Date)
     expect(input.occurredAt.getTime()).toBeGreaterThanOrEqual(before - 60_000)
     expect(input.occurredAt.getTime()).toBeLessThanOrEqual(Date.now() + 60_000)
+    expect(onSaved).toHaveBeenCalled()
   })
 
   it('logs a solid feeding with the entered food type', async () => {
     const user = userEvent.setup()
 
-    renderFeedingCard()
+    renderFeedingForm()
     await user.click(screen.getByRole('button', { name: 'Solide' }))
     await user.type(screen.getByLabelText('Aliment (optionnel)'), 'purée carotte')
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))

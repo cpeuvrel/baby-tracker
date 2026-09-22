@@ -63,6 +63,23 @@ export function subscribeToSleepEntriesInRange(
   })
 }
 
+export function subscribeToRecentSleepEntries(
+  householdId: string,
+  babyId: string,
+  count: number,
+  onChange: (entries: SleepEntry[]) => void,
+): Unsubscribe {
+  const recentQuery = query(
+    sleepEntriesCollection(householdId, babyId),
+    orderBy('startedAt', 'desc'),
+    limit(count),
+  )
+
+  return onSnapshot(recentQuery, (snapshot) => {
+    onChange(snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data())))
+  })
+}
+
 export async function startSleep(
   householdId: string,
   babyId: string,

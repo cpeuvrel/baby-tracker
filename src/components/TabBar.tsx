@@ -1,14 +1,15 @@
 import { NavLink } from 'react-router-dom'
 
 const TABS = [
-  { to: '/', label: 'Suivi', end: true },
-  { to: '/stats', label: 'Stats', end: false },
-  { to: '/growth', label: 'Croissance', end: false },
+  { to: '/', label: 'Activity', end: true },
+  { to: '/history', label: 'History', end: false },
+  { to: '/trends', label: 'Trends', end: false },
+  { to: '/family', label: 'Family', end: false },
 ]
 
 export function TabBar() {
   return (
-    <nav aria-label="Navigation principale">
+    <nav aria-label="Navigation principale" className="tab-bar">
       <ul>
         {TABS.map((tab) => (
           <li key={tab.to}>

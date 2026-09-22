@@ -2,7 +2,11 @@ import { addDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { logFeeding, subscribeToFeedingEntriesInRange } from './feedingEntries'
+import {
+  logFeeding,
+  subscribeToFeedingEntriesInRange,
+  subscribeToRecentFeedingEntries,
+} from './feedingEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -85,5 +89,32 @@ describe('feedingEntries repository', () => {
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'entry1', type: 'bottle', volumeMl: 90 }),
     ])
+  })
+
+  it('maps the most recent feeding entries regardless of date range', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation((_query, callback) => {
+      ;(callback as (snapshot: unknown) => void)(
+        fakeSnapshot([
+          {
+            id: 'entry1',
+            data: {
+              type: 'solid',
+              occurredAt: Timestamp.fromDate(new Date('2026-02-01T08:00:00.000Z')),
+              volumeMl: null,
+              foodType: 'purée',
+              notes: '',
+              createdBy: 'uid1',
+              createdAt: Timestamp.fromDate(new Date('2026-02-01T08:00:00.000Z')),
+            },
+          },
+        ]),
+      )
+      return vi.fn()
+    })
+
+    subscribeToRecentFeedingEntries('h1', 'b1', 5, onChange)
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1' })])
   })
 })

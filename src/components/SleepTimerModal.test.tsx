@@ -6,32 +6,19 @@ import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import type { SleepEntry } from '../types/models'
-import { SleepTimerCard } from './SleepTimerCard'
+import { SleepTimerModal } from './SleepTimerModal'
 
-const startSleep = vi.fn()
 const stopSleep = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
-  startSleep: (...args: unknown[]) => startSleep(...args),
   stopSleep: (...args: unknown[]) => stopSleep(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
-function mockHousehold() {
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
-}
-
-describe('SleepTimerCard', () => {
+describe('SleepTimerModal', () => {
   beforeEach(() => {
-    startSleep.mockReset()
     stopSleep.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
@@ -39,51 +26,42 @@ describe('SleepTimerCard', () => {
       login: vi.fn(),
       logout: vi.fn(),
     })
-  })
-
-  it('renders nothing without a resolved household and baby', () => {
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
+      household,
+      babies: [baby],
       loading: false,
-      selectedBaby: null,
+      selectedBaby: baby,
       selectBaby: vi.fn(),
     })
-    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
-
-    const { container } = render(<SleepTimerCard />)
-
-    expect(container).toBeEmptyDOMElement()
   })
 
-  it('starts a sleep entry when idle', async () => {
-    mockHousehold()
+  it('shows a starting state while no active entry has resolved yet', () => {
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
-    const user = userEvent.setup()
 
-    render(<SleepTimerCard />)
-    await user.click(screen.getByRole('button', { name: 'Démarrer le sommeil' }))
+    render(<SleepTimerModal onClose={vi.fn()} />)
 
-    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1')
+    expect(screen.getByText('Démarrage…')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop Timer' })).toBeDisabled()
   })
 
-  it('stops the active sleep entry', async () => {
-    mockHousehold()
+  it('shows the live counter and stops the entry on click', async () => {
     const activeEntry: SleepEntry = {
-      id: 'entry1',
-      startedAt: '2026-03-05T10:00:00.000Z',
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
       endedAt: null,
       durationSeconds: null,
       notes: '',
       createdBy: 'uid1',
-      createdAt: '2026-03-05T10:00:00.000Z',
+      createdAt: '2026-03-05T20:00:00.000Z',
     }
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<SleepTimerCard />)
-    await user.click(screen.getByRole('button', { name: 'Arrêter le sommeil' }))
+    render(<SleepTimerModal onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
 
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'entry1', new Date('2026-03-05T10:00:00.000Z'))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
+    expect(onClose).toHaveBeenCalled()
   })
 })
