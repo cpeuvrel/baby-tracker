@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { GrowthLineChart, type GrowthPoint } from '../components/charts/GrowthLineChart'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
   formatGrowthValue,
   GROWTH_METRIC_FIELD,
@@ -13,6 +14,7 @@ export function GrowthPage() {
   const { household, selectedBaby } = useHousehold()
   const entries = useGrowthEntries(household?.id ?? null, selectedBaby?.id ?? null)
   const [metric, setMetric] = useState<GrowthMetric>('weight')
+  const [unit] = useUnitPreference()
 
   if (!household || !selectedBaby) return null
 
@@ -33,7 +35,10 @@ export function GrowthPage() {
       {chartData.length === 0 ? (
         <p>Aucune mesure enregistrée pour {GROWTH_METRIC_LABELS[metric].toLowerCase()}.</p>
       ) : (
-        <GrowthLineChart data={chartData} formatValue={(value) => formatGrowthValue(metric, value)} />
+        <GrowthLineChart
+          data={chartData}
+          formatValue={(value) => formatGrowthValue(metric, value, unit)}
+        />
       )}
     </section>
   )

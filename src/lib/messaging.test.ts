@@ -23,7 +23,7 @@ describe('requestNotificationToken', () => {
     getTokenMock.mockReset()
     vi.stubEnv('VITE_FCM_VAPID_KEY', 'test-vapid-key')
     Object.defineProperty(navigator, 'serviceWorker', {
-      value: { register: vi.fn().mockResolvedValue({}) },
+      value: { ready: Promise.resolve({}) },
       configurable: true,
     })
   })

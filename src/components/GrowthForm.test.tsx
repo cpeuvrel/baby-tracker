@@ -18,6 +18,7 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 describe('GrowthForm', () => {
   beforeEach(() => {
     addGrowthEntry.mockReset()
+    localStorage.clear()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -48,5 +49,21 @@ describe('GrowthForm', () => {
       headCircumferenceMm: null,
     })
     expect(onSaved).toHaveBeenCalled()
+  })
+
+  it('converts from pounds and inches when the imperial unit is preferred', async () => {
+    localStorage.setItem('baby-tracker:unitSystem', 'imperial')
+    const user = userEvent.setup()
+
+    render(<GrowthForm onSaved={vi.fn()} />)
+    await user.type(screen.getByLabelText('Poids (lb)'), '10')
+    await user.type(screen.getByLabelText('Taille (in)'), '20')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    expect(addGrowthEntry).toHaveBeenCalledWith('h1', 'b1', 'uid1', {
+      weightG: 4536,
+      heightMm: 508,
+      headCircumferenceMm: null,
+    })
   })
 })

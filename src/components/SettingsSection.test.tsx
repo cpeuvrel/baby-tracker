@@ -1,0 +1,78 @@
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as HouseholdContext from '../contexts/HouseholdContext'
+import { SettingsSection } from './SettingsSection'
+
+const updateBaby = vi.fn()
+
+vi.mock('../repositories/babies', () => ({
+  updateBaby: (...args: unknown[]) => updateBaby(...args),
+}))
+
+const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+
+describe('SettingsSection', () => {
+  beforeEach(() => {
+    updateBaby.mockReset()
+    localStorage.clear()
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household,
+      babies: [baby],
+      loading: false,
+      selectedBaby: baby,
+      selectBaby: vi.fn(),
+    })
+  })
+
+  it('renders nothing without a resolved household and baby', () => {
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household: null,
+      babies: [],
+      loading: false,
+      selectedBaby: null,
+      selectBaby: vi.fn(),
+    })
+
+    const { container } = render(<SettingsSection />)
+
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('pre-fills the profile form with the selected baby', () => {
+    render(<SettingsSection />)
+
+    expect(screen.getByLabelText('Prénom du bébé')).toHaveValue('Léo')
+    expect(screen.getByLabelText('Date de naissance')).toHaveValue('2025-06-01')
+  })
+
+  it('saves the edited profile', async () => {
+    const user = userEvent.setup()
+
+    render(<SettingsSection />)
+    await user.clear(screen.getByLabelText('Prénom du bébé'))
+    await user.type(screen.getByLabelText('Prénom du bébé'), 'Léo Martin')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer le profil' }))
+
+    expect(updateBaby).toHaveBeenCalledWith('h1', 'b1', 'Léo Martin', '2025-06-01')
+  })
+
+  it('defaults to the metric unit and switches to imperial on click', async () => {
+    const user = userEvent.setup()
+
+    render(<SettingsSection />)
+    expect(screen.getByRole('button', { name: 'Métrique (kg/cm)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Impérial (lb/in)' }))
+
+    expect(screen.getByRole('button', { name: 'Impérial (lb/in)' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    expect(localStorage.getItem('baby-tracker:unitSystem')).toBe('imperial')
+  })
+})

@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { ExportImportSection } from '../components/ExportImportSection'
+import { SettingsSection } from '../components/SettingsSection'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { addBaby } from '../repositories/babies'
 
@@ -65,6 +66,7 @@ export function FamilyPage() {
         </p>
       </section>
 
+      <SettingsSection />
       <ExportImportSection />
     </div>
   )

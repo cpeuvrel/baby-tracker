@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useUnitPreference } from '../hooks/useUnitPreference'
+import { GRAMS_PER_POUND, MM_PER_INCH } from '../lib/growthMetrics'
 import { addGrowthEntry } from '../repositories/growthEntries'
 
 interface GrowthFormProps {
@@ -10,56 +12,67 @@ interface GrowthFormProps {
 export function GrowthForm({ onSaved }: GrowthFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const [weightKg, setWeightKg] = useState('')
-  const [heightCm, setHeightCm] = useState('')
-  const [headCircumferenceCm, setHeadCircumferenceCm] = useState('')
+  const [unit] = useUnitPreference()
+  const [weight, setWeight] = useState('')
+  const [height, setHeight] = useState('')
+  const [headCircumference, setHeadCircumference] = useState('')
 
   if (!household || !selectedBaby || !user) return null
+
+  const weightUnitToGrams = unit === 'imperial' ? GRAMS_PER_POUND : 1000
+  const lengthUnitToMm = unit === 'imperial' ? MM_PER_INCH : 10
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     void addGrowthEntry(household.id, selectedBaby.id, user.uid, {
-      weightG: weightKg.trim() === '' ? null : Math.round(Number(weightKg) * 1000),
-      heightMm: heightCm.trim() === '' ? null : Math.round(Number(heightCm) * 10),
+      weightG: weight.trim() === '' ? null : Math.round(Number(weight) * weightUnitToGrams),
+      heightMm: height.trim() === '' ? null : Math.round(Number(height) * lengthUnitToMm),
       headCircumferenceMm:
-        headCircumferenceCm.trim() === '' ? null : Math.round(Number(headCircumferenceCm) * 10),
+        headCircumference.trim() === ''
+          ? null
+          : Math.round(Number(headCircumference) * lengthUnitToMm),
     })
     onSaved()
   }
 
+  const weightLabel = unit === 'imperial' ? 'Poids (lb)' : 'Poids (kg)'
+  const heightLabel = unit === 'imperial' ? 'Taille (in)' : 'Taille (cm)'
+  const headLabel =
+    unit === 'imperial' ? 'Périmètre crânien (in)' : 'Périmètre crânien (cm)'
+
   return (
     <form onSubmit={handleSubmit}>
       <div>
-        <label htmlFor="weight-kg">Poids (kg)</label>
+        <label htmlFor="growth-weight">{weightLabel}</label>
         <input
-          id="weight-kg"
+          id="growth-weight"
           type="number"
           step="0.01"
           min="0"
-          value={weightKg}
-          onChange={(event) => setWeightKg(event.target.value)}
+          value={weight}
+          onChange={(event) => setWeight(event.target.value)}
         />
       </div>
       <div>
-        <label htmlFor="height-cm">Taille (cm)</label>
+        <label htmlFor="growth-height">{heightLabel}</label>
         <input
-          id="height-cm"
+          id="growth-height"
           type="number"
           step="0.1"
           min="0"
-          value={heightCm}
-          onChange={(event) => setHeightCm(event.target.value)}
+          value={height}
+          onChange={(event) => setHeight(event.target.value)}
         />
       </div>
       <div>
-        <label htmlFor="head-cm">Périmètre crânien (cm)</label>
+        <label htmlFor="growth-head">{headLabel}</label>
         <input
-          id="head-cm"
+          id="growth-head"
           type="number"
           step="0.1"
           min="0"
-          value={headCircumferenceCm}
-          onChange={(event) => setHeadCircumferenceCm(event.target.value)}
+          value={headCircumference}
+          onChange={(event) => setHeadCircumference(event.target.value)}
         />
       </div>
       <button type="submit">Enregistrer</button>

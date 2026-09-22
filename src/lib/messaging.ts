@@ -11,7 +11,7 @@ export async function requestNotificationToken(): Promise<string | null> {
   const vapidKey = import.meta.env.VITE_FCM_VAPID_KEY
   if (!vapidKey) return null
 
-  const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js')
+  const registration = await navigator.serviceWorker.ready
   const messaging = getMessaging(app)
 
   try {

@@ -5,9 +5,11 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import { FamilyPage } from './FamilyPage'
 
 const addBaby = vi.fn()
+const updateBaby = vi.fn()
 
 vi.mock('../repositories/babies', () => ({
   addBaby: (...args: unknown[]) => addBaby(...args),
+  updateBaby: (...args: unknown[]) => updateBaby(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: ['uid1', 'uid2'] }
