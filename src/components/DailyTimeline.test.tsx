@@ -41,10 +41,9 @@ describe('DailyTimeline', () => {
     const feeding: FeedingEntry = {
       id: 'f1',
       type: 'bottle',
-      startedAt: '2026-03-05T18:00:00.000Z',
-      endedAt: '2026-03-05T18:10:00.000Z',
-      durationSeconds: 600,
+      occurredAt: '2026-03-05T18:00:00.000Z',
       volumeMl: 120,
+      foodType: null,
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T18:00:00.000Z',
@@ -59,7 +58,7 @@ describe('DailyTimeline', () => {
     }
     const timeline: TimelineEntry[] = [
       { kind: 'sleep', at: sleep.startedAt, entry: sleep },
-      { kind: 'feeding', at: feeding.startedAt, entry: feeding },
+      { kind: 'feeding', at: feeding.occurredAt, entry: feeding },
       { kind: 'diaper', at: diaper.occurredAt, entry: diaper },
     ]
     vi.spyOn(useTodayTimelineModule, 'useTodayTimeline').mockReturnValue(timeline)
@@ -69,5 +68,25 @@ describe('DailyTimeline', () => {
     expect(screen.getByText(/Sommeil \(1h 30min\)/)).toBeInTheDocument()
     expect(screen.getByText(/Biberon 120 mL/)).toBeInTheDocument()
     expect(screen.getByText(/Couche \(Pipi \+ caca\)/)).toBeInTheDocument()
+  })
+
+  it('shows the food type for a solid feeding entry', () => {
+    const solid: FeedingEntry = {
+      id: 'f2',
+      type: 'solid',
+      occurredAt: '2026-03-05T12:00:00.000Z',
+      volumeMl: null,
+      foodType: 'purée carotte',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T12:00:00.000Z',
+    }
+    vi.spyOn(useTodayTimelineModule, 'useTodayTimeline').mockReturnValue([
+      { kind: 'feeding', at: solid.occurredAt, entry: solid },
+    ])
+
+    render(<DailyTimeline />)
+
+    expect(screen.getByText(/Solide \(purée carotte\)/)).toBeInTheDocument()
   })
 })

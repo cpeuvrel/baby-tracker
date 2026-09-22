@@ -79,7 +79,7 @@ export function sumVolumeByDay(dayKeys: string[], entries: FeedingEntry[]): Dail
   const totals = new Map<string, number>(dayKeys.map((key) => [key, 0]))
   for (const entry of entries) {
     if (entry.type !== 'bottle' || entry.volumeMl == null) continue
-    const key = dayKey(new Date(entry.startedAt))
+    const key = dayKey(new Date(entry.occurredAt))
     if (totals.has(key)) {
       totals.set(key, (totals.get(key) ?? 0) + entry.volumeMl)
     }

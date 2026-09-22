@@ -54,7 +54,7 @@ export function buildTimeline(
   diaperEntries: DiaperEntry[],
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [
-    ...feedingEntries.map((entry): TimelineEntry => ({ kind: 'feeding', at: entry.startedAt, entry })),
+    ...feedingEntries.map((entry): TimelineEntry => ({ kind: 'feeding', at: entry.occurredAt, entry })),
     ...sleepEntries.map((entry): TimelineEntry => ({ kind: 'sleep', at: entry.startedAt, entry })),
     ...diaperEntries.map((entry): TimelineEntry => ({ kind: 'diaper', at: entry.occurredAt, entry })),
   ]

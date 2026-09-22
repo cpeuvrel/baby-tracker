@@ -1,52 +1,64 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useActiveBottleFeeding } from '../hooks/useActiveBottleFeeding'
-import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
-import { formatDuration } from '../lib/duration'
-import { logSolidFeeding, startBottleFeeding, stopBottleFeeding } from '../repositories/feedingEntries'
+import { logFeeding } from '../repositories/feedingEntries'
+import type { FeedingType } from '../types/models'
+
+function toDatetimeLocalValue(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}
 
 export function FeedingCard() {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const activeEntry = useActiveBottleFeeding(household?.id ?? null, selectedBaby?.id ?? null)
-  const elapsedSeconds = useElapsedSeconds(activeEntry?.startedAt ?? null)
+  const [type, setType] = useState<FeedingType>('bottle')
+  const [occurredAt, setOccurredAt] = useState(() => toDatetimeLocalValue(new Date()))
   const [volumeMl, setVolumeMl] = useState('')
-  const [solidNotes, setSolidNotes] = useState('')
+  const [foodType, setFoodType] = useState('')
+  const [notes, setNotes] = useState('')
 
   if (!household || !selectedBaby || !user) return null
 
-  const handleStartBottle = () => {
-    void startBottleFeeding(household.id, selectedBaby.id, user.uid)
-  }
-
-  const handleStopBottle = () => {
-    if (!activeEntry) return
-    const parsedVolume = volumeMl.trim() === '' ? null : Number(volumeMl)
-    void stopBottleFeeding(
-      household.id,
-      selectedBaby.id,
-      activeEntry.id,
-      new Date(activeEntry.startedAt),
-      parsedVolume,
-    )
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    void logFeeding(household.id, selectedBaby.id, user.uid, {
+      type,
+      occurredAt: new Date(occurredAt),
+      volumeMl: type === 'bottle' && volumeMl.trim() !== '' ? Number(volumeMl) : null,
+      foodType: type === 'solid' && foodType.trim() !== '' ? foodType.trim() : null,
+      notes,
+    })
+    setOccurredAt(toDatetimeLocalValue(new Date()))
     setVolumeMl('')
-  }
-
-  const handleLogSolid = () => {
-    void logSolidFeeding(household.id, selectedBaby.id, user.uid, solidNotes)
-    setSolidNotes('')
+    setFoodType('')
+    setNotes('')
   }
 
   return (
     <section aria-label="Nourriture">
       <h2>Nourriture</h2>
-      <div>
-        <h3>Biberon</h3>
-        {activeEntry ? (
-          <>
-            <p aria-live="polite">En cours depuis {formatDuration(elapsedSeconds)}</p>
-            <label htmlFor="feeding-volume">Volume (mL)</label>
+      <form onSubmit={handleSubmit}>
+        <div role="group" aria-label="Type">
+          <button type="button" aria-pressed={type === 'bottle'} onClick={() => setType('bottle')}>
+            Biberon
+          </button>
+          <button type="button" aria-pressed={type === 'solid'} onClick={() => setType('solid')}>
+            Solide
+          </button>
+        </div>
+        <div>
+          <label htmlFor="feeding-occurred-at">Heure</label>
+          <input
+            id="feeding-occurred-at"
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+          />
+        </div>
+        {type === 'bottle' ? (
+          <div>
+            <label htmlFor="feeding-volume">Volume (mL, optionnel)</label>
             <input
               id="feeding-volume"
               type="number"
@@ -55,29 +67,29 @@ export function FeedingCard() {
               value={volumeMl}
               onChange={(event) => setVolumeMl(event.target.value)}
             />
-            <button type="button" onClick={handleStopBottle}>
-              Arrêter le biberon
-            </button>
-          </>
+          </div>
         ) : (
-          <button type="button" onClick={handleStartBottle}>
-            Démarrer le biberon
-          </button>
+          <div>
+            <label htmlFor="feeding-food-type">Aliment (optionnel)</label>
+            <input
+              id="feeding-food-type"
+              type="text"
+              value={foodType}
+              onChange={(event) => setFoodType(event.target.value)}
+            />
+          </div>
         )}
-      </div>
-      <div>
-        <h3>Solide</h3>
-        <label htmlFor="solid-notes">Aliment (optionnel)</label>
-        <input
-          id="solid-notes"
-          type="text"
-          value={solidNotes}
-          onChange={(event) => setSolidNotes(event.target.value)}
-        />
-        <button type="button" onClick={handleLogSolid}>
-          Enregistrer le repas
-        </button>
-      </div>
+        <div>
+          <label htmlFor="feeding-notes">Notes (optionnel)</label>
+          <input
+            id="feeding-notes"
+            type="text"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </div>
+        <button type="submit">Enregistrer</button>
+      </form>
     </section>
   )
 }

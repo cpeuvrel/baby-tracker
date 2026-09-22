@@ -15,8 +15,15 @@ function describeEntry(item: TimelineEntry): string {
     }
     case 'feeding': {
       const label = item.entry.type === 'bottle' ? 'Biberon' : 'Solide'
-      const volume = item.entry.volumeMl != null ? ` ${item.entry.volumeMl} mL` : ''
-      return `${time} — ${label}${volume}`
+      const detail =
+        item.entry.type === 'bottle'
+          ? item.entry.volumeMl != null
+            ? ` ${item.entry.volumeMl} mL`
+            : ''
+          : item.entry.foodType
+            ? ` (${item.entry.foodType})`
+            : ''
+      return `${time} — ${label}${detail}`
     }
     case 'diaper':
       return `${time} — Couche (${DIAPER_LABELS[item.entry.type]})`

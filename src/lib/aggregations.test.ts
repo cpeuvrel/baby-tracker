@@ -25,10 +25,9 @@ function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
   return {
     id: 'f1',
     type: 'bottle',
-    startedAt: '2026-03-05T10:00:00.000Z',
-    endedAt: '2026-03-05T10:10:00.000Z',
-    durationSeconds: 600,
+    occurredAt: '2026-03-05T10:00:00.000Z',
     volumeMl: 120,
+    foodType: null,
     notes: '',
     createdBy: 'uid1',
     createdAt: '2026-03-05T10:00:00.000Z',
@@ -137,9 +136,9 @@ describe('sumSecondsByDay', () => {
 describe('sumVolumeByDay', () => {
   it('buckets bottle volume by local day and ignores solids', () => {
     const entries = [
-      feedingEntry({ type: 'bottle', volumeMl: 100, startedAt: '2026-03-05T10:00:00' }),
-      feedingEntry({ type: 'bottle', volumeMl: 50, startedAt: '2026-03-05T18:00:00' }),
-      feedingEntry({ type: 'solid', volumeMl: null, startedAt: '2026-03-05T12:00:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00' }),
+      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00' }),
     ]
 
     const buckets = sumVolumeByDay(['2026-03-05'], entries)

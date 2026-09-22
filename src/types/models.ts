@@ -15,10 +15,9 @@ export type FeedingType = 'bottle' | 'solid'
 export interface FeedingEntry {
   id: string
   type: FeedingType
-  startedAt: string
-  endedAt: string | null
-  durationSeconds: number | null
+  occurredAt: string
   volumeMl: number | null
+  foodType: string | null
   notes: string
   createdBy: string
   createdAt: string

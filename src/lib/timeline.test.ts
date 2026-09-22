@@ -54,10 +54,9 @@ describe('buildTimeline', () => {
   const feeding: FeedingEntry = {
     id: 'f1',
     type: 'bottle',
-    startedAt: '2026-03-05T08:00:00.000Z',
-    endedAt: '2026-03-05T08:10:00.000Z',
-    durationSeconds: 600,
+    occurredAt: '2026-03-05T08:00:00.000Z',
     volumeMl: 120,
+    foodType: null,
     notes: '',
     createdBy: 'uid1',
     createdAt: '2026-03-05T08:00:00.000Z',
