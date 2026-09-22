@@ -3,18 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import { useTodayTimeline } from './useTodayTimeline'
 
-const subscribeToTodayFeedingEntries = vi.fn()
-const subscribeToTodaySleepEntries = vi.fn()
-const subscribeToTodayDiaperEntries = vi.fn()
+const useEntriesInRange = vi.fn()
 
-vi.mock('../repositories/feedingEntries', () => ({
-  subscribeToTodayFeedingEntries: (...args: unknown[]) => subscribeToTodayFeedingEntries(...args),
-}))
-vi.mock('../repositories/sleepEntries', () => ({
-  subscribeToTodaySleepEntries: (...args: unknown[]) => subscribeToTodaySleepEntries(...args),
-}))
-vi.mock('../repositories/diaperEntries', () => ({
-  subscribeToTodayDiaperEntries: (...args: unknown[]) => subscribeToTodayDiaperEntries(...args),
+vi.mock('./useEntriesInRange', () => ({
+  useEntriesInRange: (...args: unknown[]) => useEntriesInRange(...args),
 }))
 
 const feeding: FeedingEntry = {
@@ -48,50 +40,26 @@ const diaper: DiaperEntry = {
 
 describe('useTodayTimeline', () => {
   beforeEach(() => {
-    subscribeToTodayFeedingEntries.mockReset()
-    subscribeToTodaySleepEntries.mockReset()
-    subscribeToTodayDiaperEntries.mockReset()
+    useEntriesInRange.mockReset()
   })
 
-  it('returns an empty timeline without subscribing when household or baby is missing', () => {
-    const { result } = renderHook(() => useTodayTimeline(null, null))
-
-    expect(result.current).toEqual([])
-    expect(subscribeToTodayFeedingEntries).not.toHaveBeenCalled()
-  })
-
-  it('merges feeding, sleep and diaper entries once all subscriptions resolve', () => {
-    subscribeToTodayFeedingEntries.mockImplementation((_h, _b, _r, onChange) => {
-      onChange([feeding])
-      return vi.fn()
-    })
-    subscribeToTodaySleepEntries.mockImplementation((_h, _b, _r, onChange) => {
-      onChange([sleep])
-      return vi.fn()
-    })
-    subscribeToTodayDiaperEntries.mockImplementation((_h, _b, _r, onChange) => {
-      onChange([diaper])
-      return vi.fn()
-    })
+  it('merges today entries into a timeline sorted most-recent first', () => {
+    useEntriesInRange.mockReturnValue({ feeding: [feeding], sleep: [sleep], diaper: [diaper] })
 
     const { result } = renderHook(() => useTodayTimeline('h1', 'b1'))
 
     expect(result.current.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper'])
   })
 
-  it('unsubscribes all three subscriptions on unmount', () => {
-    const unsubscribeFeeding = vi.fn()
-    const unsubscribeSleep = vi.fn()
-    const unsubscribeDiaper = vi.fn()
-    subscribeToTodayFeedingEntries.mockReturnValue(unsubscribeFeeding)
-    subscribeToTodaySleepEntries.mockReturnValue(unsubscribeSleep)
-    subscribeToTodayDiaperEntries.mockReturnValue(unsubscribeDiaper)
+  it('requests entries for the household, baby and today range', () => {
+    useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [] })
 
-    const { unmount } = renderHook(() => useTodayTimeline('h1', 'b1'))
-    unmount()
+    renderHook(() => useTodayTimeline('h1', 'b1'))
 
-    expect(unsubscribeFeeding).toHaveBeenCalled()
-    expect(unsubscribeSleep).toHaveBeenCalled()
-    expect(unsubscribeDiaper).toHaveBeenCalled()
+    expect(useEntriesInRange).toHaveBeenCalledWith(
+      'h1',
+      'b1',
+      expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
+    )
   })
 })

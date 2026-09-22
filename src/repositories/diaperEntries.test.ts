@@ -1,7 +1,8 @@
 import { addDoc, onSnapshot, Timestamp } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { logDiaper, subscribeToTodayDiaperEntries } from './diaperEntries'
+import { logDiaper, subscribeToDiaperEntriesInRange } from './diaperEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -45,7 +46,12 @@ describe('diaperEntries repository', () => {
       return vi.fn()
     })
 
-    subscribeToTodayDiaperEntries('h1', 'b1', new Date('2026-03-05T12:00:00.000Z'), onChange)
+    subscribeToDiaperEntriesInRange(
+      'h1',
+      'b1',
+      dayRange(new Date('2026-03-05T12:00:00.000Z')),
+      onChange,
+    )
 
     expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1', type: 'pee' })])
   })

@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
+import { TabBar } from './TabBar'
 
 export function Layout() {
   const { user, logout } = useAuth()
@@ -16,6 +17,7 @@ export function Layout() {
           </button>
         </p>
       </header>
+      <TabBar />
       <ActiveTimersBanner />
       <Outlet />
     </div>

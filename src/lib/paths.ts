@@ -20,3 +20,7 @@ export function sleepEntriesCollection(householdId: string, babyId: string): Col
 export function diaperEntriesCollection(householdId: string, babyId: string): CollectionReference {
   return collection(db, 'households', householdId, 'babies', babyId, 'diaperEntries')
 }
+
+export function growthEntriesCollection(householdId: string, babyId: string): CollectionReference {
+  return collection(db, 'households', householdId, 'babies', babyId, 'growthEntries')
+}

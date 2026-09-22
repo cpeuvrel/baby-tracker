@@ -13,7 +13,7 @@ import {
 import { secondsBetween } from '../lib/duration'
 import { nullableTimestampToIso, timestampToIso } from '../lib/firestoreDates'
 import { feedingEntriesCollection } from '../lib/paths'
-import { dayRange } from '../lib/timeline'
+import type { DateRange } from '../lib/timeline'
 import type { FeedingEntry, FeedingType } from '../types/models'
 
 function toFeedingEntry(id: string, data: Record<string, unknown>): FeedingEntry {
@@ -48,21 +48,20 @@ export function subscribeToActiveBottleFeeding(
   })
 }
 
-export function subscribeToTodayFeedingEntries(
+export function subscribeToFeedingEntriesInRange(
   householdId: string,
   babyId: string,
-  reference: Date,
+  range: DateRange,
   onChange: (entries: FeedingEntry[]) => void,
 ): Unsubscribe {
-  const { start, end } = dayRange(reference)
-  const todayQuery = query(
+  const rangeQuery = query(
     feedingEntriesCollection(householdId, babyId),
-    where('startedAt', '>=', Timestamp.fromDate(start)),
-    where('startedAt', '<', Timestamp.fromDate(end)),
+    where('startedAt', '>=', Timestamp.fromDate(range.start)),
+    where('startedAt', '<', Timestamp.fromDate(range.end)),
     orderBy('startedAt', 'desc'),
   )
 
-  return onSnapshot(todayQuery, (snapshot) => {
+  return onSnapshot(rangeQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
   })
 }

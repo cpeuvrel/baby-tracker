@@ -1,12 +1,13 @@
 import { addDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import {
   logSolidFeeding,
   startBottleFeeding,
   stopBottleFeeding,
   subscribeToActiveBottleFeeding,
-  subscribeToTodayFeedingEntries,
+  subscribeToFeedingEntriesInRange,
 } from './feedingEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
@@ -135,7 +136,12 @@ describe('feedingEntries repository', () => {
       return vi.fn()
     })
 
-    subscribeToTodayFeedingEntries('h1', 'b1', new Date('2026-03-05T12:00:00.000Z'), onChange)
+    subscribeToFeedingEntriesInRange(
+      'h1',
+      'b1',
+      dayRange(new Date('2026-03-05T12:00:00.000Z')),
+      onChange,
+    )
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'entry1', type: 'solid' }),

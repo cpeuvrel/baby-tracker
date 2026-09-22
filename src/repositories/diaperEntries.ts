@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore'
 import { timestampToIso } from '../lib/firestoreDates'
 import { diaperEntriesCollection } from '../lib/paths'
-import { dayRange } from '../lib/timeline'
+import type { DateRange } from '../lib/timeline'
 import type { DiaperEntry, DiaperType } from '../types/models'
 
 function toDiaperEntry(id: string, data: Record<string, unknown>): DiaperEntry {
@@ -23,21 +23,20 @@ function toDiaperEntry(id: string, data: Record<string, unknown>): DiaperEntry {
   }
 }
 
-export function subscribeToTodayDiaperEntries(
+export function subscribeToDiaperEntriesInRange(
   householdId: string,
   babyId: string,
-  reference: Date,
+  range: DateRange,
   onChange: (entries: DiaperEntry[]) => void,
 ): Unsubscribe {
-  const { start, end } = dayRange(reference)
-  const todayQuery = query(
+  const rangeQuery = query(
     diaperEntriesCollection(householdId, babyId),
-    where('occurredAt', '>=', Timestamp.fromDate(start)),
-    where('occurredAt', '<', Timestamp.fromDate(end)),
+    where('occurredAt', '>=', Timestamp.fromDate(range.start)),
+    where('occurredAt', '<', Timestamp.fromDate(range.end)),
     orderBy('occurredAt', 'desc'),
   )
 
-  return onSnapshot(todayQuery, (snapshot) => {
+  return onSnapshot(rangeQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toDiaperEntry(docSnap.id, docSnap.data())))
   })
 }

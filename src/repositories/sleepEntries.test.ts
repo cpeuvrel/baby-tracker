@@ -1,7 +1,13 @@
 import { addDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { dayRange } from '../lib/timeline'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { startSleep, stopSleep, subscribeToActiveSleep, subscribeToTodaySleepEntries } from './sleepEntries'
+import {
+  startSleep,
+  stopSleep,
+  subscribeToActiveSleep,
+  subscribeToSleepEntriesInRange,
+} from './sleepEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -102,7 +108,12 @@ describe('sleepEntries repository', () => {
       return vi.fn()
     })
 
-    subscribeToTodaySleepEntries('h1', 'b1', new Date('2026-03-05T15:00:00.000Z'), onChange)
+    subscribeToSleepEntriesInRange(
+      'h1',
+      'b1',
+      dayRange(new Date('2026-03-05T15:00:00.000Z')),
+      onChange,
+    )
 
     expect(onChange).toHaveBeenCalledWith([
       expect.objectContaining({ id: 'entry1', durationSeconds: 3600 }),

@@ -13,7 +13,7 @@ import {
 import { secondsBetween } from '../lib/duration'
 import { nullableTimestampToIso, timestampToIso } from '../lib/firestoreDates'
 import { sleepEntriesCollection } from '../lib/paths'
-import { dayRange } from '../lib/timeline'
+import type { DateRange } from '../lib/timeline'
 import type { SleepEntry } from '../types/models'
 
 function toSleepEntry(id: string, data: Record<string, unknown>): SleepEntry {
@@ -45,21 +45,20 @@ export function subscribeToActiveSleep(
   })
 }
 
-export function subscribeToTodaySleepEntries(
+export function subscribeToSleepEntriesInRange(
   householdId: string,
   babyId: string,
-  reference: Date,
+  range: DateRange,
   onChange: (entries: SleepEntry[]) => void,
 ): Unsubscribe {
-  const { start, end } = dayRange(reference)
-  const todayQuery = query(
+  const rangeQuery = query(
     sleepEntriesCollection(householdId, babyId),
-    where('startedAt', '>=', Timestamp.fromDate(start)),
-    where('startedAt', '<', Timestamp.fromDate(end)),
+    where('startedAt', '>=', Timestamp.fromDate(range.start)),
+    where('startedAt', '<', Timestamp.fromDate(range.end)),
     orderBy('startedAt', 'desc'),
   )
 
-  return onSnapshot(todayQuery, (snapshot) => {
+  return onSnapshot(rangeQuery, (snapshot) => {
     onChange(snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data())))
   })
 }

@@ -2,7 +2,9 @@ import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { HouseholdProvider } from './contexts/HouseholdContext'
+import { GrowthPage } from './pages/GrowthPage'
 import { LoginPage } from './pages/LoginPage'
+import { StatsPage } from './pages/StatsPage'
 import { TrackingPage } from './pages/TrackingPage'
 
 function AppShell() {
@@ -24,6 +26,8 @@ function AppShell() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<TrackingPage />} />
+            <Route path="stats" element={<StatsPage />} />
+            <Route path="growth" element={<GrowthPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

@@ -109,3 +109,106 @@ form > div {
   background: var(--danger-bg);
   font-size: 14px;
 }
+
+/* Navigation par onglets */
+nav[aria-label='Navigation principale'] ul {
+  display: flex;
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  gap: 4px;
+}
+
+nav[aria-label='Navigation principale'] a {
+  display: block;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+}
+
+nav[aria-label='Navigation principale'] a[aria-current='page'] {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Boutons de sélection (période, mesure) */
+[role='group'] {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+[role='group'] button {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+[role='group'] button[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+
+/* Tuiles de statistiques */
+dl.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin: 0 0 24px;
+}
+
+dl.stat-grid > div {
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+dl.stat-grid dt {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+dl.stat-grid dd {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Jetons de dataviz (voir skill dataviz) */
+.viz-root {
+  --surface-1: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted-chart: #898781;
+  --gridline: #e1e0d9;
+  --baseline: #c3c2b7;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  margin-bottom: 24px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .viz-root {
+    --surface-1: #1a1a19;
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted-chart: #898781;
+    --gridline: #2c2c2a;
+    --baseline: #383835;
+    --series-1: #3987e5;
+    --series-2: #d95926;
+  }
+}
+
+.viz-root h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
