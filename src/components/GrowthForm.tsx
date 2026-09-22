@@ -6,13 +6,14 @@ import { toDatetimeLocalValue } from '../lib/datetimeInput'
 import { GRAMS_PER_POUND, MM_PER_INCH } from '../lib/growthMetrics'
 import { addGrowthEntry, deleteGrowthEntry, updateGrowthEntry } from '../repositories/growthEntries'
 import type { GrowthEntry } from '../types/models'
+import { Modal } from './Modal'
 
 interface GrowthFormProps {
   entry?: GrowthEntry
-  onSaved: () => void
+  onClose: () => void
 }
 
-export function GrowthForm({ entry, onSaved }: GrowthFormProps) {
+export function GrowthForm({ entry, onClose }: GrowthFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [unit] = useUnitPreference()
@@ -34,8 +35,7 @@ export function GrowthForm({ entry, onSaved }: GrowthFormProps) {
 
   if (!household || !selectedBaby || !user) return null
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submit = () => {
     const input = {
       measuredAt: new Date(measuredAt),
       weightG: weight.trim() === '' ? null : Math.round(Number(weight) * weightUnitToGrams),
@@ -51,80 +51,90 @@ export function GrowthForm({ entry, onSaved }: GrowthFormProps) {
     } else {
       void addGrowthEntry(household.id, selectedBaby.id, user.uid, input)
     }
-    onSaved()
+    onClose()
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    submit()
   }
 
   const handleDelete = () => {
     if (!entry) return
-    if (!window.confirm('Supprimer cette entrée ?')) return
+    if (!window.confirm('Delete this entry?')) return
     void deleteGrowthEntry(household.id, selectedBaby.id, entry.id)
-    onSaved()
+    onClose()
   }
 
-  const weightLabel = unit === 'imperial' ? 'Poids (lb)' : 'Poids (kg)'
-  const heightLabel = unit === 'imperial' ? 'Taille (in)' : 'Taille (cm)'
-  const headLabel =
-    unit === 'imperial' ? 'Périmètre crânien (in)' : 'Périmètre crânien (cm)'
+  const weightLabel = unit === 'imperial' ? 'Weight (lb)' : 'Weight (kg)'
+  const heightLabel = unit === 'imperial' ? 'Height (in)' : 'Height (cm)'
+  const headLabel = unit === 'imperial' ? 'Head Size (in)' : 'Head Size (cm)'
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="growth-measured-at">Heure</label>
-        <input
-          id="growth-measured-at"
-          type="datetime-local"
-          value={measuredAt}
-          onChange={(event) => setMeasuredAt(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="growth-weight">{weightLabel}</label>
-        <input
-          id="growth-weight"
-          type="number"
-          step="0.01"
-          min="0"
-          value={weight}
-          onChange={(event) => setWeight(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="growth-height">{heightLabel}</label>
-        <input
-          id="growth-height"
-          type="number"
-          step="0.1"
-          min="0"
-          value={height}
-          onChange={(event) => setHeight(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="growth-head">{headLabel}</label>
-        <input
-          id="growth-head"
-          type="number"
-          step="0.1"
-          min="0"
-          value={headCircumference}
-          onChange={(event) => setHeadCircumference(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="growth-notes">Notes (optionnel)</label>
-        <input
-          id="growth-notes"
-          type="text"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
-      <button type="submit">Enregistrer</button>
-      {entry && (
-        <button type="button" className="button-delete" onClick={handleDelete}>
-          Supprimer
-        </button>
-      )}
-    </form>
+    <Modal
+      title="Growth"
+      bandColorVar="--category-growth"
+      onClose={onClose}
+      headerAction={{ label: 'Save', onClick: submit }}
+    >
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="growth-measured-at">Time</label>
+          <input
+            id="growth-measured-at"
+            type="datetime-local"
+            value={measuredAt}
+            onChange={(event) => setMeasuredAt(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="growth-weight">{weightLabel}</label>
+          <input
+            id="growth-weight"
+            type="number"
+            step="0.01"
+            min="0"
+            value={weight}
+            onChange={(event) => setWeight(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="growth-height">{heightLabel}</label>
+          <input
+            id="growth-height"
+            type="number"
+            step="0.1"
+            min="0"
+            value={height}
+            onChange={(event) => setHeight(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="growth-head">{headLabel}</label>
+          <input
+            id="growth-head"
+            type="number"
+            step="0.1"
+            min="0"
+            value={headCircumference}
+            onChange={(event) => setHeadCircumference(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="growth-notes">Notes (optional)</label>
+          <input
+            id="growth-notes"
+            type="text"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </div>
+        {entry && (
+          <button type="button" className="button-delete" onClick={handleDelete}>
+            Delete
+          </button>
+        )}
+      </form>
+    </Modal>
   )
 }

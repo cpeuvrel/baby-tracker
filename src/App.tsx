@@ -15,7 +15,7 @@ function AppShell() {
   if (loading) {
     return (
       <p role="status" aria-live="polite">
-        Chargement…
+        Loading…
       </p>
     )
   }

@@ -43,7 +43,7 @@ describe('BabySelector', () => {
 
     render(<BabySelector />)
 
-    await user.selectOptions(screen.getByLabelText('Bébé'), 'b2')
+    await user.selectOptions(screen.getByLabelText('Baby'), 'b2')
 
     expect(selectBaby).toHaveBeenCalledWith('b2')
   })

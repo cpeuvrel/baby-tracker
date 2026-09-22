@@ -23,7 +23,7 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
   const todayKey = dayKey(new Date())
 
   return (
-    <div className="week-chart-grid" aria-label="Calendrier de la métrique">
+    <div className="week-chart-grid" aria-label="Metric calendar">
       <div className="week-chart-axis">
         {HOUR_LABELS.map((hour) => (
           <span key={hour}>{String(hour).padStart(2, '0')}</span>
@@ -34,7 +34,7 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
         return (
           <div key={key} className="week-chart-day">
             <div className={`week-chart-day-header${key === todayKey ? ' is-today' : ''}`}>
-              <span>{date.toLocaleDateString('fr-FR', { weekday: 'short' }).slice(0, 2)}</span>
+              <span>{date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)}</span>
               <span>{date.getDate()}</span>
             </div>
             <div className="week-chart-column">

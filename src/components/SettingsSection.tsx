@@ -25,25 +25,25 @@ export function SettingsSection() {
   }
 
   return (
-    <section aria-label="Réglages">
-      <h2>Réglages</h2>
+    <section aria-label="Settings">
+      <h2>Settings</h2>
 
-      <div role="group" aria-label="Unité">
+      <div role="group" aria-label="Unit">
         <button type="button" aria-pressed={unit === 'metric'} onClick={() => setUnit('metric')}>
-          Métrique (kg/cm)
+          Metric (kg/cm)
         </button>
         <button
           type="button"
           aria-pressed={unit === 'imperial'}
           onClick={() => setUnit('imperial')}
         >
-          Impérial (lb/in)
+          Imperial (lb/in)
         </button>
       </div>
 
       <form onSubmit={handleSubmit}>
         <div>
-          <label htmlFor="settings-baby-name">Prénom du bébé</label>
+          <label htmlFor="settings-baby-name">Baby's first name</label>
           <input
             id="settings-baby-name"
             type="text"
@@ -52,7 +52,7 @@ export function SettingsSection() {
           />
         </div>
         <div>
-          <label htmlFor="settings-baby-birth-date">Date de naissance</label>
+          <label htmlFor="settings-baby-birth-date">Date of birth</label>
           <input
             id="settings-baby-birth-date"
             type="date"
@@ -60,7 +60,7 @@ export function SettingsSection() {
             onChange={(event) => setBirthDate(event.target.value)}
           />
         </div>
-        <button type="submit">Enregistrer le profil</button>
+        <button type="submit">Save profile</button>
       </form>
     </section>
   )

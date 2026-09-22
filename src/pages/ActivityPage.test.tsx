@@ -98,11 +98,11 @@ describe('ActivityPage', () => {
 
     render(<ActivityPage />)
 
-    expect(screen.getByRole('region', { name: 'Sommeil' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Nourriture' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Couches' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Médicament' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Croissance' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Sleep' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Feed' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Diaper' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Medication' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Growth' })).toBeInTheDocument()
   })
 
   it('opens the sleep modal without starting anything when idle', async () => {
@@ -110,10 +110,10 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter une entrée sommeil' }))
+    await user.click(screen.getByRole('button', { name: 'Add a sleep entry' }))
 
     expect(startSleep).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start Timer' })).toBeInTheDocument()
   })
 
@@ -131,10 +131,10 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByRole('button', { name: 'Voir le chrono en cours' }))
+    await user.click(screen.getByRole('button', { name: 'View the running timer' }))
 
     expect(startSleep).not.toHaveBeenCalled()
-    expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
   })
 
@@ -144,10 +144,10 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter une entrée nourriture' }))
-    expect(screen.getByRole('dialog', { name: 'Nourriture' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Add a feeding entry' }))
+    expect(screen.getByRole('dialog', { name: 'Feed' })).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logFeeding).toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -158,12 +158,12 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter une prise' }))
-    expect(screen.getByRole('dialog', { name: 'Médicament' })).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Fermer' }))
+    await user.click(screen.getByRole('button', { name: 'Add a dose' }))
+    expect(screen.getByRole('dialog', { name: 'Medication' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
 
-    await user.click(screen.getByRole('button', { name: 'Régler le rappel' }))
-    expect(screen.getByRole('dialog', { name: 'Rappel Vitamine D' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Set reminder' }))
+    expect(screen.getByRole('dialog', { name: 'Vitamin D Reminder' })).toBeInTheDocument()
   })
 
   it('opens the feeding entry for edit when the primary entry is clicked, and deletes it', async () => {
@@ -182,11 +182,11 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByText('Dernier biberon'))
-    expect(screen.getByRole('dialog', { name: 'Nourriture' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Volume (mL, optionnel)')).toHaveValue(120)
+    await user.click(screen.getByText('Last feeding'))
+    expect(screen.getByRole('dialog', { name: 'Feed' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Volume (mL, optional)')).toHaveValue(120)
 
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteFeedingEntry).toHaveBeenCalledWith('h1', 'b1', 'f1')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -206,14 +206,14 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByText('Réveillé'))
+    await user.click(screen.getByText('Woke up'))
 
-    expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Durée (minutes)')).toHaveValue(60)
+    expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Duration (minutes)')).toHaveValue(60)
     expect(startSleep).not.toHaveBeenCalled()
   })
 
-  it('shows earlier entries from today directly, and hides entries from before today behind Voir plus', async () => {
+  it('shows earlier entries from today directly, and hides entries from before today behind Show more', async () => {
     const now = new Date()
     const earlierToday = new Date(now)
     earlierToday.setHours(0, 30, 0, 0)
@@ -243,10 +243,10 @@ describe('ActivityPage', () => {
     render(<ActivityPage />)
 
     expect(screen.getByText('100 mL')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Voir plus' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show more' })).toBeInTheDocument()
     expect(screen.queryByText('77 mL')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
 
     expect(screen.getByText('77 mL')).toBeInTheDocument()
   })

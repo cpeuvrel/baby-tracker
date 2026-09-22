@@ -17,7 +17,7 @@ export function LoginPage() {
       await login(email, password)
     } catch (err) {
       const message =
-        err instanceof FirebaseError ? 'Email ou mot de passe incorrect.' : 'Connexion impossible.'
+        err instanceof FirebaseError ? 'Incorrect email or password.' : 'Unable to sign in.'
       setError(message)
     } finally {
       setSubmitting(false)
@@ -41,7 +41,7 @@ export function LoginPage() {
           />
         </div>
         <div>
-          <label htmlFor="password">Mot de passe</label>
+          <label htmlFor="password">Password</label>
           <input
             id="password"
             name="password"
@@ -53,7 +53,7 @@ export function LoginPage() {
           />
         </div>
         <button type="submit" disabled={submitting}>
-          Se connecter
+          Sign in
         </button>
         <p role="alert" aria-live="polite">
           {error}

@@ -49,8 +49,8 @@ describe('ActiveTimersBanner', () => {
     const user = userEvent.setup()
 
     render(<ActiveTimersBanner />)
-    expect(screen.getByRole('status')).toHaveTextContent('Sommeil en cours depuis')
-    await user.click(screen.getByRole('button', { name: 'Arrêter' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Sleep in progress for')
+    await user.click(screen.getByRole('button', { name: 'Stop' }))
 
     expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
   })

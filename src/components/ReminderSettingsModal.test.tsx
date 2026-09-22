@@ -50,8 +50,8 @@ describe('ReminderSettingsModal', () => {
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
 
-    expect(screen.getByRole('checkbox', { name: 'Rappel actif' })).not.toBeChecked()
-    expect(screen.getByLabelText('Heure du rappel')).toHaveValue('09:00')
+    expect(screen.getByRole('checkbox', { name: 'Reminder active' })).not.toBeChecked()
+    expect(screen.getByLabelText('Reminder time')).toHaveValue('09:00')
   })
 
   it('reflects an existing reminder', () => {
@@ -65,8 +65,8 @@ describe('ReminderSettingsModal', () => {
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
 
-    expect(screen.getByRole('checkbox', { name: 'Rappel actif' })).toBeChecked()
-    expect(screen.getByLabelText('Heure du rappel')).toHaveValue('08:30')
+    expect(screen.getByRole('checkbox', { name: 'Reminder active' })).toBeChecked()
+    expect(screen.getByLabelText('Reminder time')).toHaveValue('08:30')
   })
 
   it('saves the reminder when the active toggle changes', async () => {
@@ -74,7 +74,7 @@ describe('ReminderSettingsModal', () => {
     const user = userEvent.setup()
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
-    await user.click(screen.getByRole('checkbox', { name: 'Rappel actif' }))
+    await user.click(screen.getByRole('checkbox', { name: 'Reminder active' }))
 
     expect(setReminder).toHaveBeenCalledWith('h1', 'b1', 'Vitamine D', '09:00', true)
   })
@@ -83,7 +83,7 @@ describe('ReminderSettingsModal', () => {
     vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Heure du rappel'), { target: { value: '08:30' } })
+    fireEvent.change(screen.getByLabelText('Reminder time'), { target: { value: '08:30' } })
 
     expect(setReminder).toHaveBeenLastCalledWith('h1', 'b1', 'Vitamine D', '08:30', false)
   })
@@ -94,10 +94,10 @@ describe('ReminderSettingsModal', () => {
     const user = userEvent.setup()
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'Activer les notifications' }))
+    await user.click(screen.getByRole('button', { name: 'Enable notifications' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Notifications activées' })).toBeDisabled(),
+      expect(screen.getByRole('button', { name: 'Notifications enabled' })).toBeDisabled(),
     )
     expect(saveFcmToken).toHaveBeenCalledWith('uid1', 'the-token')
   })
@@ -108,9 +108,9 @@ describe('ReminderSettingsModal', () => {
     const user = userEvent.setup()
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'Activer les notifications' }))
+    await user.click(screen.getByRole('button', { name: 'Enable notifications' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Notifications refusées')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Notifications denied')
     expect(saveFcmToken).not.toHaveBeenCalled()
   })
 })

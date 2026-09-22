@@ -30,7 +30,7 @@ export function Layout() {
           </summary>
           <div className="app-header-menu-panel">
             <button type="button" onClick={() => void logout()}>
-              Se déconnecter
+              Log out
             </button>
           </div>
         </details>

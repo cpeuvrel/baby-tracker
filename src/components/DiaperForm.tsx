@@ -4,6 +4,7 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { toDatetimeLocalValue } from '../lib/datetimeInput'
 import { deleteDiaperEntry, logDiaper, updateDiaperEntry } from '../repositories/diaperEntries'
 import type { DiaperEntry, DiaperType } from '../types/models'
+import { Modal } from './Modal'
 
 const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
   { value: 'wet', label: 'Wet' },
@@ -14,10 +15,10 @@ const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
 
 interface DiaperFormProps {
   entry?: DiaperEntry
-  onSaved: () => void
+  onClose: () => void
 }
 
-export function DiaperForm({ entry, onSaved }: DiaperFormProps) {
+export function DiaperForm({ entry, onClose }: DiaperFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [occurredAt, setOccurredAt] = useState(() =>
@@ -35,75 +36,85 @@ export function DiaperForm({ entry, onSaved }: DiaperFormProps) {
       notes,
     })
     setNotes('')
-    onSaved()
+    onClose()
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submit = () => {
     if (!entry) return
     void updateDiaperEntry(household.id, selectedBaby.id, entry.id, {
       type,
       occurredAt: new Date(occurredAt),
       notes,
     })
-    onSaved()
+    onClose()
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    submit()
   }
 
   const handleDelete = () => {
     if (!entry) return
-    if (!window.confirm('Supprimer cette entrée ?')) return
+    if (!window.confirm('Delete this entry?')) return
     void deleteDiaperEntry(household.id, selectedBaby.id, entry.id)
-    onSaved()
+    onClose()
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label htmlFor="diaper-occurred-at">Heure</label>
-        <input
-          id="diaper-occurred-at"
-          type="datetime-local"
-          value={occurredAt}
-          onChange={(event) => setOccurredAt(event.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="diaper-notes">Notes (optionnel)</label>
-        <input
-          id="diaper-notes"
-          type="text"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
-      {entry ? (
-        <>
-          <div role="group" aria-label="Type">
+    <Modal
+      title="Diaper"
+      bandColorVar="--category-diaper"
+      onClose={onClose}
+      headerAction={entry ? { label: 'Save', onClick: submit } : undefined}
+    >
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label htmlFor="diaper-occurred-at">Time</label>
+          <input
+            id="diaper-occurred-at"
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="diaper-notes">Notes (optional)</label>
+          <input
+            id="diaper-notes"
+            type="text"
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
+          />
+        </div>
+        {entry ? (
+          <>
+            <div role="group" aria-label="Type">
+              {DIAPER_TYPES.map(({ value, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={type === value}
+                  onClick={() => setType(value)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <button type="button" className="button-delete" onClick={handleDelete}>
+              Delete
+            </button>
+          </>
+        ) : (
+          <div>
             {DIAPER_TYPES.map(({ value, label }) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={type === value}
-                onClick={() => setType(value)}
-              >
+              <button key={value} type="button" onClick={() => handleLog(value)}>
                 {label}
               </button>
             ))}
           </div>
-          <button type="submit">Enregistrer</button>
-          <button type="button" className="button-delete" onClick={handleDelete}>
-            Supprimer
-          </button>
-        </>
-      ) : (
-        <div>
-          {DIAPER_TYPES.map(({ value, label }) => (
-            <button key={value} type="button" onClick={() => handleLog(value)}>
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-    </form>
+        )}
+      </form>
+    </Modal>
   )
 }

@@ -208,10 +208,10 @@ const NARA_DIAPER_TYPES: Record<string, DiaperType> = {
 }
 
 const NARA_MEAL_LABELS: Record<string, string> = {
-  BREAKFAST: 'Petit-déjeuner',
-  LUNCH: 'Déjeuner',
-  DINNER: 'Dîner',
-  SNACK: 'Goûter',
+  BREAKFAST: 'Breakfast',
+  LUNCH: 'Lunch',
+  DINNER: 'Dinner',
+  SNACK: 'Snack',
 }
 
 function epochToIso(value: string): string {
@@ -251,7 +251,7 @@ function parseNaraRows(
 ): { data: BabyExport; skipped: number } {
   const col = (name: string) => {
     const index = header.indexOf(name)
-    if (index === -1) throw new Error(`Colonne Nara manquante : ${name}`)
+    if (index === -1) throw new Error(`Missing Nara column: ${name}`)
     return index
   }
 
@@ -408,7 +408,7 @@ export function parseImportFile(
 ): { data: BabyExport; skipped: number } {
   const rows = parseCsv(csv)
   if (rows.length === 0) {
-    throw new Error('Fichier vide.')
+    throw new Error('Empty file.')
   }
   const [header, ...dataRows] = rows
 
@@ -418,7 +418,7 @@ export function parseImportFile(
   if (header[0] === 'Type' && header.includes('_familyKey')) {
     return parseNaraRows(header, dataRows, currentUserUid)
   }
-  throw new Error('Format de fichier CSV non reconnu.')
+  throw new Error('Unrecognized CSV file format.')
 }
 
 export async function importBabyData(

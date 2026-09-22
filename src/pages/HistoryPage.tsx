@@ -4,8 +4,7 @@ import { WeekTimelineChart } from '../components/WeekTimelineChart'
 import { dayKey } from '../lib/timeline'
 
 function formatDayTitle(date: Date): string {
-  const label = date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
-  return label.charAt(0).toUpperCase() + label.slice(1)
+  return date.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 export function HistoryPage() {

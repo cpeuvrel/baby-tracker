@@ -21,7 +21,7 @@ const feeding: FeedingEntry = {
 
 describe('getTrendMetric', () => {
   it('finds a metric by id', () => {
-    expect(getTrendMetric('feedVolume')?.title).toBe('Volume total')
+    expect(getTrendMetric('feedVolume')?.title).toBe('Total volume')
   })
 
   it('returns undefined for an unknown id', () => {
@@ -64,7 +64,7 @@ describe('formatMetricValue', () => {
   })
 
   it('formats duration metrics with formatDuration', () => {
-    expect(formatMetricValue('sleepTotal', 3725)).toBe('1h 02min')
+    expect(formatMetricValue('sleepTotal', 3725)).toBe('1h 02m')
   })
 
   it('formats count metrics with one decimal', () => {
@@ -74,7 +74,7 @@ describe('formatMetricValue', () => {
 
 describe('formatMetricHeadline', () => {
   it('appends the metric-specific suffix', () => {
-    expect(formatMetricHeadline('feedSessions', 3.6)).toBe('3.6 biberons / jour')
-    expect(formatMetricHeadline('feedAvgVolume', 128)).toBe('128 mL en moyenne')
+    expect(formatMetricHeadline('feedSessions', 3.6)).toBe('3.6 bottles / day')
+    expect(formatMetricHeadline('feedAvgVolume', 128)).toBe('128 mL average')
   })
 })

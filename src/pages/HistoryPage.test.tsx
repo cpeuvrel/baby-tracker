@@ -23,6 +23,6 @@ describe('HistoryPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'pick-day' }))
 
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('mars')
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('March')
   })
 })

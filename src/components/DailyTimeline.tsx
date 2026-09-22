@@ -6,15 +6,15 @@ import type { TimelineEntry } from '../lib/timeline'
 const DIAPER_LABELS: Record<string, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
 
 function describeEntry(item: TimelineEntry): string {
-  const time = new Date(item.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const time = new Date(item.at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
   switch (item.kind) {
     case 'sleep': {
       const { durationSeconds } = item.entry
-      return `${time} — Sommeil${durationSeconds != null ? ` (${formatDuration(durationSeconds)})` : ' (en cours)'}`
+      return `${time} — Sleep${durationSeconds != null ? ` (${formatDuration(durationSeconds)})` : ' (in progress)'}`
     }
     case 'feeding': {
-      const label = item.entry.type === 'bottle' ? 'Biberon' : 'Solide'
+      const label = item.entry.type === 'bottle' ? 'Bottle' : 'Solid'
       const detail =
         item.entry.type === 'bottle'
           ? item.entry.volumeMl != null
@@ -26,7 +26,7 @@ function describeEntry(item: TimelineEntry): string {
       return `${time} — ${label}${detail}`
     }
     case 'diaper':
-      return `${time} — Couche (${DIAPER_LABELS[item.entry.type]})`
+      return `${time} — Diaper (${DIAPER_LABELS[item.entry.type]})`
   }
 }
 
@@ -35,17 +35,17 @@ interface DailyTimelineProps {
   title?: string
 }
 
-export function DailyTimeline({ date, title = "Aujourd'hui" }: DailyTimelineProps) {
+export function DailyTimeline({ date, title = 'Today' }: DailyTimelineProps) {
   const { household, selectedBaby } = useHousehold()
   const timeline = useDayTimeline(household?.id ?? null, selectedBaby?.id ?? null, date ?? new Date())
 
   if (!household || !selectedBaby) return null
 
   return (
-    <section aria-label="Journal du jour">
+    <section aria-label="Daily log">
       <h2>{title}</h2>
       {timeline.length === 0 ? (
-        <p>Aucune entrée pour l'instant.</p>
+        <p>No entries yet.</p>
       ) : (
         <ul>
           {timeline.map((item) => (

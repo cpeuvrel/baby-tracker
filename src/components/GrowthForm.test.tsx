@@ -26,7 +26,7 @@ const entry: GrowthEntry = {
   weightG: 6200,
   heightMm: 620,
   headCircumferenceMm: null,
-  notes: 'à jeun',
+  notes: 'fasting',
   createdBy: 'uid1',
   createdAt: '2026-03-05T10:00:00.000Z',
 }
@@ -52,14 +52,14 @@ describe('GrowthForm', () => {
     })
   })
 
-  it('submits a growth measurement converted to grams and millimeters, then calls onSaved', async () => {
-    const onSaved = vi.fn()
+  it('submits a growth measurement converted to grams and millimeters, then calls onClose', async () => {
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<GrowthForm onSaved={onSaved} />)
-    await user.type(screen.getByLabelText('Poids (kg)'), '6.2')
-    await user.type(screen.getByLabelText('Taille (cm)'), '62')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    render(<GrowthForm onClose={onClose} />)
+    await user.type(screen.getByLabelText('Weight (kg)'), '6.2')
+    await user.type(screen.getByLabelText('Height (cm)'), '62')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(addGrowthEntry).toHaveBeenCalledWith(
       'h1',
@@ -67,17 +67,17 @@ describe('GrowthForm', () => {
       'uid1',
       expect.objectContaining({ weightG: 6200, heightMm: 620, headCircumferenceMm: null }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('converts from pounds and inches when the imperial unit is preferred', async () => {
     localStorage.setItem('baby-tracker:unitSystem', 'imperial')
     const user = userEvent.setup()
 
-    render(<GrowthForm onSaved={vi.fn()} />)
-    await user.type(screen.getByLabelText('Poids (lb)'), '10')
-    await user.type(screen.getByLabelText('Taille (in)'), '20')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    render(<GrowthForm onClose={vi.fn()} />)
+    await user.type(screen.getByLabelText('Weight (lb)'), '10')
+    await user.type(screen.getByLabelText('Height (in)'), '20')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(addGrowthEntry).toHaveBeenCalledWith(
       'h1',
@@ -88,36 +88,36 @@ describe('GrowthForm', () => {
   })
 
   it('prefills the form from an existing entry, converted back to display units, and updates it', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<GrowthForm entry={entry} onSaved={onSaved} />)
+    render(<GrowthForm entry={entry} onClose={onClose} />)
 
-    expect(screen.getByLabelText('Poids (kg)')).toHaveValue(6.2)
-    expect(screen.getByLabelText('Taille (cm)')).toHaveValue(62)
-    expect(screen.getByDisplayValue('à jeun')).toBeInTheDocument()
+    expect(screen.getByLabelText('Weight (kg)')).toHaveValue(6.2)
+    expect(screen.getByLabelText('Height (cm)')).toHaveValue(62)
+    expect(screen.getByDisplayValue('fasting')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateGrowthEntry).toHaveBeenCalledWith(
       'h1',
       'b1',
       'g1',
-      expect.objectContaining({ weightG: 6200, heightMm: 620, notes: 'à jeun' }),
+      expect.objectContaining({ weightG: 6200, heightMm: 620, notes: 'fasting' }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
     expect(addGrowthEntry).not.toHaveBeenCalled()
   })
 
   it('deletes the entry after confirmation', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    render(<GrowthForm entry={entry} onSaved={onSaved} />)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    render(<GrowthForm entry={entry} onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteGrowthEntry).toHaveBeenCalledWith('h1', 'b1', 'g1')
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 })

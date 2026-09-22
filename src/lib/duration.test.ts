@@ -23,40 +23,40 @@ describe('formatDuration', () => {
   })
 
   it('formats minutes and seconds under an hour', () => {
-    expect(formatDuration(125)).toBe('2min 05s')
+    expect(formatDuration(125)).toBe('2m 05s')
   })
 
   it('formats hours and minutes at or above an hour', () => {
-    expect(formatDuration(3725)).toBe('1h 02min')
+    expect(formatDuration(3725)).toBe('1h 02m')
   })
 
   it('formats days and hours at or above 24h', () => {
-    expect(formatDuration(90000)).toBe('1j 01h')
+    expect(formatDuration(90000)).toBe('1d 01h')
   })
 
   it('treats exactly 24h as 1 day', () => {
-    expect(formatDuration(86400)).toBe('1j 00h')
+    expect(formatDuration(86400)).toBe('1d 00h')
   })
 })
 
 describe('formatRelativeTime', () => {
-  it('reports "à l\'instant" for anything under a minute', () => {
+  it('reports "just now" for anything under a minute', () => {
     const now = new Date('2026-03-05T10:00:30Z')
-    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe("à l'instant")
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('just now')
   })
 
   it('formats minutes only under an hour', () => {
     const now = new Date('2026-03-05T10:25:00Z')
-    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('il y a 25min')
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('25m ago')
   })
 
   it('formats hours and minutes at or above an hour', () => {
     const now = new Date('2026-03-05T12:10:00Z')
-    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('il y a 2h 10min')
+    expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('2h 10m ago')
   })
 
   it('formats days only at or above 24h, ignoring the remaining hours', () => {
     const now = new Date('2026-09-22T12:00:00Z')
-    expect(formatRelativeTime(new Date('2026-03-18T14:50:21Z'), now)).toBe('il y a 187j')
+    expect(formatRelativeTime(new Date('2026-03-18T14:50:21Z'), now)).toBe('187d ago')
   })
 })

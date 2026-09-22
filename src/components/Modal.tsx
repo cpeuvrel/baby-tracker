@@ -37,7 +37,7 @@ export function Modal({ title, bandColorVar, onClose, headerAction, children }: 
         ref={dialogRef}
       >
         <header style={{ background: `var(${bandColorVar})` }}>
-          <button type="button" aria-label="Fermer" onClick={onClose}>
+          <button type="button" aria-label="Close" onClick={onClose}>
             ✕
           </button>
           <h2>{title}</h2>

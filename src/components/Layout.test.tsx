@@ -63,7 +63,7 @@ describe('Layout', () => {
 
     renderLayout()
     await user.click(screen.getByRole('button', { name: 'Menu' }))
-    await user.click(screen.getByRole('button', { name: 'Se déconnecter' }))
+    await user.click(screen.getByRole('button', { name: 'Log out' }))
 
     expect(logout).toHaveBeenCalled()
   })

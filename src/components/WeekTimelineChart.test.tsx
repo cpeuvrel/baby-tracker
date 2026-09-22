@@ -58,14 +58,14 @@ describe('WeekTimelineChart', () => {
 
     render(<WeekTimelineChart onSelectDay={onSelectDay} selectedDayKey={dayKey(today)} />)
 
-    const headers = screen.getAllByRole('button', { name: /Voir le détail du/ })
+    const headers = screen.getAllByRole('button', { name: /See details for/ })
     expect(headers).toHaveLength(7)
 
     await user.click(headers[0])
     expect(onSelectDay).toHaveBeenCalled()
   })
 
-  it('hides sleep blocks when the Sommeil filter is toggled off', async () => {
+  it('hides sleep blocks when the Sleep filter is toggled off', async () => {
     const sleep: SleepEntry = {
       id: 's1',
       startedAt: new Date().toISOString(),
@@ -87,7 +87,7 @@ describe('WeekTimelineChart', () => {
     )
 
     expect(container.querySelectorAll('.week-chart-block')).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: 'Sommeil' }))
+    await user.click(screen.getByRole('button', { name: 'Sleep' }))
     expect(container.querySelectorAll('.week-chart-block')).toHaveLength(0)
   })
 
@@ -100,11 +100,11 @@ describe('WeekTimelineChart', () => {
       diaper: [],
     })
     render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
-    expect(screen.getByText('mars 2026')).toBeInTheDocument()
+    expect(screen.getByText('March 2026')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Semaine précédente' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Previous week' }))
 
-    expect(screen.getByText('février 2026')).toBeInTheDocument()
+    expect(screen.getByText('February 2026')).toBeInTheDocument()
     vi.useRealTimers()
   })
 })

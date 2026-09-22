@@ -55,7 +55,7 @@ export function ReminderSettingsModal({ medicationName, onClose }: ReminderSetti
   }
 
   return (
-    <Modal title={`Rappel ${medicationName}`} bandColorVar="--category-medication" onClose={onClose}>
+    <Modal title={`${medicationName} Reminder`} bandColorVar="--category-medication" onClose={onClose}>
       <div>
         <label>
           <input
@@ -63,11 +63,11 @@ export function ReminderSettingsModal({ medicationName, onClose }: ReminderSetti
             checked={active}
             onChange={(event) => handleToggleActive(event.target.checked)}
           />
-          Rappel actif
+          Reminder active
         </label>
       </div>
       <div>
-        <label htmlFor="reminder-time">Heure du rappel</label>
+        <label htmlFor="reminder-time">Reminder time</label>
         <input
           id="reminder-time"
           type="time"
@@ -81,11 +81,11 @@ export function ReminderSettingsModal({ medicationName, onClose }: ReminderSetti
           onClick={() => void handleEnableNotifications()}
           disabled={notificationStatus === 'requesting' || notificationStatus === 'enabled'}
         >
-          {notificationStatus === 'enabled' ? 'Notifications activées' : 'Activer les notifications'}
+          {notificationStatus === 'enabled' ? 'Notifications enabled' : 'Enable notifications'}
         </button>
         {notificationStatus === 'denied' && (
           <p role="alert">
-            Notifications refusées ou indisponibles sur cet appareil/navigateur.
+            Notifications denied or unavailable on this device/browser.
           </p>
         )}
       </div>

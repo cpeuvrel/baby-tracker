@@ -4,13 +4,14 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { toDatetimeLocalValue } from '../lib/datetimeInput'
 import { deleteFeedingEntry, logFeeding, updateFeedingEntry } from '../repositories/feedingEntries'
 import type { FeedingEntry, FeedingType } from '../types/models'
+import { Modal } from './Modal'
 
 interface FeedingFormProps {
   entry?: FeedingEntry
-  onSaved: () => void
+  onClose: () => void
 }
 
-export function FeedingForm({ entry, onSaved }: FeedingFormProps) {
+export function FeedingForm({ entry, onClose }: FeedingFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [type, setType] = useState<FeedingType>(entry?.type ?? 'bottle')
@@ -23,8 +24,7 @@ export function FeedingForm({ entry, onSaved }: FeedingFormProps) {
 
   if (!household || !selectedBaby || !user) return null
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submit = () => {
     const input = {
       type,
       occurredAt: new Date(occurredAt),
@@ -37,73 +37,84 @@ export function FeedingForm({ entry, onSaved }: FeedingFormProps) {
     } else {
       void logFeeding(household.id, selectedBaby.id, user.uid, input)
     }
-    onSaved()
+    onClose()
+  }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    submit()
   }
 
   const handleDelete = () => {
     if (!entry) return
-    if (!window.confirm('Supprimer cette entrée ?')) return
+    if (!window.confirm('Delete this entry?')) return
     void deleteFeedingEntry(household.id, selectedBaby.id, entry.id)
-    onSaved()
+    onClose()
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div role="group" aria-label="Type">
-        <button type="button" aria-pressed={type === 'bottle'} onClick={() => setType('bottle')}>
-          Biberon
-        </button>
-        <button type="button" aria-pressed={type === 'solid'} onClick={() => setType('solid')}>
-          Solide
-        </button>
-      </div>
-      <div>
-        <label htmlFor="feeding-occurred-at">Heure</label>
-        <input
-          id="feeding-occurred-at"
-          type="datetime-local"
-          value={occurredAt}
-          onChange={(event) => setOccurredAt(event.target.value)}
-        />
-      </div>
-      {type === 'bottle' ? (
+    <Modal
+      title="Feed"
+      bandColorVar="--category-feeding"
+      onClose={onClose}
+      headerAction={{ label: 'Save', onClick: submit }}
+    >
+      <form onSubmit={handleSubmit}>
+        <div role="group" aria-label="Type">
+          <button type="button" aria-pressed={type === 'bottle'} onClick={() => setType('bottle')}>
+            Bottle
+          </button>
+          <button type="button" aria-pressed={type === 'solid'} onClick={() => setType('solid')}>
+            Solid
+          </button>
+        </div>
         <div>
-          <label htmlFor="feeding-volume">Volume (mL, optionnel)</label>
+          <label htmlFor="feeding-occurred-at">Time</label>
           <input
-            id="feeding-volume"
-            type="number"
-            min="0"
-            inputMode="numeric"
-            value={volumeMl}
-            onChange={(event) => setVolumeMl(event.target.value)}
+            id="feeding-occurred-at"
+            type="datetime-local"
+            value={occurredAt}
+            onChange={(event) => setOccurredAt(event.target.value)}
           />
         </div>
-      ) : (
+        {type === 'bottle' ? (
+          <div>
+            <label htmlFor="feeding-volume">Volume (mL, optional)</label>
+            <input
+              id="feeding-volume"
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={volumeMl}
+              onChange={(event) => setVolumeMl(event.target.value)}
+            />
+          </div>
+        ) : (
+          <div>
+            <label htmlFor="feeding-food-type">Food (optional)</label>
+            <input
+              id="feeding-food-type"
+              type="text"
+              value={foodType}
+              onChange={(event) => setFoodType(event.target.value)}
+            />
+          </div>
+        )}
         <div>
-          <label htmlFor="feeding-food-type">Aliment (optionnel)</label>
+          <label htmlFor="feeding-notes">Notes (optional)</label>
           <input
-            id="feeding-food-type"
+            id="feeding-notes"
             type="text"
-            value={foodType}
-            onChange={(event) => setFoodType(event.target.value)}
+            value={notes}
+            onChange={(event) => setNotes(event.target.value)}
           />
         </div>
-      )}
-      <div>
-        <label htmlFor="feeding-notes">Notes (optionnel)</label>
-        <input
-          id="feeding-notes"
-          type="text"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
-      <button type="submit">Enregistrer</button>
-      {entry && (
-        <button type="button" className="button-delete" onClick={handleDelete}>
-          Supprimer
-        </button>
-      )}
-    </form>
+        {entry && (
+          <button type="button" className="button-delete" onClick={handleDelete}>
+            Delete
+          </button>
+        )}
+      </form>
+    </Modal>
   )
 }

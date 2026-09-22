@@ -43,17 +43,17 @@ describe('SettingsSection', () => {
   it('pre-fills the profile form with the selected baby', () => {
     render(<SettingsSection />)
 
-    expect(screen.getByLabelText('Prénom du bébé')).toHaveValue('Léo')
-    expect(screen.getByLabelText('Date de naissance')).toHaveValue('2025-06-01')
+    expect(screen.getByLabelText("Baby's first name")).toHaveValue('Léo')
+    expect(screen.getByLabelText('Date of birth')).toHaveValue('2025-06-01')
   })
 
   it('saves the edited profile', async () => {
     const user = userEvent.setup()
 
     render(<SettingsSection />)
-    await user.clear(screen.getByLabelText('Prénom du bébé'))
-    await user.type(screen.getByLabelText('Prénom du bébé'), 'Léo Martin')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer le profil' }))
+    await user.clear(screen.getByLabelText("Baby's first name"))
+    await user.type(screen.getByLabelText("Baby's first name"), 'Léo Martin')
+    await user.click(screen.getByRole('button', { name: 'Save profile' }))
 
     expect(updateBaby).toHaveBeenCalledWith('h1', 'b1', 'Léo Martin', '2025-06-01')
   })
@@ -62,14 +62,14 @@ describe('SettingsSection', () => {
     const user = userEvent.setup()
 
     render(<SettingsSection />)
-    expect(screen.getByRole('button', { name: 'Métrique (kg/cm)' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Metric (kg/cm)' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )
 
-    await user.click(screen.getByRole('button', { name: 'Impérial (lb/in)' }))
+    await user.click(screen.getByRole('button', { name: 'Imperial (lb/in)' }))
 
-    expect(screen.getByRole('button', { name: 'Impérial (lb/in)' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Imperial (lb/in)' })).toHaveAttribute(
       'aria-pressed',
       'true',
     )

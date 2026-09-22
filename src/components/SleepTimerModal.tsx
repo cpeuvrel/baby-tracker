@@ -51,11 +51,11 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   }
 
   const startTimeValue = activeEntry ? toDatetimeLocalValue(new Date(activeEntry.startedAt)) : startedAt
-  const counter = isActive ? formatDuration(elapsedSeconds) : pendingStart ? 'Démarrage…' : '—'
+  const counter = isActive ? formatDuration(elapsedSeconds) : pendingStart ? 'Starting…' : '—'
 
   return (
     <Modal
-      title="Sommeil"
+      title="Sleep"
       bandColorVar="--category-sleep"
       onClose={onClose}
       headerAction={{ label: 'Save', onClick: handleSave }}
@@ -93,7 +93,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
         />
       </div>
       <div>
-        <label htmlFor="sleep-notes">Notes (optionnel)</label>
+        <label htmlFor="sleep-notes">Notes (optional)</label>
         <input
           id="sleep-notes"
           type="text"

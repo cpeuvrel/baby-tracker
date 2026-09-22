@@ -136,7 +136,7 @@ export function CategoryCard({
         {moreLines.length > 0 && (
           <>
             <button type="button" className="link-button" onClick={() => setExpanded((value) => !value)}>
-              {expanded ? 'Réduire' : 'Voir plus'}
+              {expanded ? 'Show less' : 'Show more'}
             </button>
             {expanded && (
               <ul>

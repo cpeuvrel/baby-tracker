@@ -36,8 +36,7 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
     setEndedAt(toDatetimeLocalValue(new Date(new Date(startedAt).getTime() + minutes * 60000)))
   }
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
+  const submit = () => {
     void updateSleepEntry(household.id, selectedBaby.id, entry.id, {
       startedAt: new Date(startedAt),
       endedAt: endedAt !== '' ? new Date(endedAt) : null,
@@ -46,21 +45,31 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
     onClose()
   }
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    submit()
+  }
+
   const handleDelete = () => {
-    if (!window.confirm('Supprimer cette entrée ?')) return
+    if (!window.confirm('Delete this entry?')) return
     void deleteSleepEntry(household.id, selectedBaby.id, entry.id)
     onClose()
   }
 
   return (
-    <Modal title="Sommeil" bandColorVar="--category-sleep" onClose={onClose}>
+    <Modal
+      title="Sleep"
+      bandColorVar="--category-sleep"
+      onClose={onClose}
+      headerAction={{ label: 'Save', onClick: submit }}
+    >
       <form onSubmit={handleSubmit}>
         <p className="modal-field-label">Total Time</p>
         <p className="modal-counter">
           {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
         </p>
         <div>
-          <label htmlFor="sleep-duration">Durée (minutes)</label>
+          <label htmlFor="sleep-duration">Duration (minutes)</label>
           <input
             id="sleep-duration"
             type="number"
@@ -89,7 +98,7 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
           />
         </div>
         <div>
-          <label htmlFor="sleep-notes">Notes (optionnel)</label>
+          <label htmlFor="sleep-notes">Notes (optional)</label>
           <input
             id="sleep-notes"
             type="text"
@@ -97,9 +106,8 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
             onChange={(event) => setNotes(event.target.value)}
           />
         </div>
-        <button type="submit">Enregistrer</button>
         <button type="button" className="button-delete" onClick={handleDelete}>
-          Supprimer
+          Delete
         </button>
       </form>
     </Modal>

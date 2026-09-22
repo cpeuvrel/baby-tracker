@@ -8,59 +8,59 @@ describe('CategoryCard', () => {
   it('shows the empty label when there is no primary entry', () => {
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
         primary={null}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
       />,
     )
 
-    expect(screen.getByText('Aucune entrée')).toBeInTheDocument()
+    expect(screen.getByText('No entries')).toBeInTheDocument()
   })
 
-  it('shows the primary label and meta without a Voir plus link when there is nothing more', () => {
+  it('shows the primary label and meta without a Show more link when there is nothing more', () => {
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
         moreLines={[]}
       />,
     )
 
-    expect(screen.getByText('Réveillé')).toBeInTheDocument()
-    expect(screen.getByText('il y a 30min')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
+    expect(screen.getByText('Woke up')).toBeInTheDocument()
+    expect(screen.getByText('30m ago')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
   })
 
-  it('expands to show older entries on Voir plus', async () => {
+  it('expands to show older entries on Show more', async () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
-        moreLines={[{ title: 'Entrée plus ancienne', onClick: vi.fn() }]}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
+        moreLines={[{ title: 'Older entry', onClick: vi.fn() }]}
       />,
     )
 
-    expect(screen.queryByText('Entrée plus ancienne')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+    expect(screen.queryByText('Older entry')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
 
-    expect(screen.getByText('Entrée plus ancienne')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Réduire' })).toBeInTheDocument()
+    expect(screen.getByText('Older entry')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument()
   })
 
   it('calls the onClick of a more-line entry when clicked', async () => {
@@ -68,19 +68,19 @@ describe('CategoryCard', () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
-        moreLines={[{ title: 'Entrée plus ancienne', onClick: onSelect }]}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
+        moreLines={[{ title: 'Older entry', onClick: onSelect }]}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
-    await user.click(screen.getByRole('button', { name: /Entrée plus ancienne/ }))
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await user.click(screen.getByRole('button', { name: /Older entry/ }))
 
     expect(onSelect).toHaveBeenCalled()
   })
@@ -89,43 +89,43 @@ describe('CategoryCard', () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Nourriture"
+        title="Feed"
         colorVar="--category-feeding"
-        addLabel="Ajouter une entrée nourriture"
+        addLabel="Add a feeding entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Dernier biberon', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
-        moreLines={[{ title: '08:33 Biberon', value: '40 mL', barFraction: 0.5, onClick: vi.fn() }]}
+        primary={{ label: 'Last feeding', meta: '30m ago' }}
+        emptyLabel="No entries"
+        moreLines={[{ title: '08:33 Bottle', value: '40 mL', barFraction: 0.5, onClick: vi.fn() }]}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+    await user.click(screen.getByRole('button', { name: 'Show more' }))
 
     expect(screen.getByText('40 mL')).toBeInTheDocument()
   })
 
-  it('shows today lines directly, without a Voir plus toggle', async () => {
+  it('shows today lines directly, without a Show more toggle', async () => {
     const onSelectToday = vi.fn()
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
-        todayLines={[{ title: 'Entrée du jour', onClick: onSelectToday }]}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
+        todayLines={[{ title: "Today's entry", onClick: onSelectToday }]}
         moreLines={[]}
       />,
     )
 
-    expect(screen.getByText('Entrée du jour')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
+    expect(screen.getByText("Today's entry")).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: /Entrée du jour/ }))
+    await user.click(screen.getByRole('button', { name: /Today's entry/ }))
 
     expect(onSelectToday).toHaveBeenCalled()
   })
@@ -133,20 +133,20 @@ describe('CategoryCard', () => {
   it('shows a custom add icon and active styling when provided', () => {
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Voir le chrono en cours"
+        addLabel="View the running timer"
         onAdd={vi.fn()}
         addIcon={<TimerIcon />}
         addActive
         icon={<SleepIcon />}
         primary={null}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
       />,
     )
 
-    const addButton = screen.getByRole('button', { name: 'Voir le chrono en cours' })
+    const addButton = screen.getByRole('button', { name: 'View the running timer' })
     expect(addButton.className).toContain('add-button-active')
   })
 
@@ -155,19 +155,19 @@ describe('CategoryCard', () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
         onSelectPrimary={onSelectPrimary}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
       />,
     )
 
-    await user.click(screen.getByText('Réveillé'))
+    await user.click(screen.getByText('Woke up'))
 
     expect(onSelectPrimary).toHaveBeenCalled()
   })
@@ -177,18 +177,18 @@ describe('CategoryCard', () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Sommeil"
+        title="Sleep"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel="Add a sleep entry"
         onAdd={onAdd}
         icon={<SleepIcon />}
         primary={null}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Ajouter une entrée sommeil' }))
+    await user.click(screen.getByRole('button', { name: 'Add a sleep entry' }))
 
     expect(onAdd).toHaveBeenCalled()
   })
@@ -198,19 +198,19 @@ describe('CategoryCard', () => {
     const user = userEvent.setup()
     render(
       <CategoryCard
-        title="Médicament"
+        title="Medication"
         colorVar="--category-medication"
-        addLabel="Ajouter une prise"
+        addLabel="Add a dose"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
         primary={null}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
-        secondaryAction={{ label: 'Régler le rappel', onClick: onSecondary }}
+        secondaryAction={{ label: 'Set reminder', onClick: onSecondary }}
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Régler le rappel' }))
+    await user.click(screen.getByRole('button', { name: 'Set reminder' }))
 
     expect(onSecondary).toHaveBeenCalled()
   })
@@ -218,13 +218,13 @@ describe('CategoryCard', () => {
   it('shows the highlight value next to the primary entry', () => {
     render(
       <CategoryCard
-        title="Nourriture"
+        title="Feed"
         colorVar="--category-feeding"
-        addLabel="Ajouter une entrée nourriture"
+        addLabel="Add a feeding entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
-        primary={{ label: 'Dernier biberon', meta: 'il y a 30min' }}
-        emptyLabel="Aucune entrée"
+        primary={{ label: 'Last feeding', meta: '30m ago' }}
+        emptyLabel="No entries"
         moreLines={[]}
         highlight={{ value: '120', unit: 'mL' }}
       />,
@@ -237,13 +237,13 @@ describe('CategoryCard', () => {
   it('does not show a highlight value when there is no primary entry', () => {
     render(
       <CategoryCard
-        title="Nourriture"
+        title="Feed"
         colorVar="--category-feeding"
-        addLabel="Ajouter une entrée nourriture"
+        addLabel="Add a feeding entry"
         onAdd={vi.fn()}
         icon={<SleepIcon />}
         primary={null}
-        emptyLabel="Aucune entrée"
+        emptyLabel="No entries"
         moreLines={[]}
         highlight={{ value: '120', unit: 'mL' }}
       />,

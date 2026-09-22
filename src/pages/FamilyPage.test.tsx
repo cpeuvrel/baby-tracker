@@ -70,7 +70,7 @@ describe('FamilyPage', () => {
 
     expect(screen.getByText('parent1@example.com')).toBeInTheDocument()
     expect(screen.getByText('Your Profile')).toBeInTheDocument()
-    expect(screen.getByText('Autre parent')).toBeInTheDocument()
+    expect(screen.getByText('Other caregiver')).toBeInTheDocument()
   })
 
   it('adds a new child with the entered name and birth date', async () => {
@@ -84,8 +84,8 @@ describe('FamilyPage', () => {
     const user = userEvent.setup()
 
     render(<FamilyPage />)
-    await user.type(screen.getByLabelText('Prénom'), 'Nina')
-    await user.type(screen.getByLabelText('Date de naissance'), '2026-01-15')
+    await user.type(screen.getByLabelText('First name'), 'Nina')
+    await user.type(screen.getByLabelText('Date of birth'), '2026-01-15')
     await user.click(screen.getByRole('button', { name: 'Add child' }))
 
     expect(addBaby).toHaveBeenCalledWith('h1', 'Nina', '2026-01-15')

@@ -10,7 +10,7 @@ interface DailyBarChartProps {
 }
 
 function formatDay(key: string): string {
-  return parseDayKey(key).toLocaleDateString('fr-FR', { weekday: 'short' })
+  return parseDayKey(key).toLocaleDateString('en-US', { weekday: 'short' })
 }
 
 export function DailyBarChart({ title, data, seriesColorVar, formatValue }: DailyBarChartProps) {

@@ -9,7 +9,7 @@ const TABS = [
 
 export function TabBar() {
   return (
-    <nav aria-label="Navigation principale" className="tab-bar">
+    <nav aria-label="Main navigation" className="tab-bar">
       <ul>
         {TABS.map((tab) => (
           <li key={tab.to}>

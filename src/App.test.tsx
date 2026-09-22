@@ -32,7 +32,7 @@ describe('App', () => {
   it('shows a loading state before the auth listener resolves', () => {
     render(<App />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('Chargement…')
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
   })
 
   it('renders the login page when signed out', async () => {
@@ -41,7 +41,7 @@ describe('App', () => {
     mockAuth.emit(null)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Se connecter' })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument(),
     )
   })
 
@@ -51,7 +51,7 @@ describe('App', () => {
     mockAuth.emit({ email: 'parent@example.com' } as User)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Se déconnecter' })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument(),
     )
     expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument()
   })

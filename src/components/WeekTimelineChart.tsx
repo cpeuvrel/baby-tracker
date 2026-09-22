@@ -7,14 +7,14 @@ import type { DateRange } from '../lib/timeline'
 
 const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21, 24]
 const MIN_VISIBLE_BLOCK_MS = 60_000
-const DAY_LABELS = ['Lu', 'Ma', 'Me', 'Je', 'Ve', 'Sa', 'Di']
+const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
 type EntryKind = 'sleep' | 'feeding' | 'diaper'
 
 const KIND_OPTIONS: { kind: EntryKind; label: string; colorVar: string }[] = [
-  { kind: 'sleep', label: 'Sommeil', colorVar: '--category-sleep' },
-  { kind: 'feeding', label: 'Biberon', colorVar: '--category-feeding' },
-  { kind: 'diaper', label: 'Couche', colorVar: '--category-diaper' },
+  { kind: 'sleep', label: 'Sleep', colorVar: '--category-sleep' },
+  { kind: 'feeding', label: 'Feed', colorVar: '--category-feeding' },
+  { kind: 'diaper', label: 'Diaper', colorVar: '--category-diaper' },
 ]
 
 function startOfWeek(reference: Date): Date {
@@ -98,22 +98,22 @@ export function WeekTimelineChart({ onSelectDay, selectedDayKey }: WeekTimelineC
     })
   }
 
-  const monthLabel = weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const monthLabel = weekStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const todayKey = dayKey(new Date())
 
   return (
-    <section aria-label="Calendrier de la semaine" className="week-chart">
+    <section aria-label="Week calendar" className="week-chart">
       <div className="week-chart-nav">
-        <button type="button" aria-label="Semaine précédente" onClick={() => setWeekOffset((v) => v - 1)}>
+        <button type="button" aria-label="Previous week" onClick={() => setWeekOffset((v) => v - 1)}>
           ‹
         </button>
         <span className="week-chart-month">{monthLabel}</span>
-        <button type="button" aria-label="Semaine suivante" onClick={() => setWeekOffset((v) => v + 1)}>
+        <button type="button" aria-label="Next week" onClick={() => setWeekOffset((v) => v + 1)}>
           ›
         </button>
       </div>
 
-      <div role="group" aria-label="Filtrer par type">
+      <div role="group" aria-label="Filter by type">
         {KIND_OPTIONS.map(({ kind, label }) => (
           <button
             key={kind}
@@ -142,7 +142,7 @@ export function WeekTimelineChart({ onSelectDay, selectedDayKey }: WeekTimelineC
                 type="button"
                 className={`week-chart-day-header${isSelected ? ' is-selected' : ''}${isToday ? ' is-today' : ''}`}
                 onClick={() => onSelectDay(date)}
-                aria-label={`Voir le détail du ${date.toLocaleDateString('fr-FR')}`}
+                aria-label={`See details for ${date.toLocaleDateString('en-US')}`}
               >
                 <span>{DAY_LABELS[index]}</span>
                 <span>{date.getDate()}</span>

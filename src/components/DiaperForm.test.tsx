@@ -21,7 +21,7 @@ const entry: DiaperEntry = {
   id: 'd1',
   type: 'wet',
   occurredAt: '2026-03-05T09:00:00.000Z',
-  notes: 'note existante',
+  notes: 'existing note',
   createdBy: 'uid1',
   createdAt: '2026-03-05T09:00:00.000Z',
 }
@@ -46,28 +46,28 @@ describe('DiaperForm', () => {
     })
   })
 
-  it('logs a diaper change with the selected type and notes, then calls onSaved', async () => {
-    const onSaved = vi.fn()
+  it('logs a diaper change with the selected type and notes, then calls onClose', async () => {
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<DiaperForm onSaved={onSaved} />)
-    await user.type(screen.getByLabelText('Notes (optionnel)'), 'un peu rouge')
+    render(<DiaperForm onClose={onClose} />)
+    await user.type(screen.getByLabelText('Notes (optional)'), 'a bit red')
     await user.click(screen.getByRole('button', { name: 'Dirty' }))
 
     expect(logDiaper).toHaveBeenCalledWith(
       'h1',
       'b1',
       'uid1',
-      expect.objectContaining({ type: 'dirty', notes: 'un peu rouge' }),
+      expect.objectContaining({ type: 'dirty', notes: 'a bit red' }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('logs a dry diaper check', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<DiaperForm onSaved={onSaved} />)
+    render(<DiaperForm onClose={onClose} />)
     await user.click(screen.getByRole('button', { name: 'Dry' }))
 
     expect(logDiaper).toHaveBeenCalledWith(
@@ -79,36 +79,36 @@ describe('DiaperForm', () => {
   })
 
   it('prefills the form from an existing entry and updates it on save', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    render(<DiaperForm entry={entry} onSaved={onSaved} />)
+    render(<DiaperForm entry={entry} onClose={onClose} />)
 
-    expect(screen.getByDisplayValue('note existante')).toBeInTheDocument()
+    expect(screen.getByDisplayValue('existing note')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Wet' })).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'Dirty' }))
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateDiaperEntry).toHaveBeenCalledWith(
       'h1',
       'b1',
       'd1',
-      expect.objectContaining({ type: 'dirty', notes: 'note existante' }),
+      expect.objectContaining({ type: 'dirty', notes: 'existing note' }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
     expect(logDiaper).not.toHaveBeenCalled()
   })
 
   it('deletes the entry after confirmation', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    render(<DiaperForm entry={entry} onSaved={onSaved} />)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    render(<DiaperForm entry={entry} onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteDiaperEntry).toHaveBeenCalledWith('h1', 'b1', 'd1')
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 })

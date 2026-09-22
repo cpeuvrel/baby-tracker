@@ -23,23 +23,23 @@ export interface EntryRow {
 }
 
 function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
 }
 
 export function summarizeFeedingPrimary(entry: FeedingEntry, now: Date): PrimarySummary {
   const meta = formatRelativeTime(new Date(entry.occurredAt), now)
-  if (entry.type === 'bottle') return { label: 'Dernier biberon', meta }
-  return { label: entry.foodType ? entry.foodType : 'Dernier repas', meta }
+  if (entry.type === 'bottle') return { label: 'Last feeding', meta }
+  return { label: entry.foodType ? entry.foodType : 'Last meal', meta }
 }
 
 export function summarizeSleepPrimary(entry: SleepEntry, now: Date): PrimarySummary {
   const meta = formatRelativeTime(new Date(entry.startedAt), now)
-  if (entry.durationSeconds != null) return { label: 'Réveillé', meta }
-  return { label: 'En cours', meta: `depuis ${meta}` }
+  if (entry.durationSeconds != null) return { label: 'Woke up', meta }
+  return { label: 'Sleeping', meta: `since ${meta}` }
 }
 
 export function summarizeDiaperPrimary(entry: DiaperEntry, now: Date): PrimarySummary {
@@ -61,7 +61,7 @@ export function summarizeMedicationPrimary(entry: MedicationEntry, now: Date): P
 export function summarizeFeedingRow(entry: FeedingEntry, maxVolumeMl: number): EntryRow {
   const time = formatClock(entry.occurredAt)
   if (entry.type === 'bottle') {
-    const title = `${time} Biberon`
+    const title = `${time} Bottle`
     if (entry.volumeMl == null) return { title }
     return {
       title,
@@ -69,17 +69,17 @@ export function summarizeFeedingRow(entry: FeedingEntry, maxVolumeMl: number): E
       barFraction: maxVolumeMl > 0 ? entry.volumeMl / maxVolumeMl : 0,
     }
   }
-  return { title: `${time} ${entry.foodType ?? 'Solide'}` }
+  return { title: `${time} ${entry.foodType ?? 'Solid'}` }
 }
 
 export function summarizeSleepRow(entry: SleepEntry, now: Date, maxDurationSeconds: number): EntryRow {
   const startTime = formatClock(entry.startedAt)
   if (entry.endedAt == null) {
-    return { title: `${startTime} En cours` }
+    return { title: `${startTime} Timer running` }
   }
 
   const prefix = isYesterday(entry.startedAt, now)
-    ? 'Hier '
+    ? 'Yesterday '
     : isToday(entry.startedAt, now)
       ? ''
       : `${formatShortDate(entry.startedAt)} `

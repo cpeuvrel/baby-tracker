@@ -26,12 +26,12 @@ const entry: FeedingEntry = {
   occurredAt: '2026-03-05T09:00:00.000Z',
   volumeMl: 120,
   foodType: null,
-  notes: 'note existante',
+  notes: 'existing note',
   createdBy: 'uid1',
   createdAt: '2026-03-05T09:00:00.000Z',
 }
 
-function renderFeedingForm(onSaved = vi.fn(), feedingEntry?: FeedingEntry) {
+function renderFeedingForm(onClose = vi.fn(), feedingEntry?: FeedingEntry) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
     loading: false,
@@ -45,7 +45,7 @@ function renderFeedingForm(onSaved = vi.fn(), feedingEntry?: FeedingEntry) {
     selectedBaby: baby,
     selectBaby: vi.fn(),
   })
-  render(<FeedingForm entry={feedingEntry} onSaved={onSaved} />)
+  render(<FeedingForm entry={feedingEntry} onClose={onClose} />)
 }
 
 describe('FeedingForm', () => {
@@ -55,14 +55,14 @@ describe('FeedingForm', () => {
     deleteFeedingEntry.mockReset()
   })
 
-  it('logs a bottle feeding with the entered volume, defaulting the time to now, then calls onSaved', async () => {
+  it('logs a bottle feeding with the entered volume, defaulting the time to now, then calls onClose', async () => {
     const before = Date.now()
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    renderFeedingForm(onSaved)
-    await user.type(screen.getByLabelText('Volume (mL, optionnel)'), '120')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    renderFeedingForm(onClose)
+    await user.type(screen.getByLabelText('Volume (mL, optional)'), '120')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logFeeding).toHaveBeenCalledTimes(1)
     const [, , , input] = logFeeding.mock.calls[0]
@@ -70,57 +70,57 @@ describe('FeedingForm', () => {
     expect(input.occurredAt).toBeInstanceOf(Date)
     expect(input.occurredAt.getTime()).toBeGreaterThanOrEqual(before - 60_000)
     expect(input.occurredAt.getTime()).toBeLessThanOrEqual(Date.now() + 60_000)
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('logs a solid feeding with the entered food type', async () => {
     const user = userEvent.setup()
 
     renderFeedingForm()
-    await user.click(screen.getByRole('button', { name: 'Solide' }))
-    await user.type(screen.getByLabelText('Aliment (optionnel)'), 'purée carotte')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Solid' }))
+    await user.type(screen.getByLabelText('Food (optional)'), 'carrot purée')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logFeeding).toHaveBeenCalledTimes(1)
     const [, , , input] = logFeeding.mock.calls[0]
     expect(input).toMatchObject({
       type: 'solid',
       volumeMl: null,
-      foodType: 'purée carotte',
+      foodType: 'carrot purée',
       notes: '',
     })
   })
 
   it('prefills the form from an existing entry and updates it on save', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    renderFeedingForm(onSaved, entry)
+    renderFeedingForm(onClose, entry)
 
-    expect(screen.getByLabelText('Volume (mL, optionnel)')).toHaveValue(120)
-    expect(screen.getByDisplayValue('note existante')).toBeInTheDocument()
+    expect(screen.getByLabelText('Volume (mL, optional)')).toHaveValue(120)
+    expect(screen.getByDisplayValue('existing note')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateFeedingEntry).toHaveBeenCalledWith(
       'h1',
       'b1',
       'f1',
-      expect.objectContaining({ type: 'bottle', volumeMl: 120, notes: 'note existante' }),
+      expect.objectContaining({ type: 'bottle', volumeMl: 120, notes: 'existing note' }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
     expect(logFeeding).not.toHaveBeenCalled()
   })
 
   it('deletes the entry after confirmation', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    renderFeedingForm(onSaved, entry)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    renderFeedingForm(onClose, entry)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteFeedingEntry).toHaveBeenCalledWith('h1', 'b1', 'f1')
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 })

@@ -14,14 +14,14 @@ export function ActiveTimersBanner() {
   return (
     <div role="status" aria-live="polite">
       <p>
-        Sommeil en cours depuis {formatDuration(sleepElapsed)}{' '}
+        Sleep in progress for {formatDuration(sleepElapsed)}{' '}
         <button
           type="button"
           onClick={() =>
             void stopSleep(household.id, selectedBaby.id, sleepEntry.id, new Date(sleepEntry.startedAt))
           }
         >
-          Arrêter
+          Stop
         </button>
       </p>
     </div>

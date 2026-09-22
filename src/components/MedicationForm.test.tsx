@@ -22,15 +22,15 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
 
 const entry: MedicationEntry = {
   id: 'm1',
-  name: 'Vitamine D',
+  name: 'Vitamin D',
   givenAt: '2026-03-05T09:00:00.000Z',
-  dose: '2 gouttes',
-  notes: 'note existante',
+  dose: '2 drops',
+  notes: 'existing note',
   createdBy: 'uid1',
   createdAt: '2026-03-05T09:00:00.000Z',
 }
 
-function renderMedicationForm(onSaved = vi.fn(), medicationEntry?: MedicationEntry) {
+function renderMedicationForm(onClose = vi.fn(), medicationEntry?: MedicationEntry) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
     loading: false,
@@ -44,7 +44,7 @@ function renderMedicationForm(onSaved = vi.fn(), medicationEntry?: MedicationEnt
     selectedBaby: baby,
     selectBaby: vi.fn(),
   })
-  render(<MedicationForm entry={medicationEntry} onSaved={onSaved} />)
+  render(<MedicationForm entry={medicationEntry} onClose={onClose} />)
 }
 
 describe('MedicationForm', () => {
@@ -54,64 +54,64 @@ describe('MedicationForm', () => {
     deleteMedicationEntry.mockReset()
   })
 
-  it('defaults the medication name to Vitamine D and submits with the entered dose', async () => {
-    const onSaved = vi.fn()
+  it('defaults the medication name to Vitamin D and submits with the entered dose', async () => {
+    const onClose = vi.fn()
     const before = Date.now()
     const user = userEvent.setup()
 
-    renderMedicationForm(onSaved)
-    expect(screen.getByLabelText('Médicament')).toHaveValue('Vitamine D')
-    await user.type(screen.getByLabelText('Dose (optionnel)'), '2 gouttes')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    renderMedicationForm(onClose)
+    expect(screen.getByRole('textbox', { name: 'Medication' })).toHaveValue('Vitamin D')
+    await user.type(screen.getByLabelText('Dose (optional)'), '2 drops')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logMedication).toHaveBeenCalledTimes(1)
     const [, , , input] = logMedication.mock.calls[0]
-    expect(input).toMatchObject({ name: 'Vitamine D', dose: '2 gouttes', notes: '' })
+    expect(input).toMatchObject({ name: 'Vitamin D', dose: '2 drops', notes: '' })
     expect(input.givenAt).toBeInstanceOf(Date)
     expect(input.givenAt.getTime()).toBeGreaterThanOrEqual(before - 60_000)
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('does not submit when the medication name is cleared', async () => {
     const user = userEvent.setup()
 
     renderMedicationForm()
-    await user.clear(screen.getByLabelText('Médicament'))
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Medication' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logMedication).not.toHaveBeenCalled()
   })
 
   it('prefills the form from an existing entry and updates it on save', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
 
-    renderMedicationForm(onSaved, entry)
+    renderMedicationForm(onClose, entry)
 
-    expect(screen.getByLabelText('Dose (optionnel)')).toHaveValue('2 gouttes')
-    expect(screen.getByDisplayValue('note existante')).toBeInTheDocument()
+    expect(screen.getByLabelText('Dose (optional)')).toHaveValue('2 drops')
+    expect(screen.getByDisplayValue('existing note')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateMedicationEntry).toHaveBeenCalledWith(
       'h1',
       'b1',
       'm1',
-      expect.objectContaining({ name: 'Vitamine D', dose: '2 gouttes', notes: 'note existante' }),
+      expect.objectContaining({ name: 'Vitamin D', dose: '2 drops', notes: 'existing note' }),
     )
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
     expect(logMedication).not.toHaveBeenCalled()
   })
 
   it('deletes the entry after confirmation', async () => {
-    const onSaved = vi.fn()
+    const onClose = vi.fn()
     const user = userEvent.setup()
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
-    renderMedicationForm(onSaved, entry)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    renderMedicationForm(onClose, entry)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteMedicationEntry).toHaveBeenCalledWith('h1', 'b1', 'm1')
-    expect(onSaved).toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 })

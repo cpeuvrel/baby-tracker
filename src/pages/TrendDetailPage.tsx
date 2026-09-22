@@ -17,20 +17,20 @@ const RANGE_DAYS = [1, 7, 14]
 type ViewMode = 'calendar' | 'graph' | 'entries'
 
 function describeFeedingEntry(entry: { occurredAt: string; type: string; volumeMl: number | null; foodType: string | null }): string {
-  const time = new Date(entry.occurredAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  if (entry.type === 'bottle') return `${time} — Biberon${entry.volumeMl != null ? ` ${entry.volumeMl} mL` : ''}`
-  return `${time} — Solide${entry.foodType ? ` (${entry.foodType})` : ''}`
+  const time = new Date(entry.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  if (entry.type === 'bottle') return `${time} — Bottle${entry.volumeMl != null ? ` ${entry.volumeMl} mL` : ''}`
+  return `${time} — Solid${entry.foodType ? ` (${entry.foodType})` : ''}`
 }
 
 function describeSleepEntry(entry: { startedAt: string; durationSeconds: number | null }): string {
-  const time = new Date(entry.startedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  return `${time} — Sommeil${entry.durationSeconds != null ? ` (${formatMetricValue('sleepTotal', entry.durationSeconds)})` : ' (en cours)'}`
+  const time = new Date(entry.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  return `${time} — Sleep${entry.durationSeconds != null ? ` (${formatMetricValue('sleepTotal', entry.durationSeconds)})` : ' (in progress)'}`
 }
 
 function describeDiaperEntry(entry: { occurredAt: string; type: string }): string {
-  const time = new Date(entry.occurredAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  const time = new Date(entry.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
   const labels: Record<string, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
-  return `${time} — Couche (${labels[entry.type]})`
+  return `${time} — Diaper (${labels[entry.type]})`
 }
 
 export function TrendDetailPage() {
@@ -61,7 +61,7 @@ export function TrendDetailPage() {
   return (
     <div>
       <div className="detail-header">
-        <button type="button" aria-label="Retour" onClick={() => navigate('/trends')}>
+        <button type="button" aria-label="Back" onClick={() => navigate('/trends')}>
           ‹
         </button>
         <h2>{metric.title}</h2>
@@ -69,22 +69,22 @@ export function TrendDetailPage() {
 
       <p className="detail-headline">{formatMetricHeadline(metric.id, currentAvg)}</p>
 
-      <div role="group" aria-label="Vue">
+      <div role="group" aria-label="View">
         <button type="button" aria-pressed={view === 'calendar'} onClick={() => setView('calendar')}>
-          Calendrier
+          Calendar
         </button>
         <button type="button" aria-pressed={view === 'graph'} onClick={() => setView('graph')}>
-          Graphique
+          Graph
         </button>
         <button type="button" aria-pressed={view === 'entries'} onClick={() => setView('entries')}>
-          Entrées
+          Entries
         </button>
       </div>
 
-      <div role="group" aria-label="Période">
+      <div role="group" aria-label="Period">
         {RANGE_DAYS.map((d) => (
           <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)}>
-            {d}j
+            {d}d
           </button>
         ))}
       </div>
@@ -138,7 +138,7 @@ export function TrendDetailPage() {
       {delta.direction !== 'flat' && (
         <p className="detail-delta-caption">
           {delta.direction === 'up' ? '↑' : '↓'} {formatMetricValue(metric.id, Math.abs(delta.value))}{' '}
-          par rapport aux {days} jours précédents
+          vs. the previous {days} days
         </p>
       )}
     </div>

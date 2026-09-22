@@ -28,8 +28,8 @@ describe('summarizeFeedingPrimary', () => {
     }
 
     expect(summarizeFeedingPrimary(entry, now)).toEqual({
-      label: 'Dernier biberon',
-      meta: 'il y a 30min',
+      label: 'Last feeding',
+      meta: '30m ago',
     })
   })
 
@@ -39,21 +39,21 @@ describe('summarizeFeedingPrimary', () => {
       type: 'solid',
       occurredAt: '2026-03-05T11:30:00.000Z',
       volumeMl: null,
-      foodType: 'purée carotte',
+      foodType: 'carrot purée',
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
     expect(summarizeFeedingPrimary(entry, now)).toEqual({
-      label: 'purée carotte',
-      meta: 'il y a 30min',
+      label: 'carrot purée',
+      meta: '30m ago',
     })
   })
 })
 
 describe('summarizeSleepPrimary', () => {
-  it('labels a finished entry as "Réveillé"', () => {
+  it('labels a finished entry as "Woke up"', () => {
     const entry: SleepEntry = {
       id: 's1',
       startedAt: '2026-03-05T10:00:00.000Z',
@@ -64,10 +64,10 @@ describe('summarizeSleepPrimary', () => {
       createdAt: '2026-03-05T10:00:00.000Z',
     }
 
-    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Réveillé', meta: 'il y a 2h 00min' })
+    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Woke up', meta: '2h 00m ago' })
   })
 
-  it('labels an active entry as "En cours"', () => {
+  it('labels an active entry as "Sleeping"', () => {
     const entry: SleepEntry = {
       id: 's2',
       startedAt: '2026-03-05T11:30:00.000Z',
@@ -78,7 +78,7 @@ describe('summarizeSleepPrimary', () => {
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
-    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'En cours', meta: 'depuis il y a 30min' })
+    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Sleeping', meta: 'since 30m ago' })
   })
 })
 
@@ -93,7 +93,7 @@ describe('summarizeDiaperPrimary', () => {
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
-    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Wet + Dirty', meta: 'il y a 30min' })
+    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Wet + Dirty', meta: '30m ago' })
   })
 })
 
@@ -101,24 +101,24 @@ describe('summarizeMedicationPrimary', () => {
   it('includes the dose in the meta when present', () => {
     const entry: MedicationEntry = {
       id: 'm1',
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '2 gouttes',
+      dose: '2 drops',
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
     expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamine D',
-      meta: '2 gouttes — il y a 30min',
+      label: 'Vitamin D',
+      meta: '2 drops — 30m ago',
     })
   })
 
   it('omits the dose from the meta when absent', () => {
     const entry: MedicationEntry = {
       id: 'm2',
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: '2026-03-05T11:30:00.000Z',
       dose: '',
       notes: '',
@@ -127,8 +127,8 @@ describe('summarizeMedicationPrimary', () => {
     }
 
     expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamine D',
-      meta: 'il y a 30min',
+      label: 'Vitamin D',
+      meta: '30m ago',
     })
   })
 })
@@ -150,7 +150,7 @@ function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
 describe('summarizeFeedingRow', () => {
   it('shows the time, a bottle bar and value proportional to the given max', () => {
     expect(summarizeFeedingRow(feedingEntry({ volumeMl: 40 }), 150)).toEqual({
-      title: expect.stringContaining('Biberon'),
+      title: expect.stringContaining('Bottle'),
       value: '40 mL',
       barFraction: 40 / 150,
     })
@@ -165,11 +165,11 @@ describe('summarizeFeedingRow', () => {
 
   it('shows the food type for a solid entry, without a bar', () => {
     const row = summarizeFeedingRow(
-      feedingEntry({ type: 'solid', volumeMl: null, foodType: 'Figue' }),
+      feedingEntry({ type: 'solid', volumeMl: null, foodType: 'Fig' }),
       150,
     )
 
-    expect(row.title).toContain('Figue')
+    expect(row.title).toContain('Fig')
     expect(row.value).toBeUndefined()
   })
 })
@@ -196,19 +196,19 @@ describe('summarizeSleepRow', () => {
     expect(row.barFraction).toBe(1)
   })
 
-  it('shows an in-progress label without a bar for an active entry', () => {
+  it('shows a "Timer running" label without a bar for an active entry', () => {
     const row = summarizeSleepRow(
       sleepEntry({ endedAt: null, durationSeconds: null }),
       now,
       8100,
     )
 
-    expect(row.title).toContain('En cours')
+    expect(row.title).toContain('Timer running')
     expect(row.value).toBeUndefined()
     expect(row.barFraction).toBeUndefined()
   })
 
-  it('prefixes with "Hier" for an entry started the day before', () => {
+  it('prefixes with "Yesterday" for an entry started the day before', () => {
     const yesterday = new Date(now)
     yesterday.setDate(yesterday.getDate() - 1)
     yesterday.setHours(20, 0, 0, 0)
@@ -220,14 +220,14 @@ describe('summarizeSleepRow', () => {
       3600,
     )
 
-    expect(row.title.startsWith('Hier ')).toBe(true)
+    expect(row.title.startsWith('Yesterday ')).toBe(true)
   })
 })
 
 function formatDurationForTest(seconds: number): string {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
-  return `${hours}h ${String(minutes).padStart(2, '0')}min`
+  return `${hours}h ${String(minutes).padStart(2, '0')}m`
 }
 
 describe('summarizeDiaperRow', () => {
@@ -249,24 +249,24 @@ describe('summarizeMedicationRow', () => {
   it('shows the dose as the value when present', () => {
     const entry: MedicationEntry = {
       id: 'm1',
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: '2026-03-05T08:00:00.000Z',
-      dose: '2 gouttes',
+      dose: '2 drops',
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T08:00:00.000Z',
     }
 
     expect(summarizeMedicationRow(entry)).toEqual({
-      title: expect.stringContaining('Vitamine D'),
-      value: '2 gouttes',
+      title: expect.stringContaining('Vitamin D'),
+      value: '2 drops',
     })
   })
 
   it('omits the value when there is no dose', () => {
     const entry: MedicationEntry = {
       id: 'm2',
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: '2026-03-05T08:00:00.000Z',
       dose: '',
       notes: '',

@@ -157,11 +157,11 @@ describe('serializeBabyExport / parseImportFile (native format)', () => {
   })
 
   it('rejects an empty file', () => {
-    expect(() => parseImportFile('', 'uid1')).toThrow('Fichier vide')
+    expect(() => parseImportFile('', 'uid1')).toThrow('Empty file')
   })
 
   it('rejects an unrecognized CSV header', () => {
-    expect(() => parseImportFile('foo,bar\n1,2', 'uid1')).toThrow('Format de fichier CSV non reconnu')
+    expect(() => parseImportFile('foo,bar\n1,2', 'uid1')).toThrow('Unrecognized CSV file format')
   })
 })
 
@@ -235,7 +235,7 @@ describe('parseImportFile (Nara export format)', () => {
     const { data } = parseImportFile(csv, 'uid1')
 
     expect(data.feedingEntries).toEqual([
-      expect.objectContaining({ type: 'solid', foodType: 'Figue', notes: 'Déjeuner' }),
+      expect.objectContaining({ type: 'solid', foodType: 'Figue', notes: 'Lunch' }),
     ])
   })
 

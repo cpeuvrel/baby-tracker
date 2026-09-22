@@ -24,7 +24,7 @@ describe('Modal', () => {
         <p>Contenu</p>
       </Modal>,
     )
-    await user.click(screen.getByRole('button', { name: 'Fermer' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
 
     expect(onClose).toHaveBeenCalled()
   })

@@ -25,7 +25,7 @@ describe('DailyTimeline', () => {
 
     render(<DailyTimeline />)
 
-    expect(screen.getByText("Aucune entrée pour l'instant.")).toBeInTheDocument()
+    expect(screen.getByText('No entries yet.')).toBeInTheDocument()
   })
 
   it('describes feeding, sleep and diaper entries', () => {
@@ -65,9 +65,9 @@ describe('DailyTimeline', () => {
 
     render(<DailyTimeline />)
 
-    expect(screen.getByText(/Sommeil \(1h 30min\)/)).toBeInTheDocument()
-    expect(screen.getByText(/Biberon 120 mL/)).toBeInTheDocument()
-    expect(screen.getByText(/Couche \(Wet \+ Dirty\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Sleep \(1h 30m\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Bottle 120 mL/)).toBeInTheDocument()
+    expect(screen.getByText(/Diaper \(Wet \+ Dirty\)/)).toBeInTheDocument()
   })
 
   it('shows the food type for a solid feeding entry', () => {
@@ -76,7 +76,7 @@ describe('DailyTimeline', () => {
       type: 'solid',
       occurredAt: '2026-03-05T12:00:00.000Z',
       volumeMl: null,
-      foodType: 'purée carotte',
+      foodType: 'carrot purée',
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T12:00:00.000Z',
@@ -87,16 +87,16 @@ describe('DailyTimeline', () => {
 
     render(<DailyTimeline />)
 
-    expect(screen.getByText(/Solide \(purée carotte\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Solid \(carrot purée\)/)).toBeInTheDocument()
   })
 
   it('accepts a custom title and date', () => {
     const spy = vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([])
     const date = new Date('2026-03-04T00:00:00.000Z')
 
-    render(<DailyTimeline date={date} title="Mer. 4 mars" />)
+    render(<DailyTimeline date={date} title="Wed, Mar 4" />)
 
-    expect(screen.getByText('Mer. 4 mars')).toBeInTheDocument()
+    expect(screen.getByText('Wed, Mar 4')).toBeInTheDocument()
     expect(spy).toHaveBeenCalledWith('h1', 'b1', date)
   })
 })

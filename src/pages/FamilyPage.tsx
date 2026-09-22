@@ -25,7 +25,7 @@ export function FamilyPage() {
 
   return (
     <div>
-      <section aria-label="Enfants">
+      <section aria-label="Children">
         <h2>Children</h2>
         <ul className="list-group">
           {babies.map((baby) => (
@@ -37,7 +37,7 @@ export function FamilyPage() {
         </ul>
         <form onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="baby-name">Prénom</label>
+            <label htmlFor="baby-name">First name</label>
             <input
               id="baby-name"
               type="text"
@@ -47,7 +47,7 @@ export function FamilyPage() {
             />
           </div>
           <div>
-            <label htmlFor="baby-birth-date">Date de naissance</label>
+            <label htmlFor="baby-birth-date">Date of birth</label>
             <input
               id="baby-birth-date"
               type="date"
@@ -71,14 +71,14 @@ export function FamilyPage() {
             .filter((uid) => uid !== user?.uid)
             .map((uid) => (
               <li key={uid}>
-                <span>Autre parent</span>
+                <span>Other caregiver</span>
                 <span className="list-group-meta">{uid.slice(0, 8)}…</span>
               </li>
             ))}
         </ul>
         <p className="hint">
-          L'ajout d'un parent se fait via la console Firebase (compte email/mot de passe), pas
-          depuis l'app.
+          Adding a caregiver is done through the Firebase console (email/password account), not
+          from the app.
         </p>
       </section>
 

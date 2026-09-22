@@ -11,7 +11,7 @@ interface GrowthLineChartProps {
 }
 
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+  return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' })
 }
 
 export function GrowthLineChart({ data, formatValue }: GrowthLineChartProps) {

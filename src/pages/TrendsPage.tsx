@@ -15,9 +15,9 @@ import {
 import { GrowthPage } from './GrowthPage'
 
 const RANGE_OPTIONS = [
-  { days: 1, label: '1j' },
-  { days: 7, label: '7j' },
-  { days: 14, label: '14j' },
+  { days: 1, label: '1d' },
+  { days: 7, label: '7d' },
+  { days: 14, label: '14d' },
 ]
 
 const KIND_ICONS: Record<TrendKind, ReactNode> = {
@@ -45,7 +45,7 @@ export function TrendsPage() {
 
   return (
     <div>
-      <div role="group" aria-label="Période">
+      <div role="group" aria-label="Period">
         {RANGE_OPTIONS.map((option) => (
           <button
             key={option.days}

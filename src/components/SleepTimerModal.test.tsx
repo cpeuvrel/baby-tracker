@@ -60,7 +60,7 @@ describe('SleepTimerModal', () => {
     await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
     expect(startSleep).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Démarrage…')).toBeInTheDocument()
+    expect(screen.getByText('Starting…')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start Timer' })).toBeDisabled()
   })
 

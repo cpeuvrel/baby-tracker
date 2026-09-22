@@ -21,7 +21,7 @@ const entry: SleepEntry = {
   startedAt: '2026-03-05T20:00:00',
   endedAt: '2026-03-05T21:30:00',
   durationSeconds: 5400,
-  notes: 'sieste',
+  notes: 'nap',
   createdBy: 'uid1',
   createdAt: '2026-03-05T20:00:00',
 }
@@ -42,21 +42,21 @@ describe('SleepEntryEditModal', () => {
   it('prefills the total time from the existing entry', () => {
     render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
 
-    expect(screen.getByText('1h 30min')).toBeInTheDocument()
-    expect(screen.getByLabelText('Durée (minutes)')).toHaveValue(90)
+    expect(screen.getByText('1h 30m')).toBeInTheDocument()
+    expect(screen.getByLabelText('Duration (minutes)')).toHaveValue(90)
   })
 
   it('adapts the end time when the duration is edited, keeping the start time fixed', async () => {
     const user = userEvent.setup()
     render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
 
-    const durationInput = screen.getByLabelText('Durée (minutes)')
+    const durationInput = screen.getByLabelText('Duration (minutes)')
     await user.clear(durationInput)
     await user.type(durationInput, '45')
 
     expect(screen.getByLabelText('Start Time')).toHaveValue('2026-03-05T20:00')
     expect(screen.getByLabelText('End Time')).toHaveValue('2026-03-05T20:45')
-    expect(screen.getByText('45min 00s')).toBeInTheDocument()
+    expect(screen.getByText('45m 00s')).toBeInTheDocument()
   })
 
   it('saves the edited start/end times and notes', async () => {
@@ -64,15 +64,15 @@ describe('SleepEntryEditModal', () => {
     const user = userEvent.setup()
     render(<SleepEntryEditModal entry={entry} onClose={onClose} />)
 
-    const durationInput = screen.getByLabelText('Durée (minutes)')
+    const durationInput = screen.getByLabelText('Duration (minutes)')
     await user.clear(durationInput)
     await user.type(durationInput, '45')
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 's1', {
       startedAt: new Date('2026-03-05T20:00:00'),
       endedAt: new Date('2026-03-05T20:45:00'),
-      notes: 'sieste',
+      notes: 'nap',
     })
     expect(onClose).toHaveBeenCalled()
   })
@@ -83,7 +83,7 @@ describe('SleepEntryEditModal', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
 
     render(<SleepEntryEditModal entry={entry} onClose={onClose} />)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteSleepEntry).toHaveBeenCalledWith('h1', 'b1', 's1')
     expect(onClose).toHaveBeenCalled()
@@ -94,7 +94,7 @@ describe('SleepEntryEditModal', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
 
     render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'Supprimer' }))
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteSleepEntry).not.toHaveBeenCalled()
   })

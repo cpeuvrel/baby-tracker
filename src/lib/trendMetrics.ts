@@ -31,43 +31,43 @@ export interface TrendMetricMeta {
 export const TREND_METRICS: TrendMetricMeta[] = [
   {
     id: 'feedSessions',
-    title: 'Biberons',
-    section: 'Nourriture',
+    title: 'Bottles',
+    section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
   },
   {
     id: 'feedVolume',
-    title: 'Volume total',
-    section: 'Nourriture',
+    title: 'Total volume',
+    section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
   },
   {
     id: 'feedAvgVolume',
-    title: 'Volume moyen',
-    section: 'Nourriture',
+    title: 'Average volume',
+    section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
   },
   {
     id: 'sleepTotal',
-    title: 'Sommeil total',
-    section: 'Sommeil',
+    title: 'Total sleep',
+    section: 'Sleep',
     colorVar: '--category-sleep',
     kind: 'sleep',
   },
   {
     id: 'nightWakings',
-    title: 'Réveils nocturnes',
-    section: 'Sommeil',
+    title: 'Night wakings',
+    section: 'Sleep',
     colorVar: '--category-sleep',
     kind: 'sleep',
   },
   {
     id: 'diaperCount',
-    title: 'Couches',
-    section: 'Couches',
+    title: 'Diapers',
+    section: 'Diaper',
     colorVar: '--category-diaper',
     kind: 'diaper',
   },
@@ -119,12 +119,12 @@ export function formatMetricValue(id: TrendMetricId, value: number): string {
 }
 
 const HEADLINE_SUFFIX: Record<TrendMetricId, string> = {
-  feedSessions: 'biberons / jour',
-  feedVolume: '/ jour',
-  feedAvgVolume: 'en moyenne',
-  sleepTotal: '/ jour',
-  nightWakings: 'réveils / jour',
-  diaperCount: 'couches / jour',
+  feedSessions: 'bottles / day',
+  feedVolume: '/ day',
+  feedAvgVolume: 'average',
+  sleepTotal: '/ day',
+  nightWakings: 'wakings / day',
+  diaperCount: 'diapers / day',
 }
 
 export function formatMetricHeadline(id: TrendMetricId, average: number): string {

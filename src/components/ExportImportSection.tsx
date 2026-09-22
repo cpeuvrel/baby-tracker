@@ -43,9 +43,9 @@ export function ExportImportSection() {
     try {
       const data = await exportBabyData(household.id, selectedBaby)
       downloadCsvFile(`${selectedBaby.name}-export.csv`, serializeBabyExport(data))
-      setStatus({ kind: 'success', message: 'Export téléchargé.' })
+      setStatus({ kind: 'success', message: 'Export downloaded.' })
     } catch {
-      setStatus({ kind: 'error', message: "Échec de l'export." })
+      setStatus({ kind: 'error', message: 'Export failed.' })
     }
   }
 
@@ -60,11 +60,11 @@ export function ExportImportSection() {
       const imported = countEntries(data)
       const message =
         skipped > 0
-          ? `Import terminé : ${imported} entrées importées, ${skipped} ignorées (non prises en charge).`
-          : `Import terminé : ${imported} entrées importées.`
+          ? `Import complete: ${imported} entries imported, ${skipped} skipped (not supported).`
+          : `Import complete: ${imported} entries imported.`
       setStatus({ kind: 'success', message })
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Échec de l'import."
+      const message = error instanceof Error ? error.message : 'Import failed.'
       setStatus({ kind: 'error', message })
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -74,16 +74,16 @@ export function ExportImportSection() {
   return (
     <section aria-label="Import / export">
       <h2>Import / export</h2>
-      <p>Concerne le bébé actuellement sélectionné : {selectedBaby.name}.</p>
+      <p>Applies to the currently selected baby: {selectedBaby.name}.</p>
       <button
         type="button"
         onClick={() => void handleExport()}
         disabled={status.kind === 'exporting'}
       >
-        Exporter les données (CSV)
+        Export data (CSV)
       </button>
       <div>
-        <label htmlFor="import-file">Importer un fichier CSV (natif ou export Nara)</label>
+        <label htmlFor="import-file">Import a CSV file (native or Nara export)</label>
         <input
           id="import-file"
           ref={fileInputRef}

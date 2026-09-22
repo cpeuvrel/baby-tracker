@@ -22,7 +22,7 @@ describe('LoginPage', () => {
     render(<LoginPage />)
 
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
-    expect(screen.getByLabelText('Mot de passe')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
   })
 
   it('submits the entered credentials', async () => {
@@ -31,8 +31,8 @@ describe('LoginPage', () => {
     render(<LoginPage />)
 
     await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Mot de passe'), 'hunter2')
-    await user.click(screen.getByRole('button', { name: 'Se connecter' }))
+    await user.type(screen.getByLabelText('Password'), 'hunter2')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() => expect(login).toHaveBeenCalledWith('parent@example.com', 'hunter2'))
   })
@@ -43,11 +43,11 @@ describe('LoginPage', () => {
     render(<LoginPage />)
 
     await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Mot de passe'), 'wrong')
-    await user.click(screen.getByRole('button', { name: 'Se connecter' }))
+    await user.type(screen.getByLabelText('Password'), 'wrong')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Email ou mot de passe incorrect.'),
+      expect(screen.getByRole('alert')).toHaveTextContent('Incorrect email or password.'),
     )
   })
 
@@ -57,11 +57,11 @@ describe('LoginPage', () => {
     render(<LoginPage />)
 
     await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Mot de passe'), 'hunter2')
-    await user.click(screen.getByRole('button', { name: 'Se connecter' }))
+    await user.type(screen.getByLabelText('Password'), 'hunter2')
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
 
     await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Connexion impossible.'),
+      expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign in.'),
     )
   })
 })

@@ -8,7 +8,7 @@ export function BabySelector() {
   return (
     <div className="baby-selector">
       <label htmlFor="baby-selector" className="visually-hidden">
-        Bébé
+        Baby
       </label>
       <select
         id="baby-selector"

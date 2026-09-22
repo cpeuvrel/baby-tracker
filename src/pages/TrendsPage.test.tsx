@@ -85,22 +85,22 @@ describe('TrendsPage', () => {
   it('renders a row per metric, grouped by section, linking to its detail page', () => {
     renderPage()
 
-    const feedRow = screen.getByRole('link', { name: /Biberons/ })
+    const feedRow = screen.getByRole('link', { name: /Bottles/ })
     expect(feedRow).toHaveAttribute('href', '/trends/feedSessions')
 
-    const sleepRow = screen.getByRole('link', { name: /Sommeil total/ })
+    const sleepRow = screen.getByRole('link', { name: /Total sleep/ })
     expect(sleepRow).toHaveAttribute('href', '/trends/sleepTotal')
 
-    expect(screen.getByRole('heading', { name: 'Nourriture' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Sommeil' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Couches' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Feed' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Sleep' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Diaper' })).toBeInTheDocument()
   })
 
   it('switches range and re-queries entries for the new period', async () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.click(screen.getByRole('button', { name: '14j' }))
+    await user.click(screen.getByRole('button', { name: '14d' }))
 
     expect(useEntriesInRangeModule.useEntriesInRange).toHaveBeenLastCalledWith(
       'h1',
@@ -112,6 +112,6 @@ describe('TrendsPage', () => {
   it('also renders the growth section', () => {
     renderPage()
 
-    expect(screen.getByRole('region', { name: 'Courbe de croissance' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Growth chart' })).toBeInTheDocument()
   })
 })

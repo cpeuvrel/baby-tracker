@@ -4,9 +4,9 @@ import type { GrowthEntry } from '../types/models'
 export type GrowthMetric = 'weight' | 'height' | 'headCircumference'
 
 export const GROWTH_METRIC_LABELS: Record<GrowthMetric, string> = {
-  weight: 'Poids',
-  height: 'Taille',
-  headCircumference: 'Périmètre crânien',
+  weight: 'Weight',
+  height: 'Height',
+  headCircumference: 'Head Size',
 }
 
 export const GROWTH_METRIC_FIELD: Record<GrowthMetric, keyof GrowthEntry> = {

@@ -40,7 +40,7 @@ describe('GrowthPage', () => {
 
     render(<GrowthPage />)
 
-    expect(screen.getByText('Aucune mesure enregistrée pour poids.')).toBeInTheDocument()
+    expect(screen.getByText('No weight measurements recorded yet.')).toBeInTheDocument()
   })
 
   it('switches the displayed metric', async () => {
@@ -60,10 +60,10 @@ describe('GrowthPage', () => {
     const user = userEvent.setup()
 
     render(<GrowthPage />)
-    expect(screen.queryByText(/Aucune mesure/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/No measurements/)).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Périmètre crânien' }))
+    await user.click(screen.getByRole('button', { name: 'Head Size' }))
 
-    expect(screen.getByText('Aucune mesure enregistrée pour périmètre crânien.')).toBeInTheDocument()
+    expect(screen.getByText('No head size measurements recorded yet.')).toBeInTheDocument()
   })
 })

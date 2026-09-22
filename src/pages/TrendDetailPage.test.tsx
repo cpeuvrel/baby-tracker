@@ -29,7 +29,7 @@ function renderPage(metricId = 'feedSessions') {
   return render(
     <MemoryRouter initialEntries={[`/trends/${metricId}`]}>
       <Routes>
-        <Route path="/trends" element={<p>Liste des tendances</p>} />
+        <Route path="/trends" element={<p>Trends list</p>} />
         <Route path="/trends/:metricId" element={<TrendDetailPage />} />
       </Routes>
     </MemoryRouter>,
@@ -61,26 +61,26 @@ describe('TrendDetailPage', () => {
   it('shows the metric title and headline', () => {
     renderPage('feedSessions')
 
-    expect(screen.getByRole('heading', { name: 'Biberons' })).toBeInTheDocument()
-    expect(screen.getByText(/biberons \/ jour/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Bottles' })).toBeInTheDocument()
+    expect(screen.getByText(/bottles \/ day/)).toBeInTheDocument()
   })
 
   it('navigates back to the trends list', async () => {
     const user = userEvent.setup()
     renderPage('feedSessions')
 
-    await user.click(screen.getByRole('button', { name: 'Retour' }))
+    await user.click(screen.getByRole('button', { name: 'Back' }))
 
-    expect(screen.getByText('Liste des tendances')).toBeInTheDocument()
+    expect(screen.getByText('Trends list')).toBeInTheDocument()
   })
 
   it('switches between calendar, graph and entries views', async () => {
     const user = userEvent.setup()
     renderPage('feedSessions')
 
-    expect(screen.getByLabelText('Calendrier de la métrique')).toBeInTheDocument()
+    expect(screen.getByLabelText('Metric calendar')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Entrées' }))
-    expect(screen.getByText(/Biberon 120 mL/)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Entries' }))
+    expect(screen.getByText(/Bottle 120 mL/)).toBeInTheDocument()
   })
 })

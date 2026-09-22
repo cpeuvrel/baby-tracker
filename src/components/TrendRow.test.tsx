@@ -10,8 +10,8 @@ function renderRow(delta: { value: number; direction: 'up' | 'down' | 'flat' }) 
       <TrendRow
         to="/trends/feedSessions"
         icon={<FeedIcon />}
-        title="Biberons"
-        subtitle="4.0 biberons / jour"
+        title="Bottles"
+        subtitle="4.0 bottles / day"
         delta={delta}
         deltaLabel="1.0"
         colorVar="--category-feeding"
@@ -24,9 +24,9 @@ describe('TrendRow', () => {
   it('links to the metric detail page and shows title/subtitle', () => {
     renderRow({ value: 0, direction: 'flat' })
 
-    const link = screen.getByRole('link', { name: /Biberons/ })
+    const link = screen.getByRole('link', { name: /Bottles/ })
     expect(link).toHaveAttribute('href', '/trends/feedSessions')
-    expect(screen.getByText('4.0 biberons / jour')).toBeInTheDocument()
+    expect(screen.getByText('4.0 bottles / day')).toBeInTheDocument()
   })
 
   it('shows an up arrow badge when the delta increased', () => {

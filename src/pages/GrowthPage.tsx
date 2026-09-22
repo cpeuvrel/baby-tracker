@@ -23,9 +23,9 @@ export function GrowthPage() {
     .filter((point): point is GrowthPoint => typeof point.value === 'number')
 
   return (
-    <section aria-label="Courbe de croissance">
-      <h2>Croissance</h2>
-      <div role="group" aria-label="Mesure affichée">
+    <section aria-label="Growth chart">
+      <h2>Growth</h2>
+      <div role="group" aria-label="Displayed measurement">
         {(Object.keys(GROWTH_METRIC_LABELS) as GrowthMetric[]).map((key) => (
           <button key={key} type="button" aria-pressed={metric === key} onClick={() => setMetric(key)}>
             {GROWTH_METRIC_LABELS[key]}
@@ -33,7 +33,7 @@ export function GrowthPage() {
         ))}
       </div>
       {chartData.length === 0 ? (
-        <p>Aucune mesure enregistrée pour {GROWTH_METRIC_LABELS[metric].toLowerCase()}.</p>
+        <p>No {GROWTH_METRIC_LABELS[metric].toLowerCase()} measurements recorded yet.</p>
       ) : (
         <GrowthLineChart
           data={chartData}
