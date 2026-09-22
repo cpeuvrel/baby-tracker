@@ -4,10 +4,13 @@ export interface Household {
   memberUids: string[]
 }
 
+export type BabySex = 'female' | 'male'
+
 export interface Baby {
   id: string
   name: string
   birthDate: string
+  sex: BabySex | null
 }
 
 export type FeedingType = 'bottle' | 'solid'

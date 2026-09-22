@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatAge } from './age'
+import { ageInMonths, formatAge } from './age'
 
 describe('formatAge', () => {
   it('formats months, weeks and days since birth', () => {
@@ -27,5 +27,21 @@ describe('formatAge', () => {
     const birth = new Date('2026-01-01T00:00:00.000Z').toISOString()
 
     expect(formatAge(birth, now)).toBe('2w')
+  })
+})
+
+describe('ageInMonths', () => {
+  it('returns a fractional age using the same 30-day-month approximation as formatAge', () => {
+    const now = new Date('2026-01-01T00:00:00.000Z')
+    const birth = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString()
+
+    expect(ageInMonths(birth, now)).toBeCloseTo(2, 5)
+  })
+
+  it('never returns a negative age for a future birth date', () => {
+    const now = new Date('2026-01-01T00:00:00.000Z')
+    const future = new Date('2026-06-01T00:00:00.000Z').toISOString()
+
+    expect(ageInMonths(future, now)).toBe(0)
   })
 })

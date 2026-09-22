@@ -11,7 +11,7 @@ vi.mock('../repositories/babies', () => ({
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 describe('SettingsSection', () => {
   beforeEach(() => {
@@ -55,7 +55,17 @@ describe('SettingsSection', () => {
     await user.type(screen.getByLabelText("Baby's first name"), 'Léo Martin')
     await user.click(screen.getByRole('button', { name: 'Save profile' }))
 
-    expect(updateBaby).toHaveBeenCalledWith('h1', 'b1', 'Léo Martin', '2025-06-01')
+    expect(updateBaby).toHaveBeenCalledWith('h1', 'b1', 'Léo Martin', '2025-06-01', null)
+  })
+
+  it('sets the sex used to pick the right WHO percentile curves', async () => {
+    const user = userEvent.setup()
+
+    render(<SettingsSection />)
+    await user.click(screen.getByRole('button', { name: 'Girl' }))
+    await user.click(screen.getByRole('button', { name: 'Save profile' }))
+
+    expect(updateBaby).toHaveBeenCalledWith('h1', 'b1', 'Léo', '2025-06-01', 'female')
   })
 
   it('defaults to the metric unit and switches to imperial on click', async () => {

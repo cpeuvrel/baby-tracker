@@ -6,8 +6,8 @@ import type { Baby } from '../types/models'
 import { BabySelector } from './BabySelector'
 
 const babies: Baby[] = [
-  { id: 'b1', name: 'Léo', birthDate: '2025-06-01' },
-  { id: 'b2', name: 'Nina', birthDate: '2026-01-15' },
+  { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
+  { id: 'b2', name: 'Nina', birthDate: '2026-01-15', sex: null },
 ]
 
 describe('BabySelector', () => {

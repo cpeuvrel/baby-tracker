@@ -41,7 +41,7 @@ describe('DiaperForm', () => {
       household: { id: 'h1', name: 'Famille Test', memberUids: [] },
       babies: [],
       loading: false,
-      selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01' },
+      selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
       selectBaby: vi.fn(),
     })
   })

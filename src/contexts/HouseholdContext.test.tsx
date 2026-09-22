@@ -21,8 +21,8 @@ vi.mock('./AuthContext', () => ({
 
 const household: Household = { id: 'h1', name: 'Famille Test', memberUids: ['uid1'] }
 const babies: Baby[] = [
-  { id: 'b1', name: 'Léo', birthDate: '2025-06-01' },
-  { id: 'b2', name: 'Nina', birthDate: '2026-01-15' },
+  { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
+  { id: 'b2', name: 'Nina', birthDate: '2026-01-15', sex: null },
 ]
 
 function Probe() {

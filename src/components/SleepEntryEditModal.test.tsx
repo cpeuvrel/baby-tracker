@@ -14,7 +14,7 @@ vi.mock('../repositories/sleepEntries', () => ({
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const entry: SleepEntry = {
   id: 's1',

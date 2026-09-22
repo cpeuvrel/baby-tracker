@@ -47,7 +47,7 @@ vi.mock('../repositories/medicationEntries', () => ({
   importMedicationEntries: (...args: unknown[]) => importMedicationEntries(...args),
 }))
 
-const baby: Baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+const baby: Baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const feeding: FeedingEntry[] = [
   {

@@ -15,7 +15,7 @@ vi.mock('../repositories/babies', () => ({
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: ['uid1', 'uid2'] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01' }
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 describe('FamilyPage', () => {
   beforeEach(() => {

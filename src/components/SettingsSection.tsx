@@ -2,17 +2,20 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { updateBaby } from '../repositories/babies'
+import type { BabySex } from '../types/models'
 
 export function SettingsSection() {
   const { household, selectedBaby } = useHousehold()
   const [unit, setUnit] = useUnitPreference()
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
+  const [sex, setSex] = useState<BabySex | null>(null)
 
   useEffect(() => {
     if (selectedBaby) {
       setName(selectedBaby.name)
       setBirthDate(selectedBaby.birthDate)
+      setSex(selectedBaby.sex)
     }
   }, [selectedBaby])
 
@@ -21,7 +24,7 @@ export function SettingsSection() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (name.trim() === '' || birthDate.trim() === '') return
-    void updateBaby(household.id, selectedBaby.id, name.trim(), birthDate)
+    void updateBaby(household.id, selectedBaby.id, name.trim(), birthDate, sex)
   }
 
   return (
@@ -60,6 +63,15 @@ export function SettingsSection() {
             onChange={(event) => setBirthDate(event.target.value)}
           />
         </div>
+        <div role="group" aria-label="Sex">
+          <button type="button" aria-pressed={sex === 'female'} onClick={() => setSex('female')}>
+            Girl
+          </button>
+          <button type="button" aria-pressed={sex === 'male'} onClick={() => setSex('male')}>
+            Boy
+          </button>
+        </div>
+        <p className="hint">Used to show the right WHO growth percentile curves.</p>
         <button type="submit">Save profile</button>
       </form>
     </section>

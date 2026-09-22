@@ -1,6 +1,13 @@
 const DAYS_PER_MONTH = 30
 const DAYS_PER_WEEK = 7
 
+/** Fractional age in months, using the same 30-day-month approximation as formatAge. */
+export function ageInMonths(birthDate: string, at: Date): number {
+  const birth = new Date(birthDate)
+  const totalDays = (at.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)
+  return Math.max(0, totalDays / DAYS_PER_MONTH)
+}
+
 export function formatAge(birthDate: string, now: Date): string {
   const birth = new Date(birthDate)
   const totalDays = Math.max(0, Math.floor((now.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)))

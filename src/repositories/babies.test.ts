@@ -23,14 +23,14 @@ describe('babies repository', () => {
     const onChange = vi.fn()
     onSnapshotMock.mockImplementation((_query, callback) => {
       ;(callback as (snapshot: unknown) => void)(
-        fakeSnapshot([{ id: 'b1', data: { name: 'Léo', birthDate: '2025-06-01' } }]),
+        fakeSnapshot([{ id: 'b1', data: { name: 'Léo', birthDate: '2025-06-01', sex: null } }]),
       )
       return vi.fn()
     })
 
     subscribeToBabies('h1', onChange)
 
-    expect(onChange).toHaveBeenCalledWith([{ id: 'b1', name: 'Léo', birthDate: '2025-06-01' }])
+    expect(onChange).toHaveBeenCalledWith([{ id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }])
   })
 
   it('creates a new baby with the given name and birth date', async () => {
@@ -38,14 +38,14 @@ describe('babies repository', () => {
 
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
-    expect(payload).toEqual({ name: 'Nina', birthDate: '2026-01-15' })
+    expect(payload).toEqual({ name: 'Nina', birthDate: '2026-01-15', sex: null })
   })
 
   it('updates an existing baby with the given name and birth date', async () => {
-    await updateBaby('h1', 'b1', 'Léo Updated', '2025-06-02')
+    await updateBaby('h1', 'b1', 'Léo Updated', '2025-06-02', 'male')
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toEqual({ name: 'Léo Updated', birthDate: '2025-06-02' })
+    expect(payload).toEqual({ name: 'Léo Updated', birthDate: '2025-06-02', sex: 'male' })
   })
 })

@@ -1,6 +1,6 @@
 import { addDoc, doc, onSnapshot, orderBy, query, updateDoc, type Unsubscribe } from 'firebase/firestore'
 import { babiesCollection } from '../lib/paths'
-import type { Baby } from '../types/models'
+import type { Baby, BabySex } from '../types/models'
 
 export function subscribeToBabies(
   householdId: string,
@@ -16,6 +16,7 @@ export function subscribeToBabies(
           id: docSnap.id,
           name: data.name as string,
           birthDate: data.birthDate as string,
+          sex: (data.sex as BabySex | null) ?? null,
         }
       }),
     )
@@ -23,7 +24,7 @@ export function subscribeToBabies(
 }
 
 export async function addBaby(householdId: string, name: string, birthDate: string): Promise<void> {
-  await addDoc(babiesCollection(householdId), { name, birthDate })
+  await addDoc(babiesCollection(householdId), { name, birthDate, sex: null })
 }
 
 export async function updateBaby(
@@ -31,6 +32,7 @@ export async function updateBaby(
   babyId: string,
   name: string,
   birthDate: string,
+  sex: BabySex | null,
 ): Promise<void> {
-  await updateDoc(doc(babiesCollection(householdId), babyId), { name, birthDate })
+  await updateDoc(doc(babiesCollection(householdId), babyId), { name, birthDate, sex })
 }
