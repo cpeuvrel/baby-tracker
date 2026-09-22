@@ -62,3 +62,51 @@ export function GrowthIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function BabyAvatarIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="13" r="7" />
+      <path d="M9.5 12.5c0 1.5 1 2.5 2.5 2.5s2.5-1 2.5-2.5" />
+      <path d="M9 10h.01M15 10h.01" />
+      <path d="M11 4.5c0-1 .8-2 2-2" />
+    </Icon>
+  )
+}
+
+export function TimerIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="13" r="8" />
+      <path d="M12 9v4l3 2" />
+      <path d="M10 2h4M12 2v2" />
+    </Icon>
+  )
+}
+
+export function ScaleIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="4" width="16" height="16" rx="3" />
+      <path d="M8 10a4 4 0 0 0 8 0" />
+    </Icon>
+  )
+}
+
+export function RulerIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M12 3v15M9 6h3M9 9h3M9 12h3M9 15h3" />
+      <path d="M8 18l4 3 4-3" />
+    </Icon>
+  )
+}
+
+export function HeadCircumferenceIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 5V3M12 21v-2M19 12h2M3 12h2" />
+    </Icon>
+  )
+}

@@ -29,6 +29,25 @@ describe('Modal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('renders a header action and calls it when clicked', async () => {
+    const onSave = vi.fn()
+    const user = userEvent.setup()
+
+    render(
+      <Modal
+        title="Sommeil"
+        bandColorVar="--category-sleep"
+        onClose={vi.fn()}
+        headerAction={{ label: 'Save', onClick: onSave }}
+      >
+        <p>Contenu</p>
+      </Modal>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(onSave).toHaveBeenCalled()
+  })
+
   it('calls onClose when Escape is pressed', async () => {
     const onClose = vi.fn()
     const user = userEvent.setup()

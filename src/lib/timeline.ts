@@ -36,6 +36,12 @@ export function isToday(iso: string, now: Date): boolean {
   return dayKey(new Date(iso)) === dayKey(now)
 }
 
+export function isYesterday(iso: string, now: Date): boolean {
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  return dayKey(new Date(iso)) === dayKey(yesterday)
+}
+
 export function lastNDayKeys(reference: Date, days: number): string[] {
   const keys: string[] = []
   for (let i = days - 1; i >= 0; i -= 1) {

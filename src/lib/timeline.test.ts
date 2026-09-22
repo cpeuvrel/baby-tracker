@@ -6,6 +6,7 @@ import {
   dayKeysInRange,
   dayRange,
   isToday,
+  isYesterday,
   lastNDayKeys,
   lastNDaysRange,
   parseDayKey,
@@ -69,6 +70,19 @@ describe('isToday', () => {
   it('returns false for a timestamp on a different day', () => {
     const now = new Date('2026-03-05T06:00:00')
     expect(isToday('2026-03-04T23:59:00', now)).toBe(false)
+  })
+})
+
+describe('isYesterday', () => {
+  it('returns true for a timestamp on the day before now', () => {
+    const now = new Date('2026-03-05T06:00:00')
+    expect(isYesterday('2026-03-04T23:59:00', now)).toBe(true)
+  })
+
+  it('returns false for today or two days ago', () => {
+    const now = new Date('2026-03-05T06:00:00')
+    expect(isYesterday('2026-03-05T05:00:00', now)).toBe(false)
+    expect(isYesterday('2026-03-03T23:59:00', now)).toBe(false)
   })
 })
 

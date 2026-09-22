@@ -114,7 +114,7 @@ describe('ActivityPage', () => {
 
     expect(startSleep).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start Timer' })).toBeInTheDocument()
   })
 
   it('opens the sleep modal directly in live mode when one is already active', async () => {
@@ -131,11 +131,11 @@ describe('ActivityPage', () => {
     const user = userEvent.setup()
 
     render(<ActivityPage />)
-    await user.click(screen.getByRole('button', { name: 'Ajouter une entrée sommeil' }))
+    await user.click(screen.getByRole('button', { name: 'Voir le chrono en cours' }))
 
     expect(startSleep).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Sommeil' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
   })
 
   it('opens the feeding modal and closes it once saved', async () => {
@@ -220,11 +220,11 @@ describe('ActivityPage', () => {
     const yesterday = new Date(now)
     yesterday.setDate(yesterday.getDate() - 1)
 
-    const makeEntry = (id: string, occurredAt: Date): FeedingEntry => ({
+    const makeEntry = (id: string, occurredAt: Date, volumeMl: number): FeedingEntry => ({
       id,
       type: 'bottle',
       occurredAt: occurredAt.toISOString(),
-      volumeMl: 100,
+      volumeMl,
       foodType: null,
       notes: '',
       createdBy: 'uid1',
@@ -233,21 +233,21 @@ describe('ActivityPage', () => {
 
     setupHooks(null, {
       recentFeeding: [
-        makeEntry('latest', now),
-        makeEntry('earlier-today', earlierToday),
-        makeEntry('yesterday', yesterday),
+        makeEntry('latest', now, 40),
+        makeEntry('earlier-today', earlierToday, 100),
+        makeEntry('yesterday', yesterday, 77),
       ],
     })
     const user = userEvent.setup()
 
     render(<ActivityPage />)
 
-    expect(screen.getByText(/100 mL/)).toBeInTheDocument()
+    expect(screen.getByText('100 mL')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Voir plus' })).toBeInTheDocument()
-    expect(screen.queryByText(/il y a 1j/)).not.toBeInTheDocument()
+    expect(screen.queryByText('77 mL')).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Voir plus' }))
 
-    expect(screen.getByText(/il y a 1j/)).toBeInTheDocument()
+    expect(screen.getByText('77 mL')).toBeInTheDocument()
   })
 })

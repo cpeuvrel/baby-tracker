@@ -1,9 +1,19 @@
-import { useState } from 'react'
-import { CategoryCard, type CategoryCardMoreLine } from '../components/CategoryCard'
+import { useState, type ReactNode } from 'react'
+import { CategoryCard, type CategoryCardEntryRow } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
 import { GrowthForm } from '../components/GrowthForm'
-import { DiaperIcon, FeedIcon, GrowthIcon, MedicationIcon, SleepIcon } from '../components/icons'
+import {
+  DiaperIcon,
+  FeedIcon,
+  GrowthIcon,
+  HeadCircumferenceIcon,
+  MedicationIcon,
+  RulerIcon,
+  ScaleIcon,
+  SleepIcon,
+  TimerIcon,
+} from '../components/icons'
 import { MedicationForm } from '../components/MedicationForm'
 import { Modal } from '../components/Modal'
 import { ReminderSettingsModal } from '../components/ReminderSettingsModal'
@@ -11,23 +21,26 @@ import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
 import { useRecentMedicationEntries } from '../hooks/useRecentMedicationEntries'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
+import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
-  summarizeDiaperEntry,
+  latestGrowthEntryWithField,
   summarizeDiaperPrimary,
-  summarizeFeedingEntry,
+  summarizeDiaperRow,
   summarizeFeedingPrimary,
-  summarizeGrowthEntry,
-  summarizeGrowthPrimary,
-  summarizeMedicationEntry,
+  summarizeFeedingRow,
   summarizeMedicationPrimary,
-  summarizeSleepEntry,
+  summarizeMedicationRow,
   summarizeSleepPrimary,
+  summarizeSleepRow,
+  type EntryRow,
 } from '../lib/entrySummary'
+import { formatGrowthValue, GROWTH_METRIC_FIELD, GROWTH_METRIC_LABELS, type GrowthMetric } from '../lib/growthMetrics'
 import { isToday } from '../lib/timeline'
 import type {
   DiaperEntry,
@@ -44,20 +57,27 @@ function splitTodayLines<T>(
   entries: T[],
   now: Date,
   getIso: (entry: T) => string,
-  summarize: (entry: T) => string,
+  summarize: (entry: T) => EntryRow,
   onSelect: (entry: T) => void,
-): { today: CategoryCardMoreLine[]; older: CategoryCardMoreLine[] } {
-  const today: CategoryCardMoreLine[] = []
-  const older: CategoryCardMoreLine[] = []
+  icon: ReactNode,
+): { today: CategoryCardEntryRow[]; older: CategoryCardEntryRow[] } {
+  const today: CategoryCardEntryRow[] = []
+  const older: CategoryCardEntryRow[] = []
   for (const entry of entries) {
-    const line = { text: summarize(entry), onClick: () => onSelect(entry) }
+    const row: CategoryCardEntryRow = { ...summarize(entry), icon, onClick: () => onSelect(entry) }
     if (isToday(getIso(entry), now)) {
-      today.push(line)
+      today.push(row)
     } else {
-      older.push(line)
+      older.push(row)
     }
   }
   return { today, older }
+}
+
+const GROWTH_METRIC_ICONS: Record<GrowthMetric, typeof ScaleIcon> = {
+  weight: ScaleIcon,
+  height: RulerIcon,
+  headCircumference: HeadCircumferenceIcon,
 }
 
 type ModalState =
@@ -74,7 +94,9 @@ export function ActivityPage() {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const [modal, setModal] = useState<ModalState>(null)
+  const [unit] = useUnitPreference()
 
+  const activeSleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const recentSleep = useRecentSleepEntries(
     household?.id ?? null,
     selectedBaby?.id ?? null,
@@ -100,7 +122,6 @@ export function ActivityPage() {
   if (!household || !selectedBaby || !user) return null
 
   const now = new Date()
-  const recentGrowth = [...growthEntries].reverse().slice(0, RECENT_COUNT)
   const latestFeeding = recentFeeding[0]
   const feedingHighlight =
     latestFeeding?.type === 'bottle' && latestFeeding.volumeMl != null
@@ -117,40 +138,67 @@ export function ActivityPage() {
 
   const closeModal = () => setModal(null)
 
+  const sleepRest = recentSleep.slice(1)
+  const maxSleepSeconds = Math.max(
+    0,
+    ...sleepRest.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
+  )
   const { today: sleepTodayLines, older: sleepMoreLines } = splitTodayLines(
-    recentSleep.slice(1),
+    sleepRest,
     now,
     (entry) => entry.startedAt,
-    (entry) => summarizeSleepEntry(entry, now),
+    (entry) => summarizeSleepRow(entry, now, maxSleepSeconds),
     handleSelectSleep,
+    <SleepIcon />,
+  )
+
+  const feedingRest = recentFeeding.slice(1)
+  const maxVolumeMl = Math.max(
+    0,
+    ...feedingRest
+      .filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
+      .map((entry) => entry.volumeMl as number),
   )
   const { today: feedingTodayLines, older: feedingMoreLines } = splitTodayLines(
-    recentFeeding.slice(1),
+    feedingRest,
     now,
     (entry) => entry.occurredAt,
-    (entry) => summarizeFeedingEntry(entry, now),
+    (entry) => summarizeFeedingRow(entry, maxVolumeMl),
     (entry) => setModal({ kind: 'feeding', entry }),
+    <FeedIcon />,
   )
+
   const { today: diaperTodayLines, older: diaperMoreLines } = splitTodayLines(
     recentDiaper.slice(1),
     now,
     (entry) => entry.occurredAt,
-    (entry) => summarizeDiaperEntry(entry, now),
+    (entry) => summarizeDiaperRow(entry),
     (entry) => setModal({ kind: 'diaper', entry }),
+    <DiaperIcon />,
   )
+
   const { today: medicationTodayLines, older: medicationMoreLines } = splitTodayLines(
     recentMedication.slice(1),
     now,
     (entry) => entry.givenAt,
-    (entry) => summarizeMedicationEntry(entry, now),
+    (entry) => summarizeMedicationRow(entry),
     (entry) => setModal({ kind: 'medication', entry }),
+    <MedicationIcon />,
   )
-  const { today: growthTodayLines, older: growthMoreLines } = splitTodayLines(
-    recentGrowth.slice(1),
-    now,
-    (entry) => entry.measuredAt,
-    (entry) => summarizeGrowthEntry(entry, now),
-    (entry) => setModal({ kind: 'growth', entry }),
+
+  const growthRows: CategoryCardEntryRow[] = (['weight', 'height', 'headCircumference'] as GrowthMetric[]).map(
+    (metric) => {
+      const field = GROWTH_METRIC_FIELD[metric]
+      const entry = latestGrowthEntryWithField(growthEntries, field as 'weightG' | 'heightMm' | 'headCircumferenceMm')
+      const value = entry ? (entry[field] as number | null) : null
+      const RowIcon = GROWTH_METRIC_ICONS[metric]
+      return {
+        icon: <RowIcon />,
+        title: GROWTH_METRIC_LABELS[metric],
+        value: value != null ? formatGrowthValue(metric, value, unit) : undefined,
+        onClick: () => setModal({ kind: 'growth', entry }),
+      }
+    },
   )
 
   return (
@@ -158,8 +206,10 @@ export function ActivityPage() {
       <CategoryCard
         title="Sommeil"
         colorVar="--category-sleep"
-        addLabel="Ajouter une entrée sommeil"
+        addLabel={activeSleepEntry ? 'Voir le chrono en cours' : 'Ajouter une entrée sommeil'}
         onAdd={handleAddSleep}
+        addIcon={activeSleepEntry ? <TimerIcon /> : undefined}
+        addActive={!!activeSleepEntry}
         icon={<SleepIcon />}
         primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
         onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
@@ -213,11 +263,11 @@ export function ActivityPage() {
         addLabel="Ajouter une mesure"
         onAdd={() => setModal({ kind: 'growth' })}
         icon={<GrowthIcon />}
-        primary={recentGrowth[0] ? summarizeGrowthPrimary(recentGrowth[0], now) : null}
-        onSelectPrimary={recentGrowth[0] ? () => setModal({ kind: 'growth', entry: recentGrowth[0] }) : undefined}
+        showPrimary={false}
+        primary={null}
         emptyLabel="Aucune mesure"
-        todayLines={growthTodayLines}
-        moreLines={growthMoreLines}
+        todayLines={growthRows}
+        moreLines={[]}
       />
 
       {modal?.kind === 'sleep-active' && <SleepTimerModal onClose={closeModal} />}

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { CategoryCard } from './CategoryCard'
-import { SleepIcon } from './icons'
+import { SleepIcon, TimerIcon } from './icons'
 
 describe('CategoryCard', () => {
   it('shows the empty label when there is no primary entry', () => {
@@ -52,7 +52,7 @@ describe('CategoryCard', () => {
         icon={<SleepIcon />}
         primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
-        moreLines={[{ text: 'Entrée plus ancienne', onClick: vi.fn() }]}
+        moreLines={[{ title: 'Entrée plus ancienne', onClick: vi.fn() }]}
       />,
     )
 
@@ -75,14 +75,34 @@ describe('CategoryCard', () => {
         icon={<SleepIcon />}
         primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
-        moreLines={[{ text: 'Entrée plus ancienne', onClick: onSelect }]}
+        moreLines={[{ title: 'Entrée plus ancienne', onClick: onSelect }]}
       />,
     )
 
     await user.click(screen.getByRole('button', { name: 'Voir plus' }))
-    await user.click(screen.getByRole('button', { name: 'Entrée plus ancienne' }))
+    await user.click(screen.getByRole('button', { name: /Entrée plus ancienne/ }))
 
     expect(onSelect).toHaveBeenCalled()
+  })
+
+  it('shows a value and proportional bar next to a row when provided', async () => {
+    const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Nourriture"
+        colorVar="--category-feeding"
+        addLabel="Ajouter une entrée nourriture"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Dernier biberon', meta: 'il y a 30min' }}
+        emptyLabel="Aucune entrée"
+        moreLines={[{ title: '08:33 Biberon', value: '40 mL', barFraction: 0.5, onClick: vi.fn() }]}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Voir plus' }))
+
+    expect(screen.getByText('40 mL')).toBeInTheDocument()
   })
 
   it('shows today lines directly, without a Voir plus toggle', async () => {
@@ -97,7 +117,7 @@ describe('CategoryCard', () => {
         icon={<SleepIcon />}
         primary={{ label: 'Réveillé', meta: 'il y a 30min' }}
         emptyLabel="Aucune entrée"
-        todayLines={[{ text: 'Entrée du jour', onClick: onSelectToday }]}
+        todayLines={[{ title: 'Entrée du jour', onClick: onSelectToday }]}
         moreLines={[]}
       />,
     )
@@ -105,9 +125,29 @@ describe('CategoryCard', () => {
     expect(screen.getByText('Entrée du jour')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Voir plus' })).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Entrée du jour' }))
+    await user.click(screen.getByRole('button', { name: /Entrée du jour/ }))
 
     expect(onSelectToday).toHaveBeenCalled()
+  })
+
+  it('shows a custom add icon and active styling when provided', () => {
+    render(
+      <CategoryCard
+        title="Sommeil"
+        colorVar="--category-sleep"
+        addLabel="Voir le chrono en cours"
+        onAdd={vi.fn()}
+        addIcon={<TimerIcon />}
+        addActive
+        icon={<SleepIcon />}
+        primary={null}
+        emptyLabel="Aucune entrée"
+        moreLines={[]}
+      />,
+    )
+
+    const addButton = screen.getByRole('button', { name: 'Voir le chrono en cours' })
+    expect(addButton.className).toContain('add-button-active')
   })
 
   it('calls onSelectPrimary when the primary entry is clicked', async () => {

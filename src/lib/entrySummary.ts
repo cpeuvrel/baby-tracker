@@ -1,4 +1,5 @@
 import { formatDuration, formatRelativeTime } from './duration'
+import { isToday, isYesterday } from './timeline'
 import type {
   DiaperEntry,
   DiaperType,
@@ -15,36 +16,18 @@ export interface PrimarySummary {
   meta: string
 }
 
-export function summarizeFeedingEntry(entry: FeedingEntry, now: Date): string {
-  const relative = formatRelativeTime(new Date(entry.occurredAt), now)
-  if (entry.type === 'bottle') {
-    return entry.volumeMl != null ? `${entry.volumeMl} mL — ${relative}` : relative
-  }
-  return entry.foodType ? `${entry.foodType} — ${relative}` : relative
+export interface EntryRow {
+  title: string
+  value?: string
+  barFraction?: number
 }
 
-export function summarizeSleepEntry(entry: SleepEntry, now: Date): string {
-  if (entry.durationSeconds != null) {
-    return `${formatDuration(entry.durationSeconds)} — ${formatRelativeTime(new Date(entry.startedAt), now)}`
-  }
-  return `En cours depuis ${formatRelativeTime(new Date(entry.startedAt), now)}`
+function formatClock(iso: string): string {
+  return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
 }
 
-export function summarizeDiaperEntry(entry: DiaperEntry, now: Date): string {
-  return `${DIAPER_LABELS[entry.type]} — ${formatRelativeTime(new Date(entry.occurredAt), now)}`
-}
-
-export function summarizeMedicationEntry(entry: MedicationEntry, now: Date): string {
-  const relative = formatRelativeTime(new Date(entry.givenAt), now)
-  return entry.dose ? `${entry.name} — ${entry.dose} — ${relative}` : `${entry.name} — ${relative}`
-}
-
-export function summarizeGrowthEntry(entry: GrowthEntry, now: Date): string {
-  const parts: string[] = []
-  if (entry.weightG != null) parts.push(`${(entry.weightG / 1000).toFixed(2)} kg`)
-  if (entry.heightMm != null) parts.push(`${(entry.heightMm / 10).toFixed(1)} cm`)
-  const measure = parts.length > 0 ? parts.join(' · ') : 'Mesure'
-  return `${measure} — ${formatRelativeTime(new Date(entry.measuredAt), now)}`
+function formatShortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
 }
 
 export function summarizeFeedingPrimary(entry: FeedingEntry, now: Date): PrimarySummary {
@@ -75,12 +58,54 @@ export function summarizeMedicationPrimary(entry: MedicationEntry, now: Date): P
   }
 }
 
-export function summarizeGrowthPrimary(entry: GrowthEntry, now: Date): PrimarySummary {
-  const parts: string[] = []
-  if (entry.weightG != null) parts.push(`${(entry.weightG / 1000).toFixed(2)} kg`)
-  if (entry.heightMm != null) parts.push(`${(entry.heightMm / 10).toFixed(1)} cm`)
-  return {
-    label: parts.length > 0 ? parts.join(' · ') : 'Mesure',
-    meta: formatRelativeTime(new Date(entry.measuredAt), now),
+export function summarizeFeedingRow(entry: FeedingEntry, maxVolumeMl: number): EntryRow {
+  const time = formatClock(entry.occurredAt)
+  if (entry.type === 'bottle') {
+    const title = `${time} Biberon`
+    if (entry.volumeMl == null) return { title }
+    return {
+      title,
+      value: `${entry.volumeMl} mL`,
+      barFraction: maxVolumeMl > 0 ? entry.volumeMl / maxVolumeMl : 0,
+    }
   }
+  return { title: `${time} ${entry.foodType ?? 'Solide'}` }
+}
+
+export function summarizeSleepRow(entry: SleepEntry, now: Date, maxDurationSeconds: number): EntryRow {
+  const startTime = formatClock(entry.startedAt)
+  if (entry.endedAt == null) {
+    return { title: `${startTime} En cours` }
+  }
+
+  const prefix = isYesterday(entry.startedAt, now)
+    ? 'Hier '
+    : isToday(entry.startedAt, now)
+      ? ''
+      : `${formatShortDate(entry.startedAt)} `
+  const duration = entry.durationSeconds ?? 0
+
+  return {
+    title: `${prefix}${startTime} – ${formatClock(entry.endedAt)}`,
+    value: formatDuration(duration),
+    barFraction: maxDurationSeconds > 0 ? duration / maxDurationSeconds : 0,
+  }
+}
+
+export function summarizeDiaperRow(entry: DiaperEntry): EntryRow {
+  return { title: `${formatClock(entry.occurredAt)} ${DIAPER_LABELS[entry.type]}` }
+}
+
+export function summarizeMedicationRow(entry: MedicationEntry): EntryRow {
+  const title = `${formatClock(entry.givenAt)} ${entry.name}`
+  return entry.dose ? { title, value: entry.dose } : { title }
+}
+
+export function latestGrowthEntryWithField(
+  entries: GrowthEntry[],
+  field: 'weightG' | 'heightMm' | 'headCircumferenceMm',
+): GrowthEntry | undefined {
+  return [...entries]
+    .filter((entry) => entry[field] != null)
+    .sort((a, b) => new Date(b.measuredAt).getTime() - new Date(a.measuredAt).getTime())[0]
 }

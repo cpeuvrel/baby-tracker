@@ -1,7 +1,10 @@
 import { useState, type ReactNode } from 'react'
 
-export interface CategoryCardMoreLine {
-  text: string
+export interface CategoryCardEntryRow {
+  icon?: ReactNode
+  title: string
+  value?: string
+  barFraction?: number
   onClick: () => void
 }
 
@@ -10,14 +13,48 @@ interface CategoryCardProps {
   colorVar: string
   addLabel: string
   onAdd: () => void
+  addIcon?: ReactNode
+  addActive?: boolean
   icon: ReactNode
+  showPrimary?: boolean
   primary: { label: string; meta: string } | null
   onSelectPrimary?: () => void
   emptyLabel: string
-  todayLines?: CategoryCardMoreLine[]
-  moreLines: CategoryCardMoreLine[]
+  todayLines?: CategoryCardEntryRow[]
+  moreLines: CategoryCardEntryRow[]
   secondaryAction?: { label: string; onClick: () => void }
   highlight?: { value: string; unit: string }
+}
+
+function EntryRowItem({ icon, title, value, barFraction, onClick, colorVar }: CategoryCardEntryRow & { colorVar: string }) {
+  return (
+    <li>
+      <button type="button" className="category-card-row" onClick={onClick}>
+        {icon && (
+          <span className="category-card-row-icon" style={{ color: `var(${colorVar})` }}>
+            {icon}
+          </span>
+        )}
+        <span className="category-card-row-title">{title}</span>
+        {value != null && (
+          <span className="category-card-row-meta">
+            {barFraction != null && (
+              <span className="category-card-row-bar-track">
+                <span
+                  className="category-card-row-bar-fill"
+                  style={{ width: `${Math.min(barFraction, 1) * 100}%`, background: `var(${colorVar})` }}
+                />
+              </span>
+            )}
+            <span className="category-card-row-value">{value}</span>
+          </span>
+        )}
+        <span className="category-card-row-chevron" aria-hidden="true">
+          ›
+        </span>
+      </button>
+    </li>
+  )
 }
 
 export function CategoryCard({
@@ -25,7 +62,10 @@ export function CategoryCard({
   colorVar,
   addLabel,
   onAdd,
+  addIcon,
+  addActive,
   icon,
+  showPrimary = true,
   primary,
   onSelectPrimary,
   emptyLabel,
@@ -51,29 +91,36 @@ export function CategoryCard({
     <section className="category-card" aria-label={title}>
       <header style={{ background: `var(${colorVar})` }}>
         <h3>{title}</h3>
-        <button type="button" aria-label={addLabel} className="add-button" onClick={onAdd}>
-          +
+        <button
+          type="button"
+          aria-label={addLabel}
+          className={`add-button${addActive ? ' add-button-active' : ''}`}
+          onClick={onAdd}
+        >
+          {addIcon ?? '+'}
         </button>
       </header>
       <div className="category-card-body">
-        <div className="category-card-primary">
-          <span className="category-card-icon" style={{ color: `var(${colorVar})` }}>
-            {icon}
-          </span>
-          {primary && onSelectPrimary ? (
-            <button type="button" className="category-card-primary-button" onClick={onSelectPrimary}>
-              {primaryText}
-            </button>
-          ) : (
-            primaryText
-          )}
-          {highlight && primary && (
-            <p className="category-card-highlight">
-              {highlight.value}
-              <span>{highlight.unit}</span>
-            </p>
-          )}
-        </div>
+        {showPrimary && (
+          <div className="category-card-primary">
+            <span className="category-card-icon" style={{ color: `var(${colorVar})` }}>
+              {icon}
+            </span>
+            {primary && onSelectPrimary ? (
+              <button type="button" className="category-card-primary-button" onClick={onSelectPrimary}>
+                {primaryText}
+              </button>
+            ) : (
+              primaryText
+            )}
+            {highlight && primary && (
+              <p className="category-card-highlight">
+                {highlight.value}
+                <span>{highlight.unit}</span>
+              </p>
+            )}
+          </div>
+        )}
         {secondaryAction && (
           <button type="button" className="link-button" onClick={secondaryAction.onClick}>
             {secondaryAction.label}
@@ -81,12 +128,8 @@ export function CategoryCard({
         )}
         {todayLines.length > 0 && (
           <ul>
-            {todayLines.map((line, index) => (
-              <li key={index}>
-                <button type="button" className="category-card-more-line" onClick={line.onClick}>
-                  {line.text}
-                </button>
-              </li>
+            {todayLines.map((row, index) => (
+              <EntryRowItem key={index} {...row} colorVar={colorVar} />
             ))}
           </ul>
         )}
@@ -97,12 +140,8 @@ export function CategoryCard({
             </button>
             {expanded && (
               <ul>
-                {moreLines.map((line, index) => (
-                  <li key={index}>
-                    <button type="button" className="category-card-more-line" onClick={line.onClick}>
-                      {line.text}
-                    </button>
-                  </li>
+                {moreLines.map((row, index) => (
+                  <EntryRowItem key={index} {...row} colorVar={colorVar} />
                 ))}
               </ul>
             )}

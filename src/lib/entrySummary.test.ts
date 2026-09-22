@@ -1,158 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import type { DiaperEntry, FeedingEntry, GrowthEntry, MedicationEntry, SleepEntry } from '../types/models'
 import {
-  summarizeDiaperEntry,
+  latestGrowthEntryWithField,
   summarizeDiaperPrimary,
-  summarizeFeedingEntry,
+  summarizeDiaperRow,
   summarizeFeedingPrimary,
-  summarizeGrowthEntry,
-  summarizeGrowthPrimary,
-  summarizeMedicationEntry,
+  summarizeFeedingRow,
   summarizeMedicationPrimary,
-  summarizeSleepEntry,
+  summarizeMedicationRow,
   summarizeSleepPrimary,
+  summarizeSleepRow,
 } from './entrySummary'
 
 const now = new Date('2026-03-05T12:00:00.000Z')
-
-describe('summarizeFeedingEntry', () => {
-  it('shows the volume for a bottle entry', () => {
-    const entry: FeedingEntry = {
-      id: 'f1',
-      type: 'bottle',
-      occurredAt: '2026-03-05T11:30:00.000Z',
-      volumeMl: 120,
-      foodType: null,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeFeedingEntry(entry, now)).toBe('120 mL — il y a 30min')
-  })
-
-  it('shows the food type for a solid entry', () => {
-    const entry: FeedingEntry = {
-      id: 'f2',
-      type: 'solid',
-      occurredAt: '2026-03-05T11:30:00.000Z',
-      volumeMl: null,
-      foodType: 'purée carotte',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeFeedingEntry(entry, now)).toBe('purée carotte — il y a 30min')
-  })
-})
-
-describe('summarizeSleepEntry', () => {
-  it('shows the duration for a finished entry', () => {
-    const entry: SleepEntry = {
-      id: 's1',
-      startedAt: '2026-03-05T10:00:00.000Z',
-      endedAt: '2026-03-05T11:00:00.000Z',
-      durationSeconds: 3600,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T10:00:00.000Z',
-    }
-
-    expect(summarizeSleepEntry(entry, now)).toBe('1h 00min — il y a 2h 00min')
-  })
-
-  it('shows an in-progress label for an active entry', () => {
-    const entry: SleepEntry = {
-      id: 's2',
-      startedAt: '2026-03-05T11:30:00.000Z',
-      endedAt: null,
-      durationSeconds: null,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeSleepEntry(entry, now)).toBe('En cours depuis il y a 30min')
-  })
-})
-
-describe('summarizeDiaperEntry', () => {
-  it('shows the diaper type and relative time', () => {
-    const entry: DiaperEntry = {
-      id: 'd1',
-      type: 'both',
-      occurredAt: '2026-03-05T11:30:00.000Z',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeDiaperEntry(entry, now)).toBe('Wet + Dirty — il y a 30min')
-  })
-})
-
-describe('summarizeMedicationEntry', () => {
-  it('shows the dose when present', () => {
-    const entry: MedicationEntry = {
-      id: 'm1',
-      name: 'Vitamine D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '2 gouttes',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationEntry(entry, now)).toBe('Vitamine D — 2 gouttes — il y a 30min')
-  })
-
-  it('omits the dose when absent', () => {
-    const entry: MedicationEntry = {
-      id: 'm2',
-      name: 'Vitamine D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationEntry(entry, now)).toBe('Vitamine D — il y a 30min')
-  })
-})
-
-describe('summarizeGrowthEntry', () => {
-  it('joins the available measurements', () => {
-    const entry: GrowthEntry = {
-      id: 'g1',
-      measuredAt: '2026-03-05T11:30:00.000Z',
-      weightG: 6200,
-      heightMm: 620,
-      headCircumferenceMm: null,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeGrowthEntry(entry, now)).toBe('6.20 kg · 62.0 cm — il y a 30min')
-  })
-
-  it('falls back to a generic label when no measurement is present', () => {
-    const entry: GrowthEntry = {
-      id: 'g2',
-      measuredAt: '2026-03-05T11:30:00.000Z',
-      weightG: null,
-      heightMm: null,
-      headCircumferenceMm: null,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeGrowthEntry(entry, now)).toBe('Mesure — il y a 30min')
-  })
-})
 
 describe('summarizeFeedingPrimary', () => {
   it('labels a bottle entry generically, leaving the volume to the highlight value', () => {
@@ -273,37 +133,180 @@ describe('summarizeMedicationPrimary', () => {
   })
 })
 
-describe('summarizeGrowthPrimary', () => {
-  it('joins the available measurements into the label', () => {
-    const entry: GrowthEntry = {
-      id: 'g1',
-      measuredAt: '2026-03-05T11:30:00.000Z',
-      weightG: 6200,
-      heightMm: 620,
-      headCircumferenceMm: null,
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
+function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
+  return {
+    id: 'f1',
+    type: 'bottle',
+    occurredAt: '2026-03-05T08:33:00.000Z',
+    volumeMl: 40,
+    foodType: null,
+    notes: '',
+    createdBy: 'uid1',
+    createdAt: '2026-03-05T08:33:00.000Z',
+    ...overrides,
+  }
+}
 
-    expect(summarizeGrowthPrimary(entry, now)).toEqual({
-      label: '6.20 kg · 62.0 cm',
-      meta: 'il y a 30min',
+describe('summarizeFeedingRow', () => {
+  it('shows the time, a bottle bar and value proportional to the given max', () => {
+    expect(summarizeFeedingRow(feedingEntry({ volumeMl: 40 }), 150)).toEqual({
+      title: expect.stringContaining('Biberon'),
+      value: '40 mL',
+      barFraction: 40 / 150,
     })
   })
 
-  it('falls back to a generic label when no measurement is present', () => {
-    const entry: GrowthEntry = {
-      id: 'g2',
-      measuredAt: '2026-03-05T11:30:00.000Z',
-      weightG: null,
-      heightMm: null,
-      headCircumferenceMm: null,
+  it('omits the bar when the bottle has no recorded volume', () => {
+    const row = summarizeFeedingRow(feedingEntry({ volumeMl: null }), 150)
+
+    expect(row.value).toBeUndefined()
+    expect(row.barFraction).toBeUndefined()
+  })
+
+  it('shows the food type for a solid entry, without a bar', () => {
+    const row = summarizeFeedingRow(
+      feedingEntry({ type: 'solid', volumeMl: null, foodType: 'Figue' }),
+      150,
+    )
+
+    expect(row.title).toContain('Figue')
+    expect(row.value).toBeUndefined()
+  })
+})
+
+function sleepEntry(overrides: Partial<SleepEntry>): SleepEntry {
+  return {
+    id: 's1',
+    startedAt: '2026-03-05T06:00:00.000Z',
+    endedAt: '2026-03-05T08:15:00.000Z',
+    durationSeconds: 8100,
+    notes: '',
+    createdBy: 'uid1',
+    createdAt: '2026-03-05T06:00:00.000Z',
+    ...overrides,
+  }
+}
+
+describe('summarizeSleepRow', () => {
+  it('shows a start–end range, duration and a bar proportional to the given max', () => {
+    const row = summarizeSleepRow(sleepEntry({ durationSeconds: 8100 }), now, 8100)
+
+    expect(row.title).toMatch(/–/)
+    expect(row.value).toBe(formatDurationForTest(8100))
+    expect(row.barFraction).toBe(1)
+  })
+
+  it('shows an in-progress label without a bar for an active entry', () => {
+    const row = summarizeSleepRow(
+      sleepEntry({ endedAt: null, durationSeconds: null }),
+      now,
+      8100,
+    )
+
+    expect(row.title).toContain('En cours')
+    expect(row.value).toBeUndefined()
+    expect(row.barFraction).toBeUndefined()
+  })
+
+  it('prefixes with "Hier" for an entry started the day before', () => {
+    const yesterday = new Date(now)
+    yesterday.setDate(yesterday.getDate() - 1)
+    yesterday.setHours(20, 0, 0, 0)
+    const endedAt = new Date(yesterday.getTime() + 3600_000)
+
+    const row = summarizeSleepRow(
+      sleepEntry({ startedAt: yesterday.toISOString(), endedAt: endedAt.toISOString(), durationSeconds: 3600 }),
+      now,
+      3600,
+    )
+
+    expect(row.title.startsWith('Hier ')).toBe(true)
+  })
+})
+
+function formatDurationForTest(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  return `${hours}h ${String(minutes).padStart(2, '0')}min`
+}
+
+describe('summarizeDiaperRow', () => {
+  it('shows the time and diaper type', () => {
+    const entry: DiaperEntry = {
+      id: 'd1',
+      type: 'wet',
+      occurredAt: '2026-03-05T08:00:00.000Z',
       notes: '',
       createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
+      createdAt: '2026-03-05T08:00:00.000Z',
     }
 
-    expect(summarizeGrowthPrimary(entry, now)).toEqual({ label: 'Mesure', meta: 'il y a 30min' })
+    expect(summarizeDiaperRow(entry).title).toContain('Wet')
+  })
+})
+
+describe('summarizeMedicationRow', () => {
+  it('shows the dose as the value when present', () => {
+    const entry: MedicationEntry = {
+      id: 'm1',
+      name: 'Vitamine D',
+      givenAt: '2026-03-05T08:00:00.000Z',
+      dose: '2 gouttes',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T08:00:00.000Z',
+    }
+
+    expect(summarizeMedicationRow(entry)).toEqual({
+      title: expect.stringContaining('Vitamine D'),
+      value: '2 gouttes',
+    })
+  })
+
+  it('omits the value when there is no dose', () => {
+    const entry: MedicationEntry = {
+      id: 'm2',
+      name: 'Vitamine D',
+      givenAt: '2026-03-05T08:00:00.000Z',
+      dose: '',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T08:00:00.000Z',
+    }
+
+    expect(summarizeMedicationRow(entry).value).toBeUndefined()
+  })
+})
+
+describe('latestGrowthEntryWithField', () => {
+  const older: GrowthEntry = {
+    id: 'g1',
+    measuredAt: '2026-01-01T00:00:00.000Z',
+    weightG: 5000,
+    heightMm: null,
+    headCircumferenceMm: 380,
+    notes: '',
+    createdBy: 'uid1',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  }
+  const newer: GrowthEntry = {
+    id: 'g2',
+    measuredAt: '2026-03-01T00:00:00.000Z',
+    weightG: 6200,
+    heightMm: 620,
+    headCircumferenceMm: null,
+    notes: '',
+    createdBy: 'uid1',
+    createdAt: '2026-03-01T00:00:00.000Z',
+  }
+
+  it('returns the most recent entry that has the given field set', () => {
+    expect(latestGrowthEntryWithField([older, newer], 'weightG')).toBe(newer)
+    expect(latestGrowthEntryWithField([older, newer], 'headCircumferenceMm')).toBe(older)
+  })
+
+  it('returns undefined when no entry has the field set', () => {
+    expect(latestGrowthEntryWithField([older, newer], 'heightMm')).toBe(newer)
+    expect(latestGrowthEntryWithField([], 'weightG')).toBeUndefined()
   })
 })

@@ -41,15 +41,15 @@ describe('SleepTimerModal', () => {
     })
   })
 
-  it('shows an editable Start/End form when nothing is active yet', () => {
+  it('shows an editable Start/End form with a Start Timer button and Save in the header when nothing is active', () => {
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
 
     render(<SleepTimerModal onClose={vi.fn()} />)
 
     expect(screen.getByLabelText('Start Time')).toBeInTheDocument()
     expect(screen.getByLabelText('End Time')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Start Timer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 
   it('starts the timer and shows a starting placeholder until the active entry resolves', async () => {
@@ -57,14 +57,14 @@ describe('SleepTimerModal', () => {
     const user = userEvent.setup()
 
     render(<SleepTimerModal onClose={vi.fn()} />)
-    await user.click(screen.getByRole('button', { name: 'Start' }))
+    await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
     expect(startSleep).toHaveBeenCalledTimes(1)
     expect(screen.getByText('Démarrage…')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Start Timer' })).toBeDisabled()
   })
 
-  it('shows the live counter and stops the entry when Enregistrer is clicked', async () => {
+  it('shows the live counter and a Stop Timer button once an entry is active', async () => {
     const activeEntry: SleepEntry = {
       id: 'sleep1',
       startedAt: '2026-03-05T20:00:00.000Z',
@@ -79,13 +79,37 @@ describe('SleepTimerModal', () => {
     const user = userEvent.setup()
 
     render(<SleepTimerModal onClose={onClose} />)
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
 
     expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
+    expect(onClose).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('saves a fixed past entry directly once an end time is entered', async () => {
+  it('closes without saving anything when Save is pressed while a timer is active', async () => {
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    render(<SleepTimerModal onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(logSleep).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('saves a fixed past entry directly once an end time is entered, via the header Save', async () => {
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
     const onClose = vi.fn()
     const user = userEvent.setup()
@@ -93,7 +117,7 @@ describe('SleepTimerModal', () => {
     render(<SleepTimerModal onClose={onClose} />)
     fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '2026-03-05T20:00' } })
     fireEvent.change(screen.getByLabelText('End Time'), { target: { value: '2026-03-05T21:30' } })
-    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+    await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', {
       startedAt: new Date('2026-03-05T20:00'),

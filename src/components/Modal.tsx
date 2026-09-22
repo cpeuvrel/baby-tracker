@@ -1,13 +1,20 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
+interface ModalHeaderAction {
+  label: string
+  onClick: () => void
+  disabled?: boolean
+}
+
 interface ModalProps {
   title: string
   bandColorVar: string
   onClose: () => void
+  headerAction?: ModalHeaderAction
   children: ReactNode
 }
 
-export function Modal({ title, bandColorVar, onClose, children }: ModalProps) {
+export function Modal({ title, bandColorVar, onClose, headerAction, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -34,6 +41,16 @@ export function Modal({ title, bandColorVar, onClose, children }: ModalProps) {
             ✕
           </button>
           <h2>{title}</h2>
+          {headerAction && (
+            <button
+              type="button"
+              className="modal-header-action"
+              onClick={headerAction.onClick}
+              disabled={headerAction.disabled}
+            >
+              {headerAction.label}
+            </button>
+          )}
         </header>
         <div className="modal-body">{children}</div>
       </div>
