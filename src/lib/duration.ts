@@ -26,9 +26,13 @@ export function formatRelativeTime(date: Date, now: Date): string {
   const totalSeconds = secondsBetween(date, now)
   if (totalSeconds < 60) return "à l'instant"
 
-  const hours = Math.floor(totalSeconds / 3600)
+  const days = Math.floor(totalSeconds / SECONDS_PER_DAY)
+  const hours = Math.floor((totalSeconds % SECONDS_PER_DAY) / 3600)
   const minutes = Math.floor((totalSeconds % 3600) / 60)
 
+  if (days > 0) {
+    return `il y a ${days}j`
+  }
   if (hours > 0) {
     return `il y a ${hours}h ${String(minutes).padStart(2, '0')}min`
   }

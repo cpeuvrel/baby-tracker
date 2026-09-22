@@ -54,4 +54,9 @@ describe('formatRelativeTime', () => {
     const now = new Date('2026-03-05T12:10:00Z')
     expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('il y a 2h 10min')
   })
+
+  it('formats days only at or above 24h, ignoring the remaining hours', () => {
+    const now = new Date('2026-09-22T12:00:00Z')
+    expect(formatRelativeTime(new Date('2026-03-18T14:50:21Z'), now)).toBe('il y a 187j')
+  })
 })
