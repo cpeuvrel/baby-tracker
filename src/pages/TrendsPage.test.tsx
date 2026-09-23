@@ -61,6 +61,7 @@ describe('TrendsPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
@@ -73,6 +74,7 @@ describe('TrendsPage', () => {
       household: null,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })

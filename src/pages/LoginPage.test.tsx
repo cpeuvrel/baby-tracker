@@ -6,16 +6,25 @@ import { LoginPage } from './LoginPage'
 
 describe('LoginPage', () => {
   const loginWithGoogle = vi.fn()
+  const loginWithPassword = vi.fn()
 
-  beforeEach(() => {
-    loginWithGoogle.mockReset()
+  const mockAuth = (overrides: Partial<ReturnType<typeof AuthContext.useAuth>> = {}) => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: null,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle,
+      loginWithPassword,
       logout: vi.fn(),
+      ...overrides,
     })
+  }
+
+  beforeEach(() => {
+    loginWithGoogle.mockReset()
+    loginWithPassword.mockReset().mockResolvedValue(undefined)
+    mockAuth()
   })
 
   it('renders a Google sign-in button', () => {
@@ -34,16 +43,26 @@ describe('LoginPage', () => {
   })
 
   it('shows the auth error when present', () => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: null,
-      loading: false,
-      error: 'Unable to sign in with Google.',
-      loginWithGoogle,
-      logout: vi.fn(),
-    })
+    mockAuth({ error: 'Unable to sign in with Google.' })
 
     render(<LoginPage />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign in with Google.')
+  })
+
+  it('hides the local sign-in form outside the emulator', () => {
+    render(<LoginPage />)
+
+    expect(screen.queryByRole('button', { name: 'Sign in locally' })).not.toBeInTheDocument()
+  })
+
+  it('signs in with the prefilled emulator credentials', async () => {
+    mockAuth({ devLoginAvailable: true })
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Sign in locally' }))
+
+    expect(loginWithPassword).toHaveBeenCalledWith('amandineandcorentin@gmail.com', 'password123')
   })
 })

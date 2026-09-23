@@ -31,6 +31,7 @@ describe('NighttimeHoursPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
@@ -54,6 +55,7 @@ describe('NighttimeHoursPage', () => {
       household,
       babies: [{ ...baby, nighttimeHours: { start: '21:00', end: '06:30' } }],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })

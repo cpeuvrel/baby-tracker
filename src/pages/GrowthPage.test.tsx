@@ -15,6 +15,7 @@ describe('GrowthPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
@@ -25,6 +26,7 @@ describe('GrowthPage', () => {
       household: null,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })

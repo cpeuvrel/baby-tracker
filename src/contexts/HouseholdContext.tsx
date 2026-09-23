@@ -10,6 +10,7 @@ interface HouseholdContextValue {
   household: Household | null
   babies: Baby[]
   loading: boolean
+  error: string | null
   selectedBaby: Baby | null
   selectBaby: (babyId: string) => void
 }
@@ -29,6 +30,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   const [household, setHousehold] = useState<Household | null>(null)
   const [babies, setBabies] = useState<Baby[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selectedBabyId, setSelectedBabyId] = useState<string | null>(readStoredBabyId)
 
   useEffect(() => {
@@ -39,21 +41,38 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       return
     }
     setLoading(true)
-    return subscribeToHouseholdForUser(user.uid, (nextHousehold) => {
-      setHousehold(nextHousehold)
-      if (!nextHousehold) {
-        setBabies([])
+    setError(null)
+    return subscribeToHouseholdForUser(
+      user.uid,
+      (nextHousehold) => {
+        setHousehold(nextHousehold)
+        if (!nextHousehold) {
+          setBabies([])
+          setLoading(false)
+        }
+      },
+      (subscriptionError) => {
+        console.error('[household] subscription failed', subscriptionError)
+        setError(subscriptionError.message)
         setLoading(false)
-      }
-    })
+      },
+    )
   }, [user])
 
   useEffect(() => {
     if (!household) return
-    return subscribeToBabies(household.id, (nextBabies) => {
-      setBabies(nextBabies)
-      setLoading(false)
-    })
+    return subscribeToBabies(
+      household.id,
+      (nextBabies) => {
+        setBabies(nextBabies)
+        setLoading(false)
+      },
+      (subscriptionError) => {
+        console.error('[babies] subscription failed', subscriptionError)
+        setError(subscriptionError.message)
+        setLoading(false)
+      },
+    )
   }, [household])
 
   const selectedBaby = useMemo(
@@ -71,7 +90,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <HouseholdContext.Provider value={{ household, babies, loading, selectedBaby, selectBaby }}>
+    <HouseholdContext.Provider value={{ household, babies, loading, error, selectedBaby, selectBaby }}>
       {children}
     </HouseholdContext.Provider>
   )

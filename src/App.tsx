@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -17,16 +18,52 @@ import { NighttimeHoursPage } from './pages/NighttimeHoursPage'
 import { TrendDetailPage } from './pages/TrendDetailPage'
 import { TrendsPage } from './pages/TrendsPage'
 
-function AuthenticatedApp() {
-  const { household, loading } = useHousehold()
+const STUCK_LOADING_MS = 8000
 
-  if (loading) {
-    return (
+/** Évite l'écran "Loading…" sans issue : au bout de 8 s, on propose de se déconnecter. */
+function LoadingScreen() {
+  const { logout } = useAuth()
+  const [stuck, setStuck] = useState(false)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setStuck(true), STUCK_LOADING_MS)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <main>
       <p role="status" aria-live="polite">
         Loading…
       </p>
+      {stuck && (
+        <>
+          <p>This is taking longer than expected.</p>
+          <button type="button" onClick={() => void logout()}>
+            Sign out
+          </button>
+        </>
+      )}
+    </main>
+  )
+}
+
+function AuthenticatedApp() {
+  const { household, loading, error } = useHousehold()
+  const { logout } = useAuth()
+
+  if (error) {
+    return (
+      <main>
+        <h1>Baby Tracker</h1>
+        <p role="alert">Unable to load your family data: {error}</p>
+        <button type="button" onClick={() => void logout()}>
+          Sign out
+        </button>
+      </main>
     )
   }
+
+  if (loading) return <LoadingScreen />
 
   if (!household) return <CreateFamilyPage />
 
@@ -55,13 +92,7 @@ function AuthenticatedApp() {
 function AppShell() {
   const { user, loading } = useAuth()
 
-  if (loading) {
-    return (
-      <p role="status" aria-live="polite">
-        Loading…
-      </p>
-    )
-  }
+  if (loading) return <LoadingScreen />
 
   if (!user) return <LoginPage />
 

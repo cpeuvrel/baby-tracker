@@ -22,6 +22,7 @@ describe('BabySelector', () => {
       household: null,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby,
     })
@@ -36,6 +37,7 @@ describe('BabySelector', () => {
       household: { id: 'h1', name: 'Famille Test', memberUids: [] },
       babies,
       loading: false,
+      error: null,
       selectedBaby: babies[0],
       selectBaby,
     })

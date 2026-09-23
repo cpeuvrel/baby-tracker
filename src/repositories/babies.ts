@@ -5,23 +5,28 @@ import type { Baby, BabySex, NighttimeHours } from '../types/models'
 export function subscribeToBabies(
   householdId: string,
   onChange: (babies: Baby[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const babiesQuery = query(babiesCollection(householdId), orderBy('name'))
 
-  return onSnapshot(babiesQuery, (snapshot) => {
-    onChange(
-      snapshot.docs.map((docSnap) => {
-        const data = docSnap.data()
-        return {
-          id: docSnap.id,
-          name: data.name as string,
-          birthDate: data.birthDate as string,
-          sex: (data.sex as BabySex | null) ?? null,
-          nighttimeHours: (data.nighttimeHours as NighttimeHours | null) ?? null,
-        }
-      }),
-    )
-  })
+  return onSnapshot(
+    babiesQuery,
+    (snapshot) => {
+      onChange(
+        snapshot.docs.map((docSnap) => {
+          const data = docSnap.data()
+          return {
+            id: docSnap.id,
+            name: data.name as string,
+            birthDate: data.birthDate as string,
+            sex: (data.sex as BabySex | null) ?? null,
+            nighttimeHours: (data.nighttimeHours as NighttimeHours | null) ?? null,
+          }
+        }),
+      )
+    },
+    (error) => onError?.(error),
+  )
 }
 
 export async function addBaby(

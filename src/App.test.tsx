@@ -7,13 +7,15 @@ const mockAuth = createMockAuth()
 const subscribeToHouseholdForUser = vi.fn()
 const subscribeToBabies = vi.fn()
 
-vi.mock('./lib/firebase', () => ({ auth: {} }))
+vi.mock('./lib/firebase', () => ({ auth: {}, usingEmulators: false }))
 
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
   signInWithPopup: vi.fn(),
+  signInWithEmailAndPassword: vi.fn(),
+  createUserWithEmailAndPassword: vi.fn(),
   signOut: vi.fn(),
 }))
 

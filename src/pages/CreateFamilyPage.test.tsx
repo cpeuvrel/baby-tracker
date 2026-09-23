@@ -23,7 +23,9 @@ describe('CreateFamilyPage', () => {
       user: { uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
   })
@@ -33,7 +35,9 @@ describe('CreateFamilyPage', () => {
       user: null,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
 

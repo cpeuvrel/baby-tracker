@@ -1,11 +1,9 @@
 // Seed de données de dev pour le Firebase Local Emulator Suite (Firestore + Auth).
 // Ne touche jamais le projet Firebase réel : nécessite les émulateurs démarrés.
 //
-// Depuis la migration vers Google Sign-In avec un compte partagé (plan.md,
-// section 1b), il n'y a plus de mot de passe à pré-créer : il faut d'abord se
-// connecter une fois dans l'app ("Sign in with Google", taper l'email ci-dessous
-// sur l'écran factice de l'Auth Emulator) pour que le compte existe, PUIS lancer
-// ce script pour créer le household/baby de démo rattachés à ce compte.
+// Le script crée au besoin le compte partagé avec un mot de passe de dev, pour
+// pouvoir se connecter via le formulaire "Local sign-in (emulator)" de l'écran
+// de login sans dépendre du flow Google.
 import { initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -15,6 +13,8 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099'
 
 const PROJECT_ID = 'baby-tracker-c8fd2'
 const SHARED_ACCOUNT_EMAIL = 'amandineandcorentin@gmail.com'
+// Mot de passe de dev, valable uniquement dans l'Auth Emulator (jamais en prod).
+const DEV_PASSWORD = 'password123'
 
 initializeApp({ projectId: PROJECT_ID })
 const auth = getAuth()
@@ -23,13 +23,30 @@ const db = getFirestore()
 let uid
 try {
   uid = (await auth.getUserByEmail(SHARED_ACCOUNT_EMAIL)).uid
+  await auth.updateUser(uid, { password: DEV_PASSWORD, emailVerified: true })
+  console.log(`Compte existant ${SHARED_ACCOUNT_EMAIL} — mot de passe de dev reinitialise.`)
 } catch {
-  console.error(
-    `Aucun compte pour ${SHARED_ACCOUNT_EMAIL} dans l'Auth Emulator.\n` +
-      'Ouvre l\'app, clique "Sign in with Google", et tape cet email sur l\'écran ' +
-      'factice de connexion de l\'émulateur — puis relance ce script.',
-  )
-  process.exit(1)
+  const created = await auth.createUser({
+    email: SHARED_ACCOUNT_EMAIL,
+    password: DEV_PASSWORD,
+    emailVerified: true,
+  })
+  uid = created.uid
+  console.log(`Compte ${SHARED_ACCOUNT_EMAIL} cree dans l'Auth Emulator.`)
+}
+
+// Ne pas créer un second foyer : la requête de l'app prend le premier trouvé,
+// un household de démo masquerait les vraies données de dev.
+const existingHouseholds = await db
+  .collection('households')
+  .where('memberUids', 'array-contains', uid)
+  .get()
+
+if (!existingHouseholds.empty) {
+  const existing = existingHouseholds.docs[0]
+  console.log(`Foyer déjà présent (${existing.id}) : seeding Firestore ignoré.`)
+  console.log(`Connexion locale : ${SHARED_ACCOUNT_EMAIL} / ${DEV_PASSWORD}`)
+  process.exit(0)
 }
 
 await db.collection('households').doc('demo-household').set({
@@ -48,6 +65,7 @@ await db
   })
 
 console.log('Seed terminé.')
+console.log(`Connexion locale : ${SHARED_ACCOUNT_EMAIL} / ${DEV_PASSWORD}`)
 console.log(`Household: demo-household (memberUids: ["${uid}"]) — Baby: demo-baby`)
 
 process.exit(0)

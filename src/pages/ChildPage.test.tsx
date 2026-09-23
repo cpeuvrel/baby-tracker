@@ -24,7 +24,9 @@ vi.mock('../contexts/AuthContext', () => ({
     user: { uid: 'uid1' },
     loading: false,
     error: null,
+    devLoginAvailable: false,
     loginWithGoogle: vi.fn(),
+    loginWithPassword: vi.fn(),
     logout: vi.fn(),
   }),
 }))
@@ -50,6 +52,7 @@ describe('ChildPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
@@ -116,6 +119,7 @@ describe('ChildPage', () => {
       household,
       babies: [{ ...baby, nighttimeHours: { start: '21:00', end: '06:30' } }],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })

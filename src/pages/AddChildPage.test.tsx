@@ -29,6 +29,7 @@ describe('AddChildPage', () => {
       household,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })
@@ -39,6 +40,7 @@ describe('AddChildPage', () => {
       household: null,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })

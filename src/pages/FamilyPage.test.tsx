@@ -23,7 +23,9 @@ describe('FamilyPage', () => {
       user: { uid: 'uid1', email: 'parent1@example.com' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
   })
@@ -33,6 +35,7 @@ describe('FamilyPage', () => {
       household: null,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })
@@ -47,6 +50,7 @@ describe('FamilyPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
@@ -63,6 +67,7 @@ describe('FamilyPage', () => {
       household,
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: null,
       selectBaby: vi.fn(),
     })
@@ -80,6 +85,7 @@ describe('FamilyPage', () => {
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })

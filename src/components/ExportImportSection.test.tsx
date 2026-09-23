@@ -37,7 +37,9 @@ describe('ExportImportSection', () => {
       user: { uid: 'uid1' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
     URL.createObjectURL = vi.fn().mockReturnValue('blob:mock')
@@ -49,7 +51,9 @@ describe('ExportImportSection', () => {
       user: null,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
 

@@ -59,13 +59,16 @@ describe('GrowthDetailPage', () => {
       user: { uid: 'uid1' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [babyGirl],
       loading: false,
+      error: null,
       selectedBaby: babyGirl,
       selectBaby: vi.fn(),
     })
@@ -134,6 +137,7 @@ describe('GrowthDetailPage', () => {
       household,
       babies: [babyNoSex],
       loading: false,
+      error: null,
       selectedBaby: babyNoSex,
       selectBaby: vi.fn(),
     })

@@ -7,26 +7,36 @@ import { AuthProvider, useAuth } from './AuthContext'
 
 const mockAuth = createMockAuth()
 const signInWithPopup = vi.fn()
+const signInWithEmailAndPassword = vi.fn()
+const createUserWithEmailAndPassword = vi.fn()
 const signOut = vi.fn()
 
-vi.mock('../lib/firebase', () => ({ auth: {} }))
+vi.mock('../lib/firebase', () => ({ auth: {}, usingEmulators: true }))
 
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
   signInWithPopup: (...args: unknown[]) => signInWithPopup(...args),
+  signInWithEmailAndPassword: (...args: unknown[]) => signInWithEmailAndPassword(...args),
+  createUserWithEmailAndPassword: (...args: unknown[]) => createUserWithEmailAndPassword(...args),
   signOut: (...args: unknown[]) => signOut(...args),
 }))
 
 function Probe() {
-  const { user, loading, error, loginWithGoogle, logout } = useAuth()
+  const { user, loading, error, loginWithGoogle, loginWithPassword, logout } = useAuth()
   return (
     <div>
       <span data-role="status">{loading ? 'loading' : user ? `in:${user.email}` : 'out'}</span>
       <span data-role="error">{error}</span>
       <button type="button" onClick={() => void loginWithGoogle()}>
         login
+      </button>
+      <button
+        type="button"
+        onClick={() => void loginWithPassword('amandineandcorentin@gmail.com', 'password123')}
+      >
+        local login
       </button>
       <button type="button" onClick={() => void logout()}>
         logout
@@ -38,6 +48,8 @@ function Probe() {
 describe('AuthContext', () => {
   beforeEach(() => {
     signInWithPopup.mockReset()
+    signInWithEmailAndPassword.mockReset()
+    createUserWithEmailAndPassword.mockReset()
     signOut.mockReset()
   })
 
@@ -131,6 +143,62 @@ describe('AuthContext', () => {
     await user.click(screen.getByRole('button', { name: 'logout' }))
 
     expect(signOut).toHaveBeenCalledWith({})
+  })
+
+  it('leaves the loading state for a rejected account instead of hanging', async () => {
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    mockAuth.emit({ email: 'stranger@example.com' } as User)
+
+    await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+  })
+
+  it('signs in locally with email and password', async () => {
+    signInWithEmailAndPassword.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    mockAuth.emit(null)
+    await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'local login' }))
+
+    expect(signInWithEmailAndPassword).toHaveBeenCalledWith(
+      {},
+      'amandineandcorentin@gmail.com',
+      'password123',
+    )
+    expect(createUserWithEmailAndPassword).not.toHaveBeenCalled()
+  })
+
+  it('creates the test account on the emulator when it does not exist yet', async () => {
+    signInWithEmailAndPassword.mockRejectedValue({ code: 'auth/user-not-found' })
+    createUserWithEmailAndPassword.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    mockAuth.emit(null)
+    await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'local login' }))
+
+    await waitFor(() =>
+      expect(createUserWithEmailAndPassword).toHaveBeenCalledWith(
+        {},
+        'amandineandcorentin@gmail.com',
+        'password123',
+      ),
+    )
   })
 
   it('throws when useAuth is used outside AuthProvider', () => {

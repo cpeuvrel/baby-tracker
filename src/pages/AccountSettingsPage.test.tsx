@@ -12,7 +12,9 @@ describe('AccountSettingsPage', () => {
       user: { uid: 'uid1', email: 'parent1@example.com' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
 
@@ -32,7 +34,9 @@ describe('AccountSettingsPage', () => {
       user: { uid: 'uid1', email: 'parent1@example.com' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout,
     })
     const user = userEvent.setup()

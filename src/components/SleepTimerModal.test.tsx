@@ -30,13 +30,16 @@ describe('SleepTimerModal', () => {
       user: { uid: 'uid1' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [baby],
       loading: false,
+      error: null,
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })

@@ -35,13 +35,16 @@ describe('DiaperForm', () => {
       user: { uid: 'uid1' } as User,
       loading: false,
       error: null,
+      devLoginAvailable: false,
       loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
       logout: vi.fn(),
     })
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household: { id: 'h1', name: 'Famille Test', memberUids: [] },
       babies: [],
       loading: false,
+      error: null,
       selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
       selectBaby: vi.fn(),
     })
