@@ -14,8 +14,8 @@
   --danger-bg: #fbeaea;
   --card-shadow: 0 4px 10px rgba(31, 58, 92, 0.08);
 
-  /* Bandeaux de catégorie : couleurs fixes, ne changent pas avec le thème
-     (confirmé sur l'app réelle — seul le fond de page passe en sombre). */
+  /* Category bands: fixed colors, don't change with the theme
+     (confirmed on the real app — only the page background goes dark). */
   --category-feeding: #f5c242;
   --category-sleep: #afd0ea;
   --category-growth: #b7d98f;
@@ -190,7 +190,7 @@ main {
   padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
 }
 
-/* Coquille applicative (en-tête + contenu + nav du bas) */
+/* App shell (header + content + bottom nav) */
 .app-shell {
   min-height: 100svh;
   display: flex;
@@ -271,7 +271,7 @@ main {
   padding: 0 16px 24px;
 }
 
-/* Navigation par onglets (bas d'écran) */
+/* Tab navigation (bottom of screen) */
 .tab-bar {
   position: sticky;
   bottom: 0;
@@ -322,7 +322,7 @@ main {
   font-size: 13px;
 }
 
-/* Cartes de catégorie (écran Activity) */
+/* Category cards (Activity screen) */
 .category-card {
   border-radius: 16px;
   overflow: hidden;
@@ -505,7 +505,7 @@ main {
   font-size: 18px;
 }
 
-/* Modale plein écran (chrono sommeil, saisies) */
+/* Full-screen modal (sleep timer, entries) */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -594,7 +594,7 @@ main {
   font-weight: 600;
 }
 
-/* Listes façon réglages (écran Account/Family/Child) */
+/* Settings-style lists (Account/Family/Child screen) */
 .list-group {
   list-style: none;
   margin: 0 0 16px;
@@ -645,7 +645,7 @@ main {
   margin-top: 8px;
 }
 
-/* Boutons de sélection (période, mesure, type) */
+/* Selection buttons (period, measurement, type) */
 [role='group'] {
   display: flex;
   gap: 8px;
@@ -665,8 +665,8 @@ main {
   border-color: var(--accent);
 }
 
-/* Contrôle segmenté (ex. Sex: Boy/Girl) — un seul conteneur pilule divisé en
-   segments, pas des boutons pilule séparés (patron section 6, captures Nara). */
+/* Segmented control (e.g. Sex: Boy/Girl) — a single pill container divided into
+   segments, not separate pill buttons (pattern section 6, Nara screenshots). */
 [role='group'].segmented-control {
   display: inline-flex;
   gap: 0;
@@ -691,8 +691,8 @@ main {
   box-shadow: var(--card-shadow);
 }
 
-/* Actions de type lien dans les réglages (Export/Import) — pas de gros bouton
-   plein, juste un libellé en gras dans la liste, comme "Export Data" chez Nara. */
+/* Link-style actions in settings (Export/Import) — no big filled button,
+   just a bold label in the list, like "Export Data" in Nara. */
 .settings-action {
   display: block;
   width: 100%;
@@ -724,7 +724,7 @@ main {
   color: var(--text-muted);
 }
 
-/* Calendrier hebdomadaire (écran History) */
+/* Weekly calendar (History screen) */
 .week-chart-nav {
   display: flex;
   align-items: center;
@@ -831,7 +831,7 @@ main {
   transform: translateY(-50%);
 }
 
-/* Écran Trends : liste de métriques par section */
+/* Trends screen: list of metrics per section */
 .trend-section-title {
   font-family: var(--serif);
   font-size: 16px;
@@ -883,7 +883,7 @@ main {
   padding: 3px 8px;
 }
 
-/* Écran de détail d'une métrique (Trends > sous-écran) */
+/* Metric detail screen (Trends > sub-screen) */
 .detail-header {
   display: flex;
   align-items: center;

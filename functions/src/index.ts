@@ -65,8 +65,8 @@ async function sendMedicationReminder(
   await getMessaging().sendEachForMulticast({
     tokens,
     notification: {
-      title: `Rappel : ${medicationName}`,
-      body: `${medicationName} n'a pas encore été donné aujourd'hui.`,
+      title: `Reminder: ${medicationName}`,
+      body: `${medicationName} hasn't been given yet today.`,
     },
   })
 }

@@ -47,24 +47,24 @@ describe('diaperEntries repository', () => {
     await logDiaper('h1', 'b1', 'uid1', {
       type: 'both',
       occurredAt: new Date('2026-03-05T08:00:00.000Z'),
-      notes: 'après le bain',
+      notes: 'after bath',
     })
 
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ type: 'both', notes: 'après le bain', createdBy: 'uid1' })
+    expect(payload).toMatchObject({ type: 'both', notes: 'after bath', createdBy: 'uid1' })
   })
 
   it('updates a diaper entry', async () => {
     await updateDiaperEntry('h1', 'b1', 'd1', {
       type: 'dry',
       occurredAt: new Date('2026-03-05T08:00:00.000Z'),
-      notes: 'corrigé',
+      notes: 'corrected',
     })
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ type: 'dry', notes: 'corrigé' })
+    expect(payload).toMatchObject({ type: 'dry', notes: 'corrected' })
   })
 
   it('deletes a diaper entry', async () => {

@@ -1,41 +1,41 @@
-# Activer les rappels médicament (FCM) en production
+# Enabling medication reminders (FCM) in production
 
-Le code du rappel (saisie, réglages, Cloud Function, service worker) est en
-place et testable via l'émulateur. Deux actions manuelles restent à faire une
-seule fois dans la console Firebase avant que les notifications marchent en
-conditions réelles :
+The reminder code (entry, settings, Cloud Function, service worker) is in
+place and testable via the emulator. Two manual actions still need to be
+done once in the Firebase console before notifications work under real
+conditions:
 
-## 1. Passer au plan Blaze
+## 1. Move to the Blaze plan
 
-Console Firebase → Paramètres du projet → Utilisation et facturation →
-passer au forfait **Blaze** (carte bancaire requise). Coût réel attendu ≈ 0€/mois
-à cet usage (2 utilisateurs). Penser à configurer une alerte de budget à 0€/1€.
+Firebase Console → Project Settings → Usage and billing →
+switch to the **Blaze** plan (credit card required). Expected real cost ≈ €0/month
+at this usage (2 users). Remember to set up a budget alert at €0/€1.
 
-Nécessaire car les fonctions programmées (`onSchedule`, Cloud Scheduler) ne
-sont pas disponibles sur le plan gratuit "Spark".
+Needed because scheduled functions (`onSchedule`, Cloud Scheduler) aren't
+available on the free "Spark" plan.
 
-## 2. Générer la clé VAPID (Web Push)
+## 2. Generate the VAPID key (Web Push)
 
-Console Firebase → Paramètres du projet → Cloud Messaging → onglet
-"Web configuration" → **Generate key pair**. Copier la clé générée dans
-`.env.local` :
+Firebase Console → Project Settings → Cloud Messaging → "Web configuration"
+tab → **Generate key pair**. Copy the generated key into
+`.env.local`:
 
 ```
-VITE_FCM_VAPID_KEY=<clé générée>
+VITE_FCM_VAPID_KEY=<generated key>
 ```
 
-## 3. Déployer
+## 3. Deploy
 
 ```
 firebase deploy --only functions,firestore:rules
 ```
 
-La Cloud Function `checkMedicationReminders` tourne toutes les 15 minutes et
-envoie une notification si le médicament d'un rappel actif n'a pas été
-enregistré le jour même.
+The `checkMedicationReminders` Cloud Function runs every 15 minutes and
+sends a notification if an active reminder's medication hasn't been logged
+that day.
 
-## Tester en local sans Blaze
+## Testing locally without Blaze
 
-`firebase emulators:start --only firestore,auth,functions,pubsub` puis, dans
-l'UI de l'émulateur (onglet Functions), bouton "Trigger now" sur
-`checkMedicationReminders` pour déclencher une exécution manuelle.
+`firebase emulators:start --only firestore,auth,functions,pubsub` then, in
+the emulator UI (Functions tab), click "Trigger now" on
+`checkMedicationReminders` to trigger a manual run.

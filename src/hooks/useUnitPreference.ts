@@ -20,7 +20,7 @@ export function useUnitPreference(): [UnitSystem, (unit: UnitSystem) => void] {
     try {
       localStorage.setItem(UNIT_STORAGE_KEY, next)
     } catch {
-      /* stockage indisponible (navigation privée) : préférence en mémoire pour la session */
+      /* storage unavailable (private browsing): preference kept in memory for the session */
     }
   }
 

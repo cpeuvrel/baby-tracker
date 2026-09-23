@@ -69,13 +69,13 @@ describe('feedingEntries repository', () => {
       type: 'solid',
       occurredAt: new Date('2026-03-05T09:45:00.000Z'),
       volumeMl: null,
-      foodType: 'purée carotte',
+      foodType: 'carrot purée',
       notes: '',
     })
 
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ type: 'solid', volumeMl: null, foodType: 'purée carotte' })
+    expect(payload).toMatchObject({ type: 'solid', volumeMl: null, foodType: 'carrot purée' })
   })
 
   it('updates a feeding entry', async () => {
@@ -84,12 +84,12 @@ describe('feedingEntries repository', () => {
       occurredAt: new Date('2026-03-05T09:45:00.000Z'),
       volumeMl: 150,
       foodType: null,
-      notes: 'corrigé',
+      notes: 'corrected',
     })
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ volumeMl: 150, notes: 'corrigé' })
+    expect(payload).toMatchObject({ volumeMl: 150, notes: 'corrected' })
   })
 
   it('deletes a feeding entry', async () => {

@@ -20,7 +20,7 @@ import { TrendsPage } from './pages/TrendsPage'
 
 const STUCK_LOADING_MS = 8000
 
-/** Évite l'écran "Loading…" sans issue : au bout de 8 s, on propose de se déconnecter. */
+/** Avoids a stuck "Loading…" screen: after 8 s, offers to sign out. */
 function LoadingScreen() {
   const { logout } = useAuth()
   const [stuck, setStuck] = useState(false)

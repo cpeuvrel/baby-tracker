@@ -16,7 +16,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 }
 
-/** Vrai quand l'app parle aux émulateurs locaux plutôt qu'au projet Firebase réel. */
+/** True when the app talks to the local emulators rather than the real Firebase project. */
 export const usingEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
 
 export const app = initializeApp(firebaseConfig)

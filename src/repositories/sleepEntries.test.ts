@@ -96,12 +96,12 @@ describe('sleepEntries repository', () => {
     await updateSleepEntry('h1', 'b1', 'entry1', {
       startedAt: new Date('2026-03-05T20:00:00.000Z'),
       endedAt: new Date('2026-03-05T21:30:00.000Z'),
-      notes: 'corrigé',
+      notes: 'corrected',
     })
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'corrigé' })
+    expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'corrected' })
   })
 
   it('updates a sleep entry back to in-progress when the end time is cleared', async () => {

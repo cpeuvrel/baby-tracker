@@ -49,29 +49,29 @@ describe('medicationEntries repository', () => {
 
   it('logs a medication entry with the given name and dose', async () => {
     await logMedication('h1', 'b1', 'uid1', {
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: new Date('2026-03-05T09:00:00.000Z'),
-      dose: '2 gouttes',
+      dose: '2 drops',
       notes: '',
     })
 
     expect(addDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = addDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ name: 'Vitamine D', dose: '2 gouttes', createdBy: 'uid1' })
+    expect(payload).toMatchObject({ name: 'Vitamin D', dose: '2 drops', createdBy: 'uid1' })
     expect((payload as { givenAt: Timestamp }).givenAt).toBeInstanceOf(Timestamp)
   })
 
   it('updates a medication entry', async () => {
     await updateMedicationEntry('h1', 'b1', 'm1', {
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: new Date('2026-03-05T09:00:00.000Z'),
-      dose: '3 gouttes',
-      notes: 'corrigé',
+      dose: '3 drops',
+      notes: 'corrected',
     })
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ dose: '3 gouttes', notes: 'corrigé' })
+    expect(payload).toMatchObject({ dose: '3 drops', notes: 'corrected' })
   })
 
   it('deletes a medication entry', async () => {
@@ -88,9 +88,9 @@ describe('medicationEntries repository', () => {
           {
             id: 'entry1',
             data: {
-              name: 'Vitamine D',
+              name: 'Vitamin D',
               givenAt: Timestamp.fromDate(new Date('2026-03-05T09:00:00.000Z')),
-              dose: '2 gouttes',
+              dose: '2 drops',
               notes: '',
               createdBy: 'uid1',
               createdAt: Timestamp.fromDate(new Date('2026-03-05T09:00:00.000Z')),
@@ -104,7 +104,7 @@ describe('medicationEntries repository', () => {
     subscribeToRecentMedicationEntries('h1', 'b1', 5, onChange)
 
     expect(onChange).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'entry1', name: 'Vitamine D' }),
+      expect.objectContaining({ id: 'entry1', name: 'Vitamin D' }),
     ])
   })
 
@@ -114,9 +114,9 @@ describe('medicationEntries repository', () => {
         {
           id: 'entry1',
           data: {
-            name: 'Vitamine D',
+            name: 'Vitamin D',
             givenAt: Timestamp.fromDate(new Date('2026-01-01T09:00:00.000Z')),
-            dose: '2 gouttes',
+            dose: '2 drops',
             notes: '',
             createdBy: 'uid1',
             createdAt: Timestamp.fromDate(new Date('2026-01-01T09:00:00.000Z')),
@@ -127,7 +127,7 @@ describe('medicationEntries repository', () => {
 
     const entries = await getAllMedicationEntries('h1', 'b1')
 
-    expect(entries).toEqual([expect.objectContaining({ id: 'entry1', name: 'Vitamine D' })])
+    expect(entries).toEqual([expect.objectContaining({ id: 'entry1', name: 'Vitamin D' })])
   })
 
   it('imports medication entries in a batch', async () => {
@@ -137,9 +137,9 @@ describe('medicationEntries repository', () => {
 
     const entry: MedicationEntry = {
       id: 'old-id',
-      name: 'Vitamine D',
+      name: 'Vitamin D',
       givenAt: '2026-01-01T09:00:00.000Z',
-      dose: '2 gouttes',
+      dose: '2 drops',
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-01-01T09:00:00.000Z',
@@ -149,7 +149,7 @@ describe('medicationEntries repository', () => {
 
     expect(set).toHaveBeenCalledTimes(1)
     const [, payload] = set.mock.calls[0]
-    expect(payload).toMatchObject({ name: 'Vitamine D', dose: '2 gouttes' })
+    expect(payload).toMatchObject({ name: 'Vitamin D', dose: '2 drops' })
     expect(commit).toHaveBeenCalledTimes(1)
   })
 })

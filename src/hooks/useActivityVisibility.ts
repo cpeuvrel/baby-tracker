@@ -25,7 +25,7 @@ function writeHidden(hidden: ActivityCategory[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(hidden))
   } catch {
-    /* stockage indisponible (navigation privée) : préférence en mémoire pour la session */
+    /* storage unavailable (private browsing): preference kept in memory for the session */
   }
 }
 

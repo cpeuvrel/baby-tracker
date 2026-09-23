@@ -14,8 +14,8 @@ export default defineConfig({
       manifest: {
         name: 'Baby Tracker',
         short_name: 'Baby Tracker',
-        description: 'Suivi bébé partagé entre parents',
-        lang: 'fr',
+        description: 'Shared baby tracking for parents',
+        lang: 'en',
         start_url: '/',
         display: 'standalone',
         background_color: '#F7F1E4',

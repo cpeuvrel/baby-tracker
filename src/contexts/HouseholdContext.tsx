@@ -85,7 +85,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(SELECTED_BABY_STORAGE_KEY, babyId)
     } catch {
-      /* stockage indisponible (navigation privée) : la sélection reste en mémoire */
+      /* storage unavailable (private browsing): the selection stays in memory */
     }
   }
 

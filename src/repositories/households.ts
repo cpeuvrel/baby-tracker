@@ -38,8 +38,8 @@ export function subscribeToHouseholdForUser(
         memberUids: data.memberUids as string[],
       })
     },
-    // Sans handler d'erreur, un refus des Security Rules ou un émulateur
-    // injoignable ne rappelle jamais : l'app reste sur "Loading…" à vie.
+    // Without an error handler, a Security Rules rejection or an unreachable
+    // emulator never calls back: the app stays on "Loading…" forever.
     (error) => onError?.(error),
   )
 }

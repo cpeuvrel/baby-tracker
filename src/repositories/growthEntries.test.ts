@@ -72,12 +72,12 @@ describe('growthEntries repository', () => {
       weightG: 6300,
       heightMm: 621,
       headCircumferenceMm: 411,
-      notes: 'à jeun',
+      notes: 'fasting',
     })
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ weightG: 6300, notes: 'à jeun' })
+    expect(payload).toMatchObject({ weightG: 6300, notes: 'fasting' })
   })
 
   it('deletes a growth measurement', async () => {

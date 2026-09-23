@@ -14,7 +14,7 @@ interface AuthContextValue {
   user: User | null
   loading: boolean
   error: string | null
-  /** Vrai en dev sur émulateur : la connexion email/mot de passe locale est proposée. */
+  /** True in dev on the emulator: the local email/password sign-in is offered. */
   devLoginAvailable: boolean
   loginWithGoogle: () => Promise<void>
   loginWithPassword: (email: string, password: string) => Promise<void>
@@ -39,8 +39,8 @@ function describeError(fallback: string, cause: unknown): string {
  * also never completes against the Auth Emulator on localhost. Redirect would
  * only work by proxying /__/auth/** from the app's own domain.
  *
- * En dev sur émulateur, loginWithPassword court-circuite tout le flow Google
- * (popup, postMessage, iframe) pour pouvoir tester sans dépendre de Google.
+ * In dev on the emulator, loginWithPassword short-circuits the whole Google
+ * flow (popup, postMessage, iframe) so tests don't depend on Google.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false)
       },
       (listenerError) => {
-        // Sans ce handler, un échec du listener laisse l'app sur "Loading…" à vie.
+        // Without this handler, a listener failure leaves the app on "Loading…" forever.
         console.error('[auth] onAuthStateChanged failed', listenerError)
         setError(describeError('Authentication is unavailable.', listenerError))
         setUser(null)
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const code = (cause as { code?: string } | null)?.code
       const missingAccount =
         code === 'auth/user-not-found' || code === 'auth/invalid-credential'
-      // Sur l'Auth Emulator le compte de test est jetable : on le crée à la volée.
+      // On the Auth Emulator the test account is disposable: it's created on the fly.
       if (usingEmulators && missingAccount) {
         try {
           await createUserWithEmailAndPassword(auth, email, password)

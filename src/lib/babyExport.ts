@@ -39,7 +39,7 @@ export async function exportBabyData(householdId: string, baby: Baby): Promise<B
   return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries }
 }
 
-// --- Format natif de l'app : un seul CSV, une catégorie par ligne ---
+// --- App's native format: a single CSV, one category per row ---
 
 const NATIVE_HEADER = [
   'category',

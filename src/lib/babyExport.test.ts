@@ -97,9 +97,9 @@ const growth: GrowthEntry[] = [
 const medication: MedicationEntry[] = [
   {
     id: 'm1',
-    name: 'Vitamine D',
+    name: 'Vitamin D',
     givenAt: '2026-01-01T10:00:00.000Z',
-    dose: '2 gouttes',
+    dose: '2 drops',
     notes: '',
     createdBy: 'uid1',
     createdAt: '2026-01-01T10:00:00.000Z',

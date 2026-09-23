@@ -1,9 +1,9 @@
 /// <reference lib="webworker" />
-// Service worker unique : installabilité PWA (précache Workbox) + notifications
-// push (rappel médicament, section 8 du plan). Exclu du typecheck du projet
-// principal (tsconfig.app.json) — DOM et WebWorker ont des types incompatibles ;
-// esbuild (vite-plugin-pwa) le bundle sans vérification de types, comme les
-// autres service workers Vite/Workbox.
+// Single service worker: PWA installability (Workbox precache) + push
+// notifications (medication reminder, plan section 8). Excluded from the main
+// project's typecheck (tsconfig.app.json) — DOM and WebWorker have incompatible
+// types; esbuild (vite-plugin-pwa) bundles it without type checking, like the
+// other Vite/Workbox service workers.
 import { initializeApp } from 'firebase/app'
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
