@@ -65,7 +65,7 @@ describe('TrendsPage', () => {
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
-    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({ feeding, sleep, diaper })
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({ feeding, sleep, diaper, medication: [] })
     vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
   })
 

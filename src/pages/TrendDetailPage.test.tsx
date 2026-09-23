@@ -50,6 +50,7 @@ describe('TrendDetailPage', () => {
       feeding,
       sleep: [],
       diaper: [],
+      medication: [],
     })
   })
 
