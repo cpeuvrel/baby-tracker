@@ -13,9 +13,7 @@ vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
-  getRedirectResult: vi.fn().mockResolvedValue(null),
   signInWithPopup: vi.fn(),
-  signInWithRedirect: vi.fn(),
   signOut: vi.fn(),
 }))
 
