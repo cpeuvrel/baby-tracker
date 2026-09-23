@@ -9,9 +9,11 @@ const mockAuth = createMockAuth()
 vi.mock('./lib/firebase', () => ({ auth: {} }))
 
 vi.mock('firebase/auth', () => ({
+  GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
-  signInWithEmailAndPassword: vi.fn(),
+  getRedirectResult: vi.fn().mockResolvedValue(null),
+  signInWithRedirect: vi.fn(),
   signOut: vi.fn(),
 }))
 
@@ -41,7 +43,7 @@ describe('App', () => {
     mockAuth.emit(null)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument(),
     )
   })
 

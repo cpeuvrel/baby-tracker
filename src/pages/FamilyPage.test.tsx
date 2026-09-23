@@ -23,7 +23,8 @@ describe('FamilyPage', () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1', email: 'parent1@example.com' } as User,
       loading: false,
-      login: vi.fn(),
+      error: null,
+      loginWithGoogle: vi.fn(),
       logout: vi.fn(),
     })
   })

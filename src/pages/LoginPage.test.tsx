@@ -1,67 +1,49 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { FirebaseError } from 'firebase/app'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import { LoginPage } from './LoginPage'
 
 describe('LoginPage', () => {
-  const login = vi.fn()
+  const loginWithGoogle = vi.fn()
 
   beforeEach(() => {
-    login.mockReset()
+    loginWithGoogle.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: null,
       loading: false,
-      login,
+      error: null,
+      loginWithGoogle,
       logout: vi.fn(),
     })
   })
 
-  it('has accessible labels for email and password', () => {
+  it('renders a Google sign-in button', () => {
     render(<LoginPage />)
 
-    expect(screen.getByLabelText('Email')).toBeInTheDocument()
-    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument()
   })
 
-  it('submits the entered credentials', async () => {
-    login.mockResolvedValue(undefined)
+  it('triggers loginWithGoogle on click', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
 
-    await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Password'), 'hunter2')
-    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await user.click(screen.getByRole('button', { name: 'Sign in with Google' }))
 
-    await waitFor(() => expect(login).toHaveBeenCalledWith('parent@example.com', 'hunter2'))
+    expect(loginWithGoogle).toHaveBeenCalled()
   })
 
-  it('shows an error message when login fails with a Firebase error', async () => {
-    login.mockRejectedValue(new FirebaseError('auth/wrong-password', 'Wrong password'))
-    const user = userEvent.setup()
+  it('shows the auth error when present', () => {
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      user: null,
+      loading: false,
+      error: 'Unable to sign in with Google.',
+      loginWithGoogle,
+      logout: vi.fn(),
+    })
+
     render(<LoginPage />)
 
-    await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Password'), 'wrong')
-    await user.click(screen.getByRole('button', { name: 'Sign in' }))
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Incorrect email or password.'),
-    )
-  })
-
-  it('shows a generic error message for unexpected failures', async () => {
-    login.mockRejectedValue(new Error('network down'))
-    const user = userEvent.setup()
-    render(<LoginPage />)
-
-    await user.type(screen.getByLabelText('Email'), 'parent@example.com')
-    await user.type(screen.getByLabelText('Password'), 'hunter2')
-    await user.click(screen.getByRole('button', { name: 'Sign in' }))
-
-    await waitFor(() =>
-      expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign in.'),
-    )
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign in with Google.')
   })
 })

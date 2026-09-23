@@ -6,24 +6,28 @@ import { createMockAuth } from '../test/mockAuthState'
 import { AuthProvider, useAuth } from './AuthContext'
 
 const mockAuth = createMockAuth()
-const signInWithEmailAndPassword = vi.fn()
+const signInWithRedirect = vi.fn()
+const getRedirectResult = vi.fn()
 const signOut = vi.fn()
 
 vi.mock('../lib/firebase', () => ({ auth: {} }))
 
 vi.mock('firebase/auth', () => ({
+  GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
-  signInWithEmailAndPassword: (...args: unknown[]) => signInWithEmailAndPassword(...args),
+  getRedirectResult: (...args: unknown[]) => getRedirectResult(...args),
+  signInWithRedirect: (...args: unknown[]) => signInWithRedirect(...args),
   signOut: (...args: unknown[]) => signOut(...args),
 }))
 
 function Probe() {
-  const { user, loading, login, logout } = useAuth()
+  const { user, loading, error, loginWithGoogle, logout } = useAuth()
   return (
     <div>
       <span data-role="status">{loading ? 'loading' : user ? `in:${user.email}` : 'out'}</span>
-      <button type="button" onClick={() => void login('a@example.com', 'secret')}>
+      <span data-role="error">{error}</span>
+      <button type="button" onClick={() => void loginWithGoogle()}>
         login
       </button>
       <button type="button" onClick={() => void logout()}>
@@ -35,7 +39,8 @@ function Probe() {
 
 describe('AuthContext', () => {
   beforeEach(() => {
-    signInWithEmailAndPassword.mockReset()
+    signInWithRedirect.mockReset()
+    getRedirectResult.mockReset().mockResolvedValue(null)
     signOut.mockReset()
   })
 
@@ -67,7 +72,7 @@ describe('AuthContext', () => {
     )
   })
 
-  it('delegates login to signInWithEmailAndPassword', async () => {
+  it('delegates loginWithGoogle to signInWithRedirect', async () => {
     const user = userEvent.setup()
     render(
       <AuthProvider>
@@ -79,7 +84,7 @@ describe('AuthContext', () => {
 
     await user.click(screen.getByRole('button', { name: 'login' }))
 
-    expect(signInWithEmailAndPassword).toHaveBeenCalledWith({}, 'a@example.com', 'secret')
+    expect(signInWithRedirect).toHaveBeenCalledWith({}, {})
   })
 
   it('delegates logout to signOut', async () => {
@@ -95,6 +100,21 @@ describe('AuthContext', () => {
     await user.click(screen.getByRole('button', { name: 'logout' }))
 
     expect(signOut).toHaveBeenCalledWith({})
+  })
+
+  it('surfaces an error when getRedirectResult rejects', async () => {
+    getRedirectResult.mockReset().mockRejectedValue(new Error('auth/unauthorized-domain'))
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    mockAuth.emit(null)
+
+    await waitFor(() =>
+      expect(screen.getByText('Unable to sign in with Google.')).toBeInTheDocument(),
+    )
   })
 
   it('throws when useAuth is used outside AuthProvider', () => {

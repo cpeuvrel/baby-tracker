@@ -1,6 +1,8 @@
 import {
+  GoogleAuthProvider,
+  getRedirectResult,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithRedirect,
   signOut,
   type User,
 } from 'firebase/auth'
@@ -10,25 +12,34 @@ import { auth } from '../lib/firebase'
 interface AuthContextValue {
   user: User | null
   loading: boolean
-  login: (email: string, password: string) => Promise<void>
+  error: string | null
+  loginWithGoogle: () => Promise<void>
   logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+const googleProvider = new GoogleAuthProvider()
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    getRedirectResult(auth).catch(() => {
+      setError('Unable to sign in with Google.')
+    })
+
     return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser)
       setLoading(false)
     })
   }, [])
 
-  const login = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password)
+  const loginWithGoogle = async () => {
+    setError(null)
+    await signInWithRedirect(auth, googleProvider)
   }
 
   const logout = async () => {
@@ -36,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, error, loginWithGoogle, logout }}>
       {children}
     </AuthContext.Provider>
   )
