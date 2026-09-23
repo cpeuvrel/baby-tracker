@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
@@ -13,6 +14,14 @@ import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
 import type { FeedingEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <ActivityPage />
+    </MemoryRouter>,
+  )
+}
 
 const startSleep = vi.fn()
 const updateSleepEntry = vi.fn()
@@ -60,7 +69,8 @@ function setupHooks(
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
     loading: false,
-    login: vi.fn(),
+    error: null,
+    loginWithGoogle: vi.fn(),
     logout: vi.fn(),
   })
   vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
@@ -91,12 +101,13 @@ describe('ActivityPage', () => {
     logMedication.mockReset()
     setReminder.mockReset()
     addGrowthEntry.mockReset()
+    localStorage.clear()
   })
 
   it('renders a category card for each of the four categories', () => {
     setupHooks()
 
-    render(<ActivityPage />)
+    renderPage()
 
     expect(screen.getByRole('region', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Feed' })).toBeInTheDocument()
@@ -109,7 +120,7 @@ describe('ActivityPage', () => {
     setupHooks(null)
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByRole('button', { name: 'Add a sleep entry' }))
 
     expect(startSleep).not.toHaveBeenCalled()
@@ -130,7 +141,7 @@ describe('ActivityPage', () => {
     setupHooks(activeEntry)
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByRole('button', { name: 'View the running timer' }))
 
     expect(startSleep).not.toHaveBeenCalled()
@@ -143,7 +154,7 @@ describe('ActivityPage', () => {
     logFeeding.mockResolvedValue(undefined)
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByRole('button', { name: 'Add a feeding entry' }))
     expect(screen.getByRole('dialog', { name: 'Feed' })).toBeInTheDocument()
 
@@ -157,7 +168,7 @@ describe('ActivityPage', () => {
     setupHooks()
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByRole('button', { name: 'Add a dose' }))
     expect(screen.getByRole('dialog', { name: 'Medication' })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Close' }))
@@ -181,7 +192,7 @@ describe('ActivityPage', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByText('Last feeding'))
     expect(screen.getByRole('dialog', { name: 'Feed' })).toBeInTheDocument()
     expect(screen.getByLabelText('Volume (mL, optional)')).toHaveValue(120)
@@ -205,7 +216,7 @@ describe('ActivityPage', () => {
     setupHooks(null, { recentSleep: [completedEntry] })
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
     await user.click(screen.getByText('Woke up'))
 
     expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
@@ -240,7 +251,7 @@ describe('ActivityPage', () => {
     })
     const user = userEvent.setup()
 
-    render(<ActivityPage />)
+    renderPage()
 
     expect(screen.getByText('100 mL')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Show more' })).toBeInTheDocument()
@@ -249,5 +260,32 @@ describe('ActivityPage', () => {
     await user.click(screen.getByRole('button', { name: 'Show more' }))
 
     expect(screen.getByText('77 mL')).toBeInTheDocument()
+  })
+
+  it('hides a category card turned off in Edit Activities', () => {
+    localStorage.setItem('baby-tracker:hiddenActivities', JSON.stringify(['growth']))
+    setupHooks()
+
+    renderPage()
+
+    expect(screen.getByRole('region', { name: 'Sleep' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Growth' })).not.toBeInTheDocument()
+  })
+
+  it('navigates to the growth detail page when a growth row is clicked', async () => {
+    setupHooks()
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<ActivityPage />} />
+          <Route path="growth/:metric" element={<p>Growth detail</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Weight' }))
+
+    expect(screen.getByText('Growth detail')).toBeInTheDocument()
   })
 })

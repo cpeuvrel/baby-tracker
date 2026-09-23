@@ -195,6 +195,17 @@ describe('countNightWakingsByDay', () => {
       { dayKey: '2026-03-05', value: 1 },
     ])
   })
+
+  it('uses a custom nighttime range when given one', () => {
+    const entries = [sleepEntry({ startedAt: '2026-03-05T18:00:00.000Z' })]
+
+    expect(countNightWakingsByDay(['2026-03-05'], entries)).toEqual([
+      { dayKey: '2026-03-05', value: 0 },
+    ])
+    expect(
+      countNightWakingsByDay(['2026-03-05'], entries, { start: '18:00', end: '08:00' }),
+    ).toEqual([{ dayKey: '2026-03-05', value: 1 }])
+  })
 })
 
 describe('countDiapersByDay', () => {

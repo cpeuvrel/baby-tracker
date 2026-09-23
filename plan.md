@@ -6,9 +6,15 @@
 
 > **Note de recherche (confirmée)** : app identifiée = *Nara Baby & Pregnancy Tracker* (App Store, id1444639029) alias "Nara Baby & Mom Tracker" sur nara.com, éditeur Nara Organics, Inc. (US), en anglais uniquement, aucune version française. Paywall freemium + achats intégrés/abonnement **déjà actif**, pas "à venir" (confirmé via la fiche App Store : "Free with in-app purchases").
 
-> **État (2026-09-22)** : les 7 phases (section 10) sont implémentées. Deux ajouts faits après coup, hors phasage initial, ont mis à jour ce document :
+> **État (2026-09-23)** : les 7 phases (section 10) sont implémentées, ainsi que les 8 ajouts hors phasage initial ci-dessous :
 > 1. **Refonte UX de History et Trends** à partir de vraies captures d'écran de l'app Nara de l'utilisatrice (thème sombre réel, bébé "Maëlys") partagées en cours de route — plus précises que les captures marketing utilisées pour écrire la section 6 initialement. Sections 6.1, 6.5 et 7 mises à jour en conséquence.
 > 2. **Import/export basculé en CSV seul** (JSON abandonné) avec import direct d'un vrai export RGPD Nara, format découvert et vérifié sur un fichier réel de 1882 lignes. Section 9 mise à jour, détail complet dans `docs/export-format.md`.
+> 3. **Courbes de percentiles OMS pour la croissance implémentées** (initialement notées "extension v1.1, non bloquant" — section 7/11 mises à jour). Sexe du bébé ajouté au modèle (`sex: 'male' | 'female' | null` sur `Baby`), tables OMS LMS (poids/taille/périmètre crânien, 9 percentiles de référence) en `src/lib/whoGrowthData.ts` + calcul en `src/lib/growthPercentiles.ts`, nouvel écran `GrowthDetailPage` (patron identique à `TrendDetailPage` : graphe percentile avec courbe de l'enfant superposée aux courbes de référence, bascule vue liste, callout par point avec percentile/âge/édition) accessible depuis chaque ligne Growth de l'écran Activity. CDC non repris (OMS seul, contrairement à la formulation initiale "OMS/CDC" de la section 7).
+> 4. **Refonte Family → Account implémentée** (2026-09-23), à partir de vraies captures d'écran de la section Account de Nara. Nouveaux écrans `AccountPage` (liste Family/Settings), `FamilyPage` réécrite (Children avec lien vers Child, plus de formulaire inline ni de section Pregnancy), `AddChildPage`, `ChildPage` (profil + Age calculé + Settings + Export/Import Data, sans Use Adjusted Age ni Notes & Photos), `AccountSettingsPage` (compte connecté + Log out, sans Communication), `EditActivitiesPage` (nouveau, fonctionnel : masque/affiche les cartes de l'écran Activity via `useActivityVisibility`, persistance `localStorage`). `SettingsSection.tsx` supprimé (absorbé par `ChildPage`). Le menu "⋯" du header (qui ne contenait que le logout) est retiré, remplacé par Account > Settings > Log out. `ExportImportSection` prend maintenant `householdId`/`baby` en props plutôt que de lire `selectedBaby` du contexte. Routes sous `/account`, `/account/family`, `/account/family/add`, `/account/family/:babyId`, `/account/family/:babyId/activities`, `/account/settings` (section 6.8, 9, 10 mises à jour). Décidé : pas de "Stop Tracking" (hors scope v1). "Nighttime Hours" alors resté un point ouvert, implémenté depuis dans l'ajout 7 ci-dessous.
+> 5. **Authentification : migration vers Google Sign-In implémentée** (2026-09-23), remplace Email/Password. Repris de la PR [#2](https://github.com/cpeuvrel/baby-tracker/pull/2) de Corentin (implémentation similaire à une première version faite en parallèle, mais pas identique — celle de la PR a été retenue comme base, voir section 1b pour le détail). `AuthContext.tsx` (`loginWithGoogle()` via `GoogleAuthProvider`, remplace `login(email, password)`), `LoginPage.tsx` (un seul bouton "Sign in with Google" + message d'erreur venant du contexte), `firestore.rules` (ajoute une fonction `isAllowedEmail()` vérifiant `request.auth.token.email`, **en plus** de la vérification `memberUids` existante — pas un remplacement). **Décision produit** : un **seul compte Google partagé** pour les deux parents (`amandineandcorentin@gmail.com`), pas deux comptes individuels comme envisagé initialement — en conséquence `households.ts`/`HouseholdContext.tsx`/`scripts/seed-emulator.mjs` (adapté, voir point 6) **n'ont pas changé sur le fond** (toujours `subscribeToHouseholdForUser(uid, ...)` filtré par `memberUids`, cohérent puisqu'il n'y a jamais qu'un seul uid). Si l'email du compte connecté n'est pas dans l'allowlist, `AuthContext` déconnecte automatiquement et affiche "This Google account is not authorized." — géré côté client, pas seulement par les Security Rules. **Écart avec la PR d'origine, résolu en hybride** : `signInWithRedirect` ne complète jamais la connexion contre l'Auth Emulator sur `localhost` (`getRedirectResult` reste `null` indéfiniment, aucune erreur, aucun compte créé côté émulateur) — **bug connu et non résolu du SDK Firebase / firebase-tools** (confirmé par plusieurs issues GitHub ouvertes sur `firebase/firebase-js-sdk` et `firebase/firebase-tools`, ex. #9108, #6671, #8652, #6341 — spécifique à la combinaison émulateur + `http://localhost` non-HTTPS, pas un bug de ce projet). Solution retenue dans `AuthContext.tsx` : `usesEmulator()` (basé sur `VITE_USE_FIREBASE_EMULATORS`) choisit `signInWithPopup` en dev local (contourne le bug) et garde `signInWithRedirect` + `getRedirectResult()` pour le vrai déploiement (raison initiale du choix de Corentin : plus fiable que popup sur mobile, notamment iOS Safari). Le redirect en prod réel n'a pas encore été testé sur un vrai téléphone — à vérifier après déploiement.
+> 6. **Onboarding "Create Family" ajouté** (2026-09-23) : à la première connexion (aucun household existant pour le compte), l'app affichait un écran totalement blanc (plusieurs écrans font `if (!household) return null`) — remplacé par un écran d'accueil (`CreateFamilyPage.tsx`) qui invite à saisir le premier enfant (First Name, Sex, Birthdate — **les 3 obligatoires**, y compris Sex qui n'a pas de validation HTML native puisque ce n'est pas un `<input>`). À la validation, crée le household (`createHousehold()`, nouveau dans `households.ts` — `{ name: 'My Family', memberUids: [uid] }`) puis le bébé dessus (`addBaby`). Une fois le household créé, l'abonnement temps réel (`HouseholdContext`) bascule automatiquement vers l'app normale, sans navigation manuelle. `App.tsx` restructuré : `BrowserRouter`/les routes ne sont montés que si un household existe ; sinon `CreateFamilyPage` s'affiche hors layout (comme `LoginPage`, pas de header/tab bar). Le même garde-fou "3 champs obligatoires" (y compris Sex) a été ajouté à `AddChildPage.tsx` (ajout d'un enfant supplémentaire depuis Family), qui ne le vérifiait pas jusqu'ici.
+> 7. **Fidélité de l'écran Child (section 6.8) complétée** (2026-09-23), à partir des captures Nara réexaminées : **Nighttime Hours implémenté** (point resté ouvert depuis l'ajout 4) — nouveau champ `nighttimeHours: { start, end } | null` sur `Baby` (optionnel dans le type pour ne pas casser les fixtures de test existantes), écran dédié `NighttimeHoursPage.tsx` (From/To, patron identique aux autres écrans détail), `updateNighttimeHours()` dans `babies.ts`. Le calcul des réveils nocturnes (section 7, `aggregations.ts`/`trendMetrics.ts`) accepte maintenant une plage en paramètre au lieu d'une constante fixe (`DEFAULT_NIGHTTIME_HOURS`, alignée sur le défaut Nara `20:00–08:00` — remplace l'ancienne constante interne `20h–7h`, utilisée en fallback pour les bébés sans réglage). **Toggle Metric/Imperial retiré** de l'écran Child (absent des captures Nara, gardait metric par défaut — `useUnitPreference`/le formattage impérial restent dans le code pour Growth, juste plus exposés comme réglage ici). **Import CSV passé en 2 étapes** (`ExportImportSection.tsx`) : le champ fichier ne lance plus l'import automatiquement au choix du fichier, un bouton "Import Data" séparé (désactivé tant qu'aucun fichier n'est choisi) déclenche l'import. **UI généralement retouchée** à partir de retours visuels directs (pas de nouvelles captures Nara) : contrôle segmenté (`.segmented-control`, un seul conteneur pilule) pour Sex (Boy/Girl) sur `AddChildPage`/`ChildPage`/`CreateFamilyPage` au lieu de deux boutons pilule séparés ; Export/Import Data sur l'écran Child stylés comme des liens de réglage (`.settings-action`, gras, sans fond de bouton) plutôt que de gros boutons pleins.
+> 8. **Écran Growth (`GrowthDetailPage.tsx`) revu** (2026-09-23) sur retour direct de l'utilisatrice (pas de nouvelles captures Nara) : la **vue graphe n'affiche plus que le graphe** — la carte "callout" qui apparaissait systématiquement en dessous d'un point cliqué (date, valeur, percentile, âge, source, boutons Edit/Dismiss) a été retirée ; éditer une mesure se fait désormais depuis la vue liste uniquement. La **vue liste** (icône en haut à droite) affiche chaque entrée sur 3 lignes empilées (`{Metric} {valeur}` / `{Sexe} Percentile {valeur}% ›` / `Age {valeur}`) au lieu d'une seule ligne compacte — le chevron de navigation vers l'édition reste sur la ligne percentile uniquement, pas sur toute la ligne.
 
 ## 0. Prérequis avant de commencer (poste Windows) — pas à pas
 
@@ -59,7 +65,7 @@ Au premier `push`, une fenêtre de navigateur s'ouvre pour se connecter à GitHu
 1. https://console.firebase.google.com, se connecter avec un compte Google.
 2. "Ajouter un projet" → nommer `baby-tracker` (Google Analytics : décliner, pas utile ici).
 3. Dans le projet : menu **Build → Firestore Database → Créer une base de données** → mode production → choisir une région proche (ex. `europe-west`).
-4. Menu **Build → Authentication → Get started** → activer la méthode "E-mail/Mot de passe".
+4. Menu **Build → Authentication → Get started** → activer la méthode "E-mail/Mot de passe". *(Historique : remplacé depuis par Google Sign-In, voir section 1b — à l'avenir activer plutôt "Google" ici.)*
 5. Dans un terminal :
 ```
 npm install -g firebase-tools
@@ -89,8 +95,41 @@ Une fois tout ça fait, donner ce `plan.md` (déjà dans le repo depuis l'étape
   - **Pour Firebase** : persistance offline intégrée au SDK web (`enableIndexedDbPersistence`/`persistentLocalCache`, pas de queue locale à coder à la main) et push (FCM) plus clé en main que du Web Push maison.
   - **Contre Firebase, accepté comme compromis** : pas de `GROUP BY`/agrégation serveur (calcul des moyennes/stats en JS côté client — sans souci de perf à cette échelle : 2 utilisateurs) ; le rappel médicament programmé (section 8) demande le plan payant "Blaze" (carte bancaire, coût réel ~0€) ; migration/auto-hébergement futur plus lourd que "juste du Postgres".
 - **Hébergement** : **Vercel** pour le moment (voir section 0, point 7).
-- **Auth** : minimal — Firebase Authentication, 2 comptes email (les deux parents), pas de signup public, pas de gestion multi-foyers généralisée.
+- **Auth** : voir section 1b — **Google Sign-In avec un compte partagé par les deux parents**, remplace la méthode de connexion email/mot de passe initialement implémentée. L'autorisation reste basée sur `memberUids` (inchangé), avec une allowlist d'email en couche supplémentaire. Toujours minimal : pas de signup public, pas de gestion multi-foyers généralisée.
 - **Repo** : `~/project/baby-tracker` (créé, vide pour l'instant).
+
+## 1b. Authentification — Google Sign-In (code implémenté le 2026-09-23, repris de la PR #2 de Corentin, déploiement manuel restant)
+
+**Contexte** : la version initialement implémentée (phase 1, section 10) utilisait Firebase Auth email/mot de passe + un champ `memberUids` sur le household, vérifié dans les Security Rules. Décision changée après coup, pour éviter tout écran de mot de passe (un mécanisme d'invitation par Anonymous Auth a aussi été envisagé puis écarté — il évite le mot de passe mais l'UID est lié à l'appareil, donc perdu à chaque changement de tel/réinstallation, ce qui oblige à ré-appairer via un lien). Deux implémentations ont été écrites en parallèle (l'une dans ce repo, l'autre dans la [PR #2](https://github.com/cpeuvrel/baby-tracker/pull/2) de Corentin sur `cpeuvrel/baby-tracker`, la nouvelle origine du repo) — **c'est la version de la PR #2 qui a été retenue et reprise telle quelle**, décrite ci-dessous. Elle diffère de la première tentative sur deux points structurants (voir la comparaison à la fin de cette section).
+
+**Décision retenue (implémentée en code)** :
+- **Un seul compte Google partagé** pour les deux parents (`amandineandcorentin@gmail.com`), pas un compte individuel par parent — les deux téléphones se connectent avec les mêmes identifiants Google. Ce choix évite de toucher à la logique existante de household/`memberUids` : il n'y a toujours qu'un seul uid possible, donc `households.ts` (`subscribeToHouseholdForUser(uid, ...)`, filtré par `memberUids array-contains uid`) et `HouseholdContext.tsx` **n'ont pas changé**.
+- **Méthode de connexion** : Firebase Authentication, fournisseur **Google** uniquement (`signInWithRedirect` + une instance module-level de `GoogleAuthProvider` dans `AuthContext.tsx` — pas de popup, plus fiable sur mobile). `LoginPage.tsx` n'a plus qu'un bouton "Sign in with Google" ; l'état d'erreur (`error`) vit maintenant dans `AuthContext` (exposé par `useAuth()`) plutôt que localement dans `LoginPage`, puisqu'une erreur peut aussi venir du listener d'auth lui-même (voir point suivant), pas seulement du clic.
+- **`getRedirectResult(auth)` appelé au montage** (dans le même `useEffect` que `onAuthStateChanged`) pour capter les erreurs de la redirection Google (ex. domaine non autorisé) et afficher "Unable to sign in with Google." plutôt que d'échouer silencieusement.
+- **Allowlist vérifiée côté client ET côté serveur** :
+  - Client (`AuthContext.tsx`) : `ALLOWED_EMAILS = ['amandineandcorentin@gmail.com']` ; dans le listener `onAuthStateChanged`, si l'email du compte connecté n'y figure pas, déconnexion immédiate (`signOut`) + message "This Google account is not authorized." — évite qu'un compte Google quelconque reste "connecté" dans l'UI en échouant seulement plus tard sur les lectures Firestore.
+  - Serveur (`firestore.rules`) : nouvelle fonction `isAllowedEmail()` (même liste, en dur) **ajoutée en plus** de la vérification `memberUids` existante (`isHouseholdMember`), pas en remplacement — les deux conditions sont requises (`isAllowedEmail() && uid in memberUids`).
+```
+function isAllowedEmail() {
+  return request.auth != null &&
+    request.auth.token.email in ['amandineandcorentin@gmail.com'];
+}
+
+function isHouseholdMember(householdId) {
+  return isAllowedEmail() &&
+    request.auth.uid in
+      get(/databases/$(database)/documents/households/$(householdId)).data.memberUids;
+}
+```
+  L'email est en dur dans le code, versionné, déployé via `firebase deploy --only firestore:rules` — cohérent avec "pas de généralité spéculative" (section 12).
+
+**Différences avec la première tentative (non retenue)** : celle-ci visait deux comptes Google individuels (un par parent) avec une allowlist à deux emails, et remplaçait entièrement `memberUids` par l'email comme mécanisme d'autorisation (`households.ts` simplifié en `subscribeToHousehold()` sans filtre, `scripts/seed-emulator.mjs` simplifié). Elle n'avait pas de vérification d'allowlist côté client (une connexion avec un compte non autorisé échouait silencieusement sur les lectures Firestore, sans message clair) ni de gestion de `getRedirectResult()`. Écartée au profit de l'approche compte-partagé de la PR #2, plus proche du code existant (diff plus petit, `memberUids` reste la source de vérité pour l'autorisation).
+
+**Reste manuel avant un vrai déploiement** (l'app est déjà en prod avec de vraies données, respecter cet ordre pour ne rien casser pendant la bascule) :
+1. ⬜ Firebase Console → Authentication → Sign-in method → activer "Google" **en plus** d'Email/Password pour l'instant (ne pas encore désactiver l'ancien).
+2. ⬜ Déployer ce nouveau code frontend (Vercel), **puis seulement après** déployer la nouvelle `firestore.rules` — jamais l'inverse.
+3. Se connecter une fois avec le compte Google partagé sur les deux téléphones et vérifier l'accès aux données existantes.
+4. Nettoyage (non urgent, une fois l'accès confirmé stable) : désactiver Email/Password dans la Console, supprimer les anciens comptes dans Authentication → Users.
 
 ## 2. Fonctionnalités demandées (confirmées par l'utilisatrice)
 
@@ -127,10 +166,12 @@ Firestore est un NoSQL orienté documents — pas de tables/jointures. Structure
 
 ```
 households/{householdId}
-  name, memberUids: [uid1, uid2]
+  name
+  memberUids: [uid1]         -- toujours la base de l'autorisation (section 1b) ; un seul uid en pratique depuis le passage à un compte Google partagé, mais le champ reste un tableau
 
 households/{householdId}/babies/{babyId}
-  name, birthDate
+  name, birthDate, sex: "male" | "female" | null   -- sex requis pour afficher les courbes de percentile OMS (section 7)
+  nighttimeHours: { start: "HH:mm", end: "HH:mm" } | null   -- plage nuit pour le calcul des réveils nocturnes (section 7/6.8), défaut 20:00–08:00 si absent
 
 households/{householdId}/babies/{babyId}/feedingEntries/{entryId}
   type: "bottle" | "solid"
@@ -163,7 +204,7 @@ users/{uid}/fcmTokens/{tokenId}
   token, createdAt                     -- un par appareil installé, pour l'envoi FCM
 ```
 
-- **Security Rules** : deny-by-default en tête de fichier, puis autoriser lecture/écriture uniquement si `request.auth.uid` figure dans `households/{householdId}.memberUids` (voir section 12, principe repris de l'access-control interne).
+- **Security Rules** : deny-by-default en tête de fichier, puis autoriser lecture/écriture uniquement si `request.auth.uid` figure dans `households/{householdId}.memberUids` **et** si l'email du token (`request.auth.token.email`) figure dans l'allowlist en dur du fichier (voir section 1b — les deux conditions sont requises, l'allowlist email s'ajoute à `memberUids` plutôt que de le remplacer).
 - Le **chrono** (sommeil uniquement, section 6.4) = un document créé avec `startedAt` rempli et `endedAt = null` ("en cours"). Le stop remplit `endedAt` et calcule `durationSeconds`. Nourriture (section 3), couches et médicament n'ont jamais cet état "en cours" : `occurredAt`/`givenAt` est rempli directement à la création.
 
 ## 4b. Workflow de dev (local d'abord, comme IntelliJ + BD locale → AWS)
@@ -202,7 +243,7 @@ Le suivi se fait souvent sans bonne connexion (nuit, chambre). Avec Firebase :
 - Une carte empilée par catégorie (Nourriture, Sommeil, Croissance, Médicament, Couches). Chaque carte = bandeau de couleur (6.1) avec le nom de la catégorie à gauche et un bouton "+" rond (fond marine, "+" blanc) à droite pour ajouter une entrée ; en dessous, la dernière entrée sur une ligne (icône + libellé + heure relative "2h 10m ago" + valeur si pertinent + chevron) et un lien "Show more" pour déplier l'historique récent sans changer d'écran.
 
 ### 6.3 Navigation
-Barre d'onglets en bas. Nara a 5 entrées (Activity, History, Trends, Shop, Family) ; pour cette app sans marketplace, garder 4 : **Activity, History, Trends, Family**. Onglet actif en marine avec un trait sous l'icône, inactifs en gris clair.
+Barre d'onglets en bas. Nara a 5 entrées (Activity, History, Trends, Guides, Account — confirmé sur capture réelle, remplace la supposition initiale "Shop") ; pour cette app, garder 4 : **Activity, History, Trends, Account** (pas de "Guides", pas de contenu éditorial). Le 4e onglet s'appelle **Account** (renommé depuis "Family" — voir section 6.8 pour son contenu détaillé : Family n'est plus qu'une des deux entrées de cet onglet, avec Settings). Onglet actif en marine avec un trait sous l'icône, inactifs en gris clair.
 
 ### 6.4 Chrono sommeil — le point le plus demandé
 Ne s'applique qu'au sommeil (biberon/solide utilisent le formulaire de saisie instantanée de la section 3, pas cette modale). Au tap sur "+" (ou sur l'entrée sommeil "en cours"), une **modale plein écran** s'ouvre :
@@ -224,8 +265,28 @@ Même modale qu'en 6.4 mais fond crème : titre "Nap Reminders" (→ adapter en 
 ### 6.7 Sélecteur multi-bébé
 Le chevron ⌵ à côté du nom du bébé en en-tête (6.2) ouvre le sélecteur de bébé — pattern à reprendre tel quel pour le point 7 de la section 2 : pas un écran séparé, une simple action sur l'en-tête existant.
 
-### 6.8 Écran famille ("Family")
-Liste groupée façon réglages iOS : sections "Children" / "Caregivers" (ignorer "Pregnancy", hors scope), chaque personne = une ligne (nom + méta, ex. âge) avec chevron, actions "Add child"/"Add caregiver" en lien marine gras en bas de section.
+### 6.8 Écran "Account" (ex-"Family") — refonte à partir de captures réelles, implémentée le 2026-09-23
+Écran atteint depuis le 4e onglet (**Account**, section 6.3). Liste groupée façon réglages iOS avec seulement deux lignes à chevron — les autres lignes de l'écran Account de Nara (**Subscription**, **Help**, "Share & Social") sont hors scope, pas de paywall/support/réseaux sociaux ici :
+- **Family** → écran Family (ci-dessous).
+- **Settings** → écran Settings (ci-dessous, différent du "Settings" par bébé de l'écran Child).
+
+**Family**
+- Section "Children" : une ligne par bébé (nom + âge calculé + chevron), tap → écran **Child** (ci-dessous). Lien "Add child" en bas de section → écran **Add Child** (ci-dessous). **Pas de section "Pregnancy"** (Nara en a une avec "Add pregnancy" — hors scope, déjà exclu section 11).
+- Section "Caregivers" : une ligne par membre du foyer (email + "Your Profile" pour soi-même), **pas de bouton "Add caregiver"** — un caregiver = un compte Firebase Auth (email/mot de passe, section 1) ajouté via la console Firebase, pas depuis l'app. Comportement déjà en place dans `FamilyPage.tsx` (section "Parents"/hint actuel), à conserver tel quel.
+
+**Add Child** (`AddChildPage.tsx`, remplace l'ancien formulaire inline en haut de la page Family)
+- Champs : First Name, Sex (toggle Boy/Girl), Birthdate. **Pas de "Use Adjusted Age"** (Nara l'a pour gérer la prématurité ; notion hors scope ici). Bouton "Save" en en-tête, bouton retour à gauche (même patron d'en-tête que les modales, section 6.4/6.6). `addBaby()` accepte désormais `sex` dès la création.
+
+**Child** (`ChildPage.tsx`, tap sur un bébé dans Family — remplace l'ancien `SettingsSection` qui n'agissait que sur le bébé globalement sélectionné)
+- Champs : First Name, Sex (toggle Boy/Girl), Birthdate, Age (calculé en direct depuis le formulaire, lecture seule). **Pas de "Use Adjusted Age"**.
+- Section "Settings" : ligne "Edit Activities" (chevron) → `EditActivitiesPage.tsx`, ligne "Nighttime Hours" (chevron + valeur courante, ex. "20:00 - 08:00") → `NighttimeHoursPage.tsx`. **Pas de toggle Metric/Imperial** (absent des captures Nara, retiré — metric reste le seul réglage utilisé, `useUnitPreference` continue d'exister pour le formattage de Growth ailleurs). **Edit Activities implémenté et filtré (décidé)** : se limite à nos catégories réelles (Feeding, Sleep, Diaper Changes, Growth, Medication — pas de distinction Bottle/Solid, alignée sur les 5 `CategoryCard` de l'écran Activity), pas la liste complète Nara (Breastfeeding, Pumping, Routines, Baby Firsts, Milestones, Medical, Vaccines — toutes hors scope, section 11). Chaque case à cocher masque/affiche en direct la carte correspondante sur l'écran Activity, préférence `localStorage` (`useActivityVisibility`, comme `useUnitPreference`), pas de bouton Save séparé (application immédiate). **"Nighttime Hours" implémenté (section 7)** : écran From/To (`<input type="time">`), défaut `20:00–08:00` (aligné sur Nara) si le bébé n'a pas encore de réglage, stocké sur `Baby.nighttimeHours` et utilisé par le calcul des réveils nocturnes.
+- **Pas de section "Notes & Photos"** (pas de notes/photos en v1, cohérent avec le reste du scope).
+- **Export Data** (lien/bouton, déjà spécifié section 9) **+ Import Data** juste à côté — points d'entrée réels de l'import/export (section 9), au niveau du bébé affiché sur cet écran. `ExportImportSection` prend maintenant `householdId`/`baby` en props (au lieu de lire `selectedBaby` du contexte), déplacé depuis `FamilyPage.tsx` vers `ChildPage.tsx`.
+- **Pas de bouton "Stop Tracking" (décidé)** : visible chez Nara mais laissé de côté ici, pas de scope de suppression/archivage de bébé en v1.
+
+**Settings** (`AccountSettingsPage.tsx`, au niveau du compte — distinct du "Settings" par bébé de l'écran Child ci-dessus)
+- Affiche les infos du compte connecté (email) et un bouton **Log out**. Le menu "⋯" du header (`Layout.tsx`), qui ne contenait que ce même bouton, a été retiré — le logout vit désormais uniquement ici.
+- **Pas de section "Communication"** (notifications/préférences marketing côté Nara — non pertinent ici, aucun contenu marketing dans cette app).
 
 ### 6.9 Notification/rappel en direct (complète 6.4)
 En complément du bandeau persistant (6.4), une **notification système** ("Bébé dort depuis 14h32") via **FCM** permet de voir l'état sans ouvrir l'app — même brique technique que les rappels médicament (section 8), à construire une seule fois et réutiliser pour les deux usages.
@@ -237,9 +298,9 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 
 - Vue journalière "timeline" (comme Nara) : succession des entrées nourriture/sommeil/couches sur la journée (section 6.5, détail d'un jour sous le calendrier hebdo).
 - **Écran Trends, structure finale (voir 6.5b)** : liste de métriques par section (pas des tuiles de stats brutes) — `Biberons`/`Volume total`/`Volume moyen` (Nourriture), `Sommeil total`/`Réveils nocturnes` (Sommeil), `Couches` (Couches). Chaque métrique = moyenne/jour sur la période sélectionnée (1j/7j/14j) + delta vs la période précédente de même longueur, et se déplie en sous-écran (calendrier/graphique/liste d'entrées).
-  - nombre de réveils nocturnes = entrées sommeil dont l'heure de début tombe dans la plage nuit (20h–7h).
+  - nombre de réveils nocturnes = entrées sommeil dont l'heure de début tombe dans la plage nuit du bébé (`Baby.nighttimeHours`, section 6.8 — défaut `20:00–08:00` si non réglée).
   - nombre de couches par jour, tous types confondus (wet/dirty/both/dry, section 4).
-- Courbe de croissance (poids/taille/périmètre crânien) : ligne simple valeur/temps en v1. Nara affiche des courbes de percentiles OMS/CDC (fines lignes dorées, une par tranche 2/5/10/25/50/75/90/95/98%) avec la mesure réelle en ligne verte foncée à points cliquables (tooltip bandeau marine + détails, palette section 6.1) — reproductible mais nécessite d'embarquer les tables de référence OMS/CDC (LMS) ; à traiter comme **extension v1.1**, pas bloquant pour le lancement.
+- Courbe de croissance (poids/taille/périmètre crânien) : **implémenté** (courbes de percentiles OMS, écran `GrowthDetailPage`, voir note en tête de document) — 9 courbes de référence (2/5/10/25/50/75/90/95/98%, tables LMS OMS embarquées dans `src/lib/whoGrowthData.ts`) superposées à la courbe de l'enfant, points cliquables avec callout (date, valeur, percentile, âge, édition), bascule graphe/liste. Nécessite le sexe du bébé (section 4) ; si non renseigné, message invitant à le compléter dans Account > Family > (bébé) à la place du graphe. CDC non repris, OMS seul.
 - **Calcul des agrégations côté client** (Firestore n'a pas de `GROUP BY` serveur) : récupérer les entrées de la période concernée et calculer moyennes/totaux en JavaScript. Aucun souci de perf à cette échelle (2 utilisateurs, peu de données).
 - Lib graphique suggérée : Recharts. **Appliquer le skill `dataviz` du repo Claude Code au moment de l'implémentation** pour les couleurs/mise en forme.
 
@@ -255,8 +316,9 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 
 ## 9. Import/export — format final : CSV (JSON abandonné)
 
+- **Emplacement des boutons (fait, section 6.8)** : Export Data et Import Data sont sur l'écran **Child** (`ChildPage.tsx`, par bébé) ; `ExportImportSection` prend `householdId`/`baby` en props.
 - **Export** : bouton dans l'app → parcourt les sous-collections Firestore d'un bébé et dump en **un seul CSV** côté client (pas besoin de Cloud Function à ce volume de données), colonne `category` en discriminant, une ligne par entrée toutes catégories mélangées. Format détaillé dans `docs/export-format.md`.
-- **Import** : upload d'un fichier CSV → écriture batch dans Firestore (nouveaux ids systématiquement, pas de déduplication). L'import **détecte automatiquement le format** à l'en-tête et accepte deux formats :
+- **Import, en 2 étapes (UI)** : choisir le fichier (input file) puis cliquer sur un bouton **"Import"** séparé (désactivé tant qu'aucun fichier n'est choisi) — l'import ne se lance plus automatiquement à la sélection du fichier. Écriture batch dans Firestore (nouveaux ids systématiquement, pas de déduplication). L'import **détecte automatiquement le format** à l'en-tête et accepte deux formats :
   1. le format natif ci-dessus (round-trip export→import) ;
   2. **l'export RGPD réel de Nara** (récupéré et fourni par l'utilisatrice le 2026-09-22, fichier `export_narababy_malys_20260922.csv`, 1882 lignes) — colonnes `Type` + préfixes `[Bottle Feed]`/`[Sleep]`/`[Diaper]`/`[Growth]`/`[Solid Feed]`/`[Routine]`/`[Profile]`, avec conversion d'unités (KG/CM/OZ → g/mm/mL) et mapping vers nos catégories (ex. routine `Vitamin/Probiotic` → entrée médicament). Vérifié sur ce fichier réel : 1864 entrées importées, 18 lignes ignorées sans équivalent dans l'app (bain, ligne de métadonnées profil) — voir `docs/export-format.md` pour le détail des correspondances colonne par colonne.
 - Documenter tout changement de format dans `docs/export-format.md` pour garder export et import synchronisés dans le temps.
@@ -265,7 +327,7 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 
 ✅ Toutes les phases 1-7 sont implémentées (état 2026-09-22, voir note en tête de document).
 
-1. ✅ **Setup** (après Phase 0 uniquement) — dans cet ordre : `npm create vite@latest` (scaffold React+TS) → `npm install` → `firebase init` (Firestore + Auth) → Security Rules (section 4/12) → Auth à 2 comptes → création manuelle du household et des 2 membres.
+1. ✅ **Setup** (après Phase 0 uniquement) — dans cet ordre : `npm create vite@latest` (scaffold React+TS) → `npm install` → `firebase init` (Firestore + Auth) → Security Rules (section 4/12) → Auth à 2 comptes → création manuelle du household et des 2 membres. *(Auth en cours de migration vers Google Sign-In, voir section 1b et l'entrée 11 ci-dessous.)*
 2. ✅ **Suivi nourriture + sommeil + couches** — formulaire de saisie instantanée (nourriture section 3, couches) + chrono start/stop (sommeil uniquement, section 6.4) avec bandeau persistant "en cours" (section 6.9), liste/timeline du jour, sélecteur de bébé (multi-bébé).
 3. ✅ **Sync temps réel & offline** — `onSnapshot()`, cache persistant Firestore (section 5).
 4. ✅ **Graphes & agrégations + croissance** — vues journalière et hebdo, agrégations côté client, courbe de croissance simple (section 7).
@@ -273,12 +335,16 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 6. ✅ **Import/export** — section 9 (format final CSV, revu après la phase initiale — voir note en tête de document).
 7. ✅ **Polish** — icônes/manifest PWA, réglages (profil bébé, unités).
 8. ✅ **Fidélité UX post-lancement (hors phasage initial)** — refonte de History (calendrier hebdo + filtre par type, 6.5) et Trends (liste + delta + sous-écrans par métrique, 6.5b) à partir de vraies captures d'écran Nara ; ajout du 4e état de couche `dry` ; import CSV de l'export RGPD Nara réel (section 9).
+9. ✅ **Courbes de percentiles OMS (hors phasage initial, anciennement notée extension v1.1)** — sexe du bébé, tables OMS LMS, écran `GrowthDetailPage` avec graphe de percentile et vue liste (section 7).
+10. ✅ **Restructuration Account/Family/Child/Settings (hors phasage initial, 2026-09-23)** — voir section 6.8 : 4e onglet renommé Account, écrans séparés Family/Child/Add Child/Settings, Export/Import Data sur l'écran Child (section 9), Edit Activities fonctionnel (masque/affiche les cartes Activity, `useActivityVisibility`), Nighttime Hours implémenté (point 7 ci-dessous). Pas de "Stop Tracking" (décidé, hors scope v1).
+11. 🟡 **Migration authentification vers Google Sign-In** (section 1b, repris de la PR #2 de Corentin) — **code fait** (2026-09-23) ; reste le déploiement manuel (4 étapes listées en 1b : activer Google dans la Console, déployer frontend puis règles dans cet ordre, connexion avec le compte partagé, nettoyage de l'ancien Email/Password).
+12. ✅ **Onboarding "Create Family" (hors phasage initial, 2026-09-23)** — écran d'accueil pour créer le household + premier enfant à la première connexion, à la place d'un écran blanc. Voir note en tête de document.
 
 ## 11. Hors scope v1 (explicitement)
 
 - Allaitement et tire-lait — retirés explicitement du scope nourriture.
 - Grossesse, post-partum, vaccins, milestones, module médical général — proposés par Nara, non demandés.
-- Courbes de percentiles OMS/CDC pour la croissance — extension v1.1 (voir section 7), v1 = courbe simple valeur/temps.
+- Courbes de percentiles CDC pour la croissance (OMS seul implémenté, voir section 7 et note en tête de document).
 - Multi-foyer au-delà des 2 parents (nourrice, grands-parents, etc.).
 - Résolution de conflits de sync avancée — dernier écrit gagne suffit à 2 utilisateurs.
 - Auto-hébergement de la base — Firestore n'est pas exportable "comme du Postgres", accepté comme compromis (section 1).
@@ -301,7 +367,7 @@ Choix délibéré, pas un oubli : pas de captures Nara copiées dans le repo. Ra
 - Tests de composants avec requêtes accessibles (`getByRole`) plutôt que `data-testid` — survivent aux refactos de markup.
 
 **Sécurité des données (Firestore)**
-- Security Rules deny-by-default, puis autoriser explicitement lecture/écriture seulement si `request.auth.uid` est dans `households/{id}.memberUids` — jamais laisser les règles en "mode test" (tout autorisé) après la mise en place initiale.
+- Security Rules deny-by-default, puis autoriser explicitement lecture/écriture seulement si `request.auth.uid` est dans `households/{id}.memberUids` **et** si l'email du token (`request.auth.token.email`) est dans l'allowlist en dur de `firestore.rules` (section 1b) — jamais laisser les règles en "mode test" (tout autorisé) après la mise en place initiale.
 - Ne jamais compter uniquement sur des vérifications côté client : Firestore est appelé directement depuis l'app, donc le filtrage par foyer doit être imposé par les règles serveur.
 
 **Accessibilité (coût faible, à faire dès le départ)**

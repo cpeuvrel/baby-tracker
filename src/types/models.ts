@@ -6,11 +6,17 @@ export interface Household {
 
 export type BabySex = 'female' | 'male'
 
+export interface NighttimeHours {
+  start: string // "HH:mm"
+  end: string // "HH:mm"
+}
+
 export interface Baby {
   id: string
   name: string
   birthDate: string
   sex: BabySex | null
+  nighttimeHours?: NighttimeHours | null
 }
 
 export type FeedingType = 'bottle' | 'solid'

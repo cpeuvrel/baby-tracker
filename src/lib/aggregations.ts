@@ -1,12 +1,17 @@
 import { dayKey } from './timeline'
-import type { DiaperEntry, DiaperType, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, DiaperType, FeedingEntry, NighttimeHours, SleepEntry } from '../types/models'
 
-const NIGHT_START_HOUR = 20
-const NIGHT_END_HOUR = 7
+export const DEFAULT_NIGHTTIME_HOURS: NighttimeHours = { start: '20:00', end: '08:00' }
 
-function startsDuringNight(startedAt: string): boolean {
+function parseHour(time: string): number {
+  return Number(time.split(':')[0])
+}
+
+function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
   const hour = new Date(startedAt).getHours()
-  return hour >= NIGHT_START_HOUR || hour < NIGHT_END_HOUR
+  const startHour = parseHour(nightRange.start)
+  const endHour = parseHour(nightRange.end)
+  return hour >= startHour || hour < endHour
 }
 
 export interface SleepStats {
@@ -15,9 +20,13 @@ export interface SleepStats {
   nightWakings: number
 }
 
-export function computeSleepStats(entries: SleepEntry[], dayCount: number): SleepStats {
+export function computeSleepStats(
+  entries: SleepEntry[],
+  dayCount: number,
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
+): SleepStats {
   const totalSeconds = entries.reduce((sum, entry) => sum + (entry.durationSeconds ?? 0), 0)
-  const nightWakings = entries.filter((entry) => startsDuringNight(entry.startedAt)).length
+  const nightWakings = entries.filter((entry) => startsDuringNight(entry.startedAt, nightRange)).length
 
   return {
     totalSeconds,
@@ -111,10 +120,14 @@ export function countFeedingSessionsByDay(dayKeys: string[], entries: FeedingEnt
   return dayKeys.map((key) => ({ dayKey: key, value: counts.get(key) ?? 0 }))
 }
 
-export function countNightWakingsByDay(dayKeys: string[], entries: SleepEntry[]): DailyPoint[] {
+export function countNightWakingsByDay(
+  dayKeys: string[],
+  entries: SleepEntry[],
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
+): DailyPoint[] {
   const counts = new Map<string, number>(dayKeys.map((key) => [key, 0]))
   for (const entry of entries) {
-    if (!startsDuringNight(entry.startedAt)) continue
+    if (!startsDuringNight(entry.startedAt, nightRange)) continue
     const key = dayKey(new Date(entry.startedAt))
     if (counts.has(key)) counts.set(key, (counts.get(key) ?? 0) + 1)
   }

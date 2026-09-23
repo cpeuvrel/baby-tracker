@@ -119,6 +119,13 @@ input {
   color: var(--text);
 }
 
+input[type='checkbox'] {
+  width: auto;
+  padding: 0;
+  border: none;
+  accent-color: var(--accent);
+}
+
 input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
@@ -257,54 +264,6 @@ main {
   pointer-events: none;
   color: var(--text);
   font-size: 18px;
-}
-
-.app-header-menu {
-  flex-shrink: 0;
-  position: relative;
-}
-
-.app-header-menu summary {
-  list-style: none;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 18px;
-  line-height: 1;
-  color: var(--text);
-}
-
-.app-header-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.app-header-menu-panel {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--card-shadow);
-  padding: 4px;
-  min-width: 160px;
-  z-index: 5;
-}
-
-.app-header-menu-panel button {
-  display: block;
-  width: 100%;
-  background: none;
-  color: var(--text);
-  text-align: left;
-  font-weight: 400;
-  padding: 10px 12px;
-  border-radius: 8px;
 }
 
 .app-content {
@@ -635,7 +594,7 @@ main {
   font-weight: 600;
 }
 
-/* Listes façon réglages (écran Family) */
+/* Listes façon réglages (écran Account/Family/Child) */
 .list-group {
   list-style: none;
   margin: 0 0 16px;
@@ -645,6 +604,7 @@ main {
 
 .list-group li {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid var(--border);
@@ -652,9 +612,31 @@ main {
   font-size: 16px;
 }
 
+.list-group li a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  color: inherit;
+  text-decoration: none;
+}
+
 .list-group-meta {
   color: var(--text-muted);
   font-size: 13px;
+}
+
+.list-group-trailing {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-row-chevron {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 18px;
+  font-family: var(--sans);
 }
 
 .hint {
@@ -681,6 +663,65 @@ main {
   background: var(--accent);
   color: var(--accent-contrast);
   border-color: var(--accent);
+}
+
+/* Contrôle segmenté (ex. Sex: Boy/Girl) — un seul conteneur pilule divisé en
+   segments, pas des boutons pilule séparés (patron section 6, captures Nara). */
+[role='group'].segmented-control {
+  display: inline-flex;
+  gap: 0;
+  padding: 3px;
+  margin-bottom: 16px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+[role='group'].segmented-control button {
+  background: none;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 18px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+[role='group'].segmented-control button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--card-shadow);
+}
+
+/* Actions de type lien dans les réglages (Export/Import) — pas de gros bouton
+   plein, juste un libellé en gras dans la liste, comme "Export Data" chez Nara. */
+.settings-action {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  border-radius: 0;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  font: inherit;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-action:last-child {
+  border-bottom: none;
+}
+
+.settings-action:disabled {
+  color: var(--text-muted);
+}
+
+.settings-file-input {
+  width: auto;
+  padding: 6px 0;
+  border: none;
+  background: none;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 /* Calendrier hebdomadaire (écran History) */
@@ -859,9 +900,15 @@ main {
 }
 
 .detail-header h2 {
+  flex: 1;
   font-family: var(--serif);
   font-size: 18px;
   margin: 0;
+}
+
+.detail-header .modal-header-action {
+  font-size: 15px;
+  padding: 4px 8px;
 }
 
 .detail-headline {
@@ -902,6 +949,7 @@ main {
   --baseline: #c3c2b7;
   --series-1: #2a78d6;
   --series-2: #eb6834;
+  --reference-curve: #c99a2e;
   margin-bottom: 24px;
 }
 
@@ -915,6 +963,7 @@ main {
     --baseline: #383835;
     --series-1: #3987e5;
     --series-2: #d95926;
+    --reference-curve: #e0b13f;
   }
 }
 
@@ -922,4 +971,45 @@ main {
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 8px;
+}
+
+.growth-entry-date {
+  margin: 16px 0 4px;
+  padding: 6px 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--border);
+  border-radius: 6px;
+}
+
+.growth-entry-item {
+  border-bottom: none !important;
+  padding: 0 !important;
+}
+
+.growth-entry-row {
+  display: block;
+  width: 100%;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  text-align: left;
+}
+
+.growth-entry-line {
+  margin: 2px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.growth-entry-line strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.growth-entry-line-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }

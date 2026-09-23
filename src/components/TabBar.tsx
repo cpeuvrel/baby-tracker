@@ -4,7 +4,7 @@ const TABS = [
   { to: '/', label: 'Activity', end: true },
   { to: '/history', label: 'History', end: false },
   { to: '/trends', label: 'Trends', end: false },
-  { to: '/family', label: 'Account', end: false },
+  { to: '/account', label: 'Account', end: false },
 ]
 
 export function TabBar() {

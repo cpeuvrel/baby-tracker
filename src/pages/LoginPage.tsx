@@ -1,64 +1,17 @@
-import { FirebaseError } from 'firebase/app'
-import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
-  const { login } = useAuth()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    setError(null)
-    setSubmitting(true)
-    try {
-      await login(email, password)
-    } catch (err) {
-      const message =
-        err instanceof FirebaseError ? 'Incorrect email or password.' : 'Unable to sign in.'
-      setError(message)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+  const { loginWithGoogle, error } = useAuth()
 
   return (
     <main>
       <h1>Baby Tracker</h1>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="password">Password</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </div>
-        <button type="submit" disabled={submitting}>
-          Sign in
-        </button>
-        <p role="alert" aria-live="polite">
-          {error}
-        </p>
-      </form>
+      <button type="button" onClick={() => void loginWithGoogle()}>
+        Sign in with Google
+      </button>
+      <p role="alert" aria-live="polite">
+        {error}
+      </p>
     </main>
   )
 }

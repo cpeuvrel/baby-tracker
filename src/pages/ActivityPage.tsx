@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CategoryCard, type CategoryCardEntryRow } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
@@ -20,6 +21,7 @@ import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useActivityVisibility } from '../hooks/useActivityVisibility'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
@@ -92,8 +94,10 @@ type ModalState =
 export function ActivityPage() {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
+  const navigate = useNavigate()
   const [modal, setModal] = useState<ModalState>(null)
   const [unit] = useUnitPreference()
+  const { isVisible } = useActivityVisibility()
 
   const activeSleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const recentSleep = useRecentSleepEntries(
@@ -195,79 +199,89 @@ export function ActivityPage() {
         icon: <RowIcon />,
         title: GROWTH_METRIC_LABELS[metric],
         value: value != null ? formatGrowthValue(metric, value, unit) : undefined,
-        onClick: () => setModal({ kind: 'growth', entry }),
+        onClick: () => navigate(`/growth/${metric}`),
       }
     },
   )
 
   return (
     <div>
-      <CategoryCard
-        title="Sleep"
-        colorVar="--category-sleep"
-        addLabel={activeSleepEntry ? 'View the running timer' : 'Add a sleep entry'}
-        onAdd={handleAddSleep}
-        addIcon={activeSleepEntry ? <TimerIcon /> : undefined}
-        addActive={!!activeSleepEntry}
-        icon={<SleepIcon />}
-        primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
-        onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
-        emptyLabel="No entries"
-        todayLines={sleepTodayLines}
-        moreLines={sleepMoreLines}
-      />
-      <CategoryCard
-        title="Feed"
-        colorVar="--category-feeding"
-        addLabel="Add a feeding entry"
-        onAdd={() => setModal({ kind: 'feeding' })}
-        icon={<FeedIcon />}
-        primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
-        onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
-        emptyLabel="No entries"
-        todayLines={feedingTodayLines}
-        moreLines={feedingMoreLines}
-        highlight={feedingHighlight}
-      />
-      <CategoryCard
-        title="Diaper"
-        colorVar="--category-diaper"
-        addLabel="Add a diaper change"
-        onAdd={() => setModal({ kind: 'diaper' })}
-        icon={<DiaperIcon />}
-        primary={recentDiaper[0] ? summarizeDiaperPrimary(recentDiaper[0], now) : null}
-        onSelectPrimary={recentDiaper[0] ? () => setModal({ kind: 'diaper', entry: recentDiaper[0] }) : undefined}
-        emptyLabel="No entries"
-        todayLines={diaperTodayLines}
-        moreLines={diaperMoreLines}
-      />
-      <CategoryCard
-        title="Medication"
-        colorVar="--category-medication"
-        addLabel="Add a dose"
-        onAdd={() => setModal({ kind: 'medication' })}
-        icon={<MedicationIcon />}
-        primary={recentMedication[0] ? summarizeMedicationPrimary(recentMedication[0], now) : null}
-        onSelectPrimary={
-          recentMedication[0] ? () => setModal({ kind: 'medication', entry: recentMedication[0] }) : undefined
-        }
-        emptyLabel="No doses"
-        todayLines={medicationTodayLines}
-        moreLines={medicationMoreLines}
-        secondaryAction={{ label: 'Set reminder', onClick: () => setModal({ kind: 'reminder' }) }}
-      />
-      <CategoryCard
-        title="Growth"
-        colorVar="--category-growth"
-        addLabel="Add a measurement"
-        onAdd={() => setModal({ kind: 'growth' })}
-        icon={<GrowthIcon />}
-        showPrimary={false}
-        primary={null}
-        emptyLabel="No measurements"
-        todayLines={growthRows}
-        moreLines={[]}
-      />
+      {isVisible('sleep') && (
+        <CategoryCard
+          title="Sleep"
+          colorVar="--category-sleep"
+          addLabel={activeSleepEntry ? 'View the running timer' : 'Add a sleep entry'}
+          onAdd={handleAddSleep}
+          addIcon={activeSleepEntry ? <TimerIcon /> : undefined}
+          addActive={!!activeSleepEntry}
+          icon={<SleepIcon />}
+          primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
+          onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
+          emptyLabel="No entries"
+          todayLines={sleepTodayLines}
+          moreLines={sleepMoreLines}
+        />
+      )}
+      {isVisible('feeding') && (
+        <CategoryCard
+          title="Feed"
+          colorVar="--category-feeding"
+          addLabel="Add a feeding entry"
+          onAdd={() => setModal({ kind: 'feeding' })}
+          icon={<FeedIcon />}
+          primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
+          onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
+          emptyLabel="No entries"
+          todayLines={feedingTodayLines}
+          moreLines={feedingMoreLines}
+          highlight={feedingHighlight}
+        />
+      )}
+      {isVisible('diaper') && (
+        <CategoryCard
+          title="Diaper"
+          colorVar="--category-diaper"
+          addLabel="Add a diaper change"
+          onAdd={() => setModal({ kind: 'diaper' })}
+          icon={<DiaperIcon />}
+          primary={recentDiaper[0] ? summarizeDiaperPrimary(recentDiaper[0], now) : null}
+          onSelectPrimary={recentDiaper[0] ? () => setModal({ kind: 'diaper', entry: recentDiaper[0] }) : undefined}
+          emptyLabel="No entries"
+          todayLines={diaperTodayLines}
+          moreLines={diaperMoreLines}
+        />
+      )}
+      {isVisible('medication') && (
+        <CategoryCard
+          title="Medication"
+          colorVar="--category-medication"
+          addLabel="Add a dose"
+          onAdd={() => setModal({ kind: 'medication' })}
+          icon={<MedicationIcon />}
+          primary={recentMedication[0] ? summarizeMedicationPrimary(recentMedication[0], now) : null}
+          onSelectPrimary={
+            recentMedication[0] ? () => setModal({ kind: 'medication', entry: recentMedication[0] }) : undefined
+          }
+          emptyLabel="No doses"
+          todayLines={medicationTodayLines}
+          moreLines={medicationMoreLines}
+          secondaryAction={{ label: 'Set reminder', onClick: () => setModal({ kind: 'reminder' }) }}
+        />
+      )}
+      {isVisible('growth') && (
+        <CategoryCard
+          title="Growth"
+          colorVar="--category-growth"
+          addLabel="Add a measurement"
+          onAdd={() => setModal({ kind: 'growth' })}
+          icon={<GrowthIcon />}
+          showPrimary={false}
+          primary={null}
+          emptyLabel="No measurements"
+          todayLines={growthRows}
+          moreLines={[]}
+        />
+      )}
 
       {modal?.kind === 'sleep-active' && <SleepTimerModal onClose={closeModal} />}
       {modal?.kind === 'sleep-edit' && <SleepEntryEditModal entry={modal.entry} onClose={closeModal} />}

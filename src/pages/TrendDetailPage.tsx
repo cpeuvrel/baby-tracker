@@ -4,7 +4,7 @@ import { DailyBarChart } from '../components/charts/DailyBarChart'
 import { MetricCalendar } from '../components/MetricCalendar'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
-import { averageOfPoints, computeDelta } from '../lib/aggregations'
+import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
   computeMetricSeries,
@@ -51,10 +51,11 @@ export function TrendDetailPage() {
   if (!household || !selectedBaby || !metric) return null
 
   const currentDayKeys = dayKeysInRange(currentRange)
-  const series = computeMetricSeries(metric.id, currentDayKeys, current)
+  const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
+  const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange)
   const currentAvg = averageOfPoints(series)
   const previousAvg = averageOfPoints(
-    computeMetricSeries(metric.id, dayKeysInRange(previousRange), previous),
+    computeMetricSeries(metric.id, dayKeysInRange(previousRange), previous, nightRange),
   )
   const delta = computeDelta(currentAvg, previousAvg)
 

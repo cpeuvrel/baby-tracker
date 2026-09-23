@@ -1,7 +1,7 @@
 import { addDoc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { addBaby, subscribeToBabies, updateBaby } from './babies'
+import { addBaby, subscribeToBabies, updateBaby, updateNighttimeHours } from './babies'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -30,7 +30,41 @@ describe('babies repository', () => {
 
     subscribeToBabies('h1', onChange)
 
-    expect(onChange).toHaveBeenCalledWith([{ id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }])
+    expect(onChange).toHaveBeenCalledWith([
+      { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null, nighttimeHours: null },
+    ])
+  })
+
+  it('maps a stored nighttimeHours setting', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation((_query, callback) => {
+      ;(callback as (snapshot: unknown) => void)(
+        fakeSnapshot([
+          {
+            id: 'b1',
+            data: {
+              name: 'Léo',
+              birthDate: '2025-06-01',
+              sex: null,
+              nighttimeHours: { start: '21:00', end: '06:30' },
+            },
+          },
+        ]),
+      )
+      return vi.fn()
+    })
+
+    subscribeToBabies('h1', onChange)
+
+    expect(onChange).toHaveBeenCalledWith([
+      {
+        id: 'b1',
+        name: 'Léo',
+        birthDate: '2025-06-01',
+        sex: null,
+        nighttimeHours: { start: '21:00', end: '06:30' },
+      },
+    ])
   })
 
   it('creates a new baby with the given name and birth date', async () => {
@@ -41,11 +75,27 @@ describe('babies repository', () => {
     expect(payload).toEqual({ name: 'Nina', birthDate: '2026-01-15', sex: null })
   })
 
+  it('creates a new baby with a given sex', async () => {
+    await addBaby('h1', 'Nina', '2026-01-15', 'female')
+
+    expect(addDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = addDocMock.mock.calls[0]
+    expect(payload).toEqual({ name: 'Nina', birthDate: '2026-01-15', sex: 'female' })
+  })
+
   it('updates an existing baby with the given name and birth date', async () => {
     await updateBaby('h1', 'b1', 'Léo Updated', '2025-06-02', 'male')
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
     expect(payload).toEqual({ name: 'Léo Updated', birthDate: '2025-06-02', sex: 'male' })
+  })
+
+  it('updates the nighttime hours of a baby', async () => {
+    await updateNighttimeHours('h1', 'b1', { start: '21:00', end: '06:30' })
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1)
+    const [, payload] = updateDocMock.mock.calls[0]
+    expect(payload).toEqual({ nighttimeHours: { start: '21:00', end: '06:30' } })
   })
 })

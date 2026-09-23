@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { useHousehold } from '../contexts/HouseholdContext'
 import { exportBabyData, importBabyData, parseImportFile, serializeBabyExport } from '../lib/babyExport'
+import type { Baby } from '../types/models'
 
 type Status =
   | { kind: 'idle' }
@@ -30,33 +30,42 @@ function countEntries(data: { feedingEntries: unknown[]; sleepEntries: unknown[]
   )
 }
 
-export function ExportImportSection() {
+interface ExportImportSectionProps {
+  householdId: string
+  baby: Baby
+}
+
+export function ExportImportSection({ householdId, baby }: ExportImportSectionProps) {
   const { user } = useAuth()
-  const { household, selectedBaby } = useHousehold()
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  if (!household || !selectedBaby || !user) return null
+  if (!user) return null
 
   const handleExport = async () => {
     setStatus({ kind: 'exporting' })
     try {
-      const data = await exportBabyData(household.id, selectedBaby)
-      downloadCsvFile(`${selectedBaby.name}-export.csv`, serializeBabyExport(data))
+      const data = await exportBabyData(householdId, baby)
+      downloadCsvFile(`${baby.name}-export.csv`, serializeBabyExport(data))
       setStatus({ kind: 'success', message: 'Export downloaded.' })
     } catch {
       setStatus({ kind: 'error', message: 'Export failed.' })
     }
   }
 
-  const handleImport = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setSelectedFile(event.target.files?.[0] ?? null)
+    setStatus({ kind: 'idle' })
+  }
+
+  const handleImport = async () => {
+    if (!selectedFile || !user) return
     setStatus({ kind: 'importing' })
     try {
-      const text = await file.text()
+      const text = await selectedFile.text()
       const { data, skipped } = parseImportFile(text, user.uid)
-      await importBabyData(household.id, selectedBaby.id, data)
+      await importBabyData(householdId, baby.id, data)
       const imported = countEntries(data)
       const message =
         skipped > 0
@@ -67,6 +76,7 @@ export function ExportImportSection() {
       const message = error instanceof Error ? error.message : 'Import failed.'
       setStatus({ kind: 'error', message })
     } finally {
+      setSelectedFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -74,24 +84,33 @@ export function ExportImportSection() {
   return (
     <section aria-label="Import / export">
       <h2>Import / export</h2>
-      <p>Applies to the currently selected baby: {selectedBaby.name}.</p>
       <button
         type="button"
+        className="settings-action"
         onClick={() => void handleExport()}
         disabled={status.kind === 'exporting'}
       >
-        Export data (CSV)
+        Export Data (CSV)
       </button>
       <div>
         <label htmlFor="import-file">Import a CSV file (native or Nara export)</label>
         <input
           id="import-file"
           ref={fileInputRef}
+          className="settings-file-input"
           type="file"
           accept=".csv,text/csv"
-          onChange={(event) => void handleImport(event)}
+          onChange={handleFileChange}
           disabled={status.kind === 'importing'}
         />
+        <button
+          type="button"
+          className="settings-action"
+          onClick={() => void handleImport()}
+          disabled={!selectedFile || status.kind === 'importing'}
+        >
+          Import Data
+        </button>
       </div>
       {status.kind === 'success' && <p role="status">{status.message}</p>}
       {status.kind === 'error' && <p role="alert">{status.message}</p>}

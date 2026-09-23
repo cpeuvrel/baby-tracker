@@ -1,63 +1,44 @@
-import { useState, type FormEvent } from 'react'
-import { ExportImportSection } from '../components/ExportImportSection'
-import { SettingsSection } from '../components/SettingsSection'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatAge } from '../lib/age'
-import { addBaby } from '../repositories/babies'
 
 export function FamilyPage() {
   const { user } = useAuth()
   const { household, babies } = useHousehold()
-  const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('')
   const now = new Date()
 
   if (!household) return null
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (name.trim() === '' || birthDate.trim() === '') return
-    void addBaby(household.id, name.trim(), birthDate)
-    setName('')
-    setBirthDate('')
-  }
-
   return (
     <div>
+      <div className="detail-header">
+        <Link to="/account" aria-label="Back">
+          ‹
+        </Link>
+        <h2>Family</h2>
+      </div>
+
       <section aria-label="Children">
         <h2>Children</h2>
         <ul className="list-group">
           {babies.map((baby) => (
             <li key={baby.id}>
-              <span>{baby.name}</span>
-              <span className="list-group-meta">Age {formatAge(baby.birthDate, now)}</span>
+              <Link to={`/account/family/${baby.id}`}>
+                <span>{baby.name}</span>
+                <span className="list-group-trailing">
+                  <span className="list-group-meta">Age {formatAge(baby.birthDate, now)}</span>
+                  <span className="list-row-chevron" aria-hidden="true">
+                    ›
+                  </span>
+                </span>
+              </Link>
             </li>
           ))}
         </ul>
-        <form onSubmit={handleSubmit}>
-          <div>
-            <label htmlFor="baby-name">First name</label>
-            <input
-              id="baby-name"
-              type="text"
-              required
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-          <div>
-            <label htmlFor="baby-birth-date">Date of birth</label>
-            <input
-              id="baby-birth-date"
-              type="date"
-              required
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
-            />
-          </div>
-          <button type="submit">Add child</button>
-        </form>
+        <Link to="/account/family/add" className="link-button">
+          Add child
+        </Link>
       </section>
 
       <section aria-label="Parents">
@@ -77,13 +58,10 @@ export function FamilyPage() {
             ))}
         </ul>
         <p className="hint">
-          Adding a caregiver is done through the Firebase console (email/password account), not
-          from the app.
+          Both parents sign in with the same shared Google account, so there is no separate
+          caregiver account to add from the app.
         </p>
       </section>
-
-      <SettingsSection />
-      <ExportImportSection />
     </div>
   )
 }

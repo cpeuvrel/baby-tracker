@@ -1,6 +1,16 @@
-import { limit, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore'
+import { addDoc, limit, onSnapshot, query, where, type Unsubscribe } from 'firebase/firestore'
 import { householdsCollection } from '../lib/paths'
 import type { Household } from '../types/models'
+
+const DEFAULT_HOUSEHOLD_NAME = 'My Family'
+
+export async function createHousehold(memberUid: string): Promise<string> {
+  const docRef = await addDoc(householdsCollection(), {
+    name: DEFAULT_HOUSEHOLD_NAME,
+    memberUids: [memberUid],
+  })
+  return docRef.id
+}
 
 export function subscribeToHouseholdForUser(
   uid: string,

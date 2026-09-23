@@ -3,7 +3,7 @@ import { TrendRow } from '../components/TrendRow'
 import { DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
-import { averageOfPoints, computeDelta } from '../lib/aggregations'
+import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
   computeMetricSeries,
@@ -42,6 +42,7 @@ export function TrendsPage() {
 
   const currentDayKeys = dayKeysInRange(currentRange)
   const previousDayKeys = dayKeysInRange(previousRange)
+  const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
 
   return (
     <div>
@@ -62,9 +63,11 @@ export function TrendsPage() {
         <div key={section}>
           <h2 className="trend-section-title">{section}</h2>
           {TREND_METRICS.filter((metric) => metric.section === section).map((metric) => {
-            const currentAvg = averageOfPoints(computeMetricSeries(metric.id, currentDayKeys, current))
+            const currentAvg = averageOfPoints(
+              computeMetricSeries(metric.id, currentDayKeys, current, nightRange),
+            )
             const previousAvg = averageOfPoints(
-              computeMetricSeries(metric.id, previousDayKeys, previous),
+              computeMetricSeries(metric.id, previousDayKeys, previous, nightRange),
             )
             const delta = computeDelta(currentAvg, previousAvg)
 

@@ -3,12 +3,13 @@ import {
   countDiapersByDay,
   countFeedingSessionsByDay,
   countNightWakingsByDay,
+  DEFAULT_NIGHTTIME_HOURS,
   sumSecondsByDay,
   sumVolumeByDay,
   type DailyPoint,
 } from './aggregations'
 import { formatDuration } from './duration'
-import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, NighttimeHours, SleepEntry } from '../types/models'
 
 export type TrendMetricId =
   | 'feedSessions'
@@ -87,6 +88,7 @@ export function computeMetricSeries(
   id: TrendMetricId,
   dayKeys: string[],
   entries: TrendEntriesBundle,
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
 ): DailyPoint[] {
   switch (id) {
     case 'feedSessions':
@@ -98,7 +100,7 @@ export function computeMetricSeries(
     case 'sleepTotal':
       return sumSecondsByDay(dayKeys, entries.sleep)
     case 'nightWakings':
-      return countNightWakingsByDay(dayKeys, entries.sleep)
+      return countNightWakingsByDay(dayKeys, entries.sleep, nightRange)
     case 'diaperCount':
       return countDiapersByDay(dayKeys, entries.diaper)
   }

@@ -1,34 +1,41 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import type { User } from 'firebase/auth'
-import type { ReactNode } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockAuth } from './test/mockAuthState'
 
 const mockAuth = createMockAuth()
+const subscribeToHouseholdForUser = vi.fn()
+const subscribeToBabies = vi.fn()
 
 vi.mock('./lib/firebase', () => ({ auth: {} }))
 
 vi.mock('firebase/auth', () => ({
+  GoogleAuthProvider: class {},
   onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
     mockAuth.subscribe(listener),
-  signInWithEmailAndPassword: vi.fn(),
+  getRedirectResult: vi.fn().mockResolvedValue(null),
+  signInWithPopup: vi.fn(),
+  signInWithRedirect: vi.fn(),
   signOut: vi.fn(),
 }))
 
-vi.mock('./contexts/HouseholdContext', () => ({
-  HouseholdProvider: ({ children }: { children: ReactNode }) => children,
-  useHousehold: () => ({
-    household: null,
-    babies: [],
-    loading: false,
-    selectedBaby: null,
-    selectBaby: vi.fn(),
-  }),
+vi.mock('./repositories/households', () => ({
+  subscribeToHouseholdForUser: (...args: unknown[]) => subscribeToHouseholdForUser(...args),
+  createHousehold: vi.fn(),
+}))
+vi.mock('./repositories/babies', () => ({
+  subscribeToBabies: (...args: unknown[]) => subscribeToBabies(...args),
+  addBaby: vi.fn(),
 }))
 
 const { default: App } = await import('./App')
 
 describe('App', () => {
+  beforeEach(() => {
+    subscribeToHouseholdForUser.mockReset()
+    subscribeToBabies.mockReset()
+  })
+
   it('shows a loading state before the auth listener resolves', () => {
     render(<App />)
 
@@ -41,18 +48,38 @@ describe('App', () => {
     mockAuth.emit(null)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument(),
     )
   })
 
-  it('renders the authenticated shell when signed in', async () => {
-    render(<App />)
+  it('offers to create a family when signed in with no household yet', async () => {
+    subscribeToHouseholdForUser.mockImplementation((_uid, onChange) => {
+      onChange(null)
+      return vi.fn()
+    })
 
-    mockAuth.emit({ email: 'parent@example.com' } as User)
+    render(<App />)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
 
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument(),
+      expect(screen.getByRole('button', { name: 'Add child' })).toBeInTheDocument(),
     )
-    expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument()
+  })
+
+  it('renders the authenticated shell once a household exists', async () => {
+    subscribeToHouseholdForUser.mockImplementation((_uid, onChange) => {
+      onChange({ id: 'h1', name: 'Famille Test', memberUids: ['uid1'] })
+      return vi.fn()
+    })
+    subscribeToBabies.mockImplementation((_householdId, onChange) => {
+      onChange([])
+      return vi.fn()
+    })
+
+    render(<App />)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument())
+    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
   })
 })

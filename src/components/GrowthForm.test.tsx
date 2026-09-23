@@ -40,7 +40,8 @@ describe('GrowthForm', () => {
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
-      login: vi.fn(),
+      error: null,
+      loginWithGoogle: vi.fn(),
       logout: vi.fn(),
     })
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
