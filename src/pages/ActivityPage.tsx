@@ -143,13 +143,12 @@ export function ActivityPage() {
 
   const handleShowHistory = () => navigate('/history')
 
-  const sleepRest = recentSleep.slice(1)
   const maxSleepSeconds = Math.max(
     0,
-    ...sleepRest.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
+    ...recentSleep.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
   )
   const { today: sleepTodayLines, older: sleepMoreLines } = splitTodayLines(
-    sleepRest,
+    recentSleep,
     now,
     (entry) => entry.endedAt ?? entry.startedAt,
     (entry) => summarizeSleepRow(entry, now, maxSleepSeconds),
@@ -157,15 +156,14 @@ export function ActivityPage() {
     <SleepIcon />,
   )
 
-  const feedingRest = recentFeeding.slice(1)
   const maxVolumeMl = Math.max(
     0,
-    ...feedingRest
+    ...recentFeeding
       .filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
       .map((entry) => entry.volumeMl as number),
   )
   const { today: feedingTodayLines, older: feedingMoreLines } = splitTodayLines(
-    feedingRest,
+    recentFeeding,
     now,
     (entry) => entry.occurredAt,
     (entry) => summarizeFeedingRow(entry, maxVolumeMl),
@@ -174,7 +172,7 @@ export function ActivityPage() {
   )
 
   const { today: diaperTodayLines, older: diaperMoreLines } = splitTodayLines(
-    recentDiaper.slice(1),
+    recentDiaper,
     now,
     (entry) => entry.occurredAt,
     (entry) => summarizeDiaperRow(entry),
@@ -183,7 +181,7 @@ export function ActivityPage() {
   )
 
   const { today: medicationTodayLines, older: medicationMoreLines } = splitTodayLines(
-    recentMedication.slice(1),
+    recentMedication,
     now,
     (entry) => entry.givenAt,
     (entry) => summarizeMedicationRow(entry),
