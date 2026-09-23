@@ -21,6 +21,8 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const googleProvider = new GoogleAuthProvider()
 
+const ALLOWED_EMAILS = ['amandineandcorentin@gmail.com']
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -32,6 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
 
     return onAuthStateChanged(auth, (nextUser) => {
+      if (nextUser && !ALLOWED_EMAILS.includes(nextUser.email ?? '')) {
+        setError('This Google account is not authorized.')
+        void signOut(auth)
+        return
+      }
       setUser(nextUser)
       setLoading(false)
     })

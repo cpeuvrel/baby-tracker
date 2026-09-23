@@ -50,7 +50,7 @@ describe('App', () => {
   it('renders the authenticated shell when signed in', async () => {
     render(<App />)
 
-    mockAuth.emit({ email: 'parent@example.com' } as User)
+    mockAuth.emit({ email: 'amandineandcorentin@gmail.com' } as User)
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Log out' })).toBeInTheDocument(),

@@ -65,11 +65,26 @@ describe('AuthContext', () => {
       </AuthProvider>,
     )
 
-    mockAuth.emit({ email: 'parent@example.com' } as User)
+    mockAuth.emit({ email: 'amandineandcorentin@gmail.com' } as User)
 
     await waitFor(() =>
-      expect(screen.getByText('in:parent@example.com')).toBeInTheDocument(),
+      expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument(),
     )
+  })
+
+  it('signs out and surfaces an error for a non-whitelisted email', async () => {
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    mockAuth.emit({ email: 'stranger@example.com' } as User)
+
+    await waitFor(() =>
+      expect(screen.getByText('This Google account is not authorized.')).toBeInTheDocument(),
+    )
+    expect(signOut).toHaveBeenCalledWith({})
   })
 
   it('delegates loginWithGoogle to signInWithRedirect', async () => {
