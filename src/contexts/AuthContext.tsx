@@ -1,9 +1,7 @@
 import {
   GoogleAuthProvider,
-  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
-  signInWithRedirect,
   signOut,
   type User,
 } from 'firebase/auth'
@@ -25,31 +23,21 @@ const googleProvider = new GoogleAuthProvider()
 const ALLOWED_EMAILS = ['amandineandcorentin@gmail.com']
 
 /**
- * signInWithRedirect never completes against the Firebase Auth Emulator on
- * http://localhost (getRedirectResult stays null forever, no error — a known,
- * unresolved bug in the Firebase JS SDK/emulator, not specific to this app).
- * Popup avoids it entirely, so it's used for local dev; redirect is kept for
- * the real deployment (more reliable than popup on mobile, notably iOS Safari).
+ * Popup rather than redirect: signInWithRedirect needs storage access shared
+ * between the app domain and authDomain (<project>.firebaseapp.com), which
+ * browsers now block — the user comes back from Google still signed out. It
+ * also never completes against the Auth Emulator on localhost. Redirect would
+ * only work by proxying /__/auth/** from the app's own domain.
  */
-function usesEmulator(): boolean {
-  return import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!usesEmulator()) {
-      getRedirectResult(auth).catch(() => {
-        setError('Unable to sign in with Google.')
-      })
-    }
-
     return onAuthStateChanged(auth, (nextUser) => {
       if (nextUser && !ALLOWED_EMAILS.includes(nextUser.email ?? '')) {
-        setError('This Google account is not authorized.')
+        setError(`${nextUser.email ?? 'This Google account'} is not authorized.`)
         void signOut(auth)
         return
       }
@@ -60,15 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginWithGoogle = async () => {
     setError(null)
-    if (usesEmulator()) {
-      try {
-        await signInWithPopup(auth, googleProvider)
-      } catch {
-        setError('Unable to sign in with Google.')
-      }
-      return
+    try {
+      await signInWithPopup(auth, googleProvider)
+    } catch {
+      setError('Unable to sign in with Google.')
     }
-    await signInWithRedirect(auth, googleProvider)
   }
 
   const logout = async () => {
