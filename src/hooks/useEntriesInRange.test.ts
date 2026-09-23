@@ -1,12 +1,13 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
-import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { useEntriesInRange } from './useEntriesInRange'
 
 const subscribeToFeedingEntriesInRange = vi.fn()
 const subscribeToSleepEntriesInRange = vi.fn()
 const subscribeToDiaperEntriesInRange = vi.fn()
+const subscribeToMedicationEntriesInRange = vi.fn()
 
 vi.mock('../repositories/feedingEntries', () => ({
   subscribeToFeedingEntriesInRange: (...args: unknown[]) => subscribeToFeedingEntriesInRange(...args),
@@ -16,6 +17,9 @@ vi.mock('../repositories/sleepEntries', () => ({
 }))
 vi.mock('../repositories/diaperEntries', () => ({
   subscribeToDiaperEntriesInRange: (...args: unknown[]) => subscribeToDiaperEntriesInRange(...args),
+}))
+vi.mock('../repositories/medicationEntries', () => ({
+  subscribeToMedicationEntriesInRange: (...args: unknown[]) => subscribeToMedicationEntriesInRange(...args),
 }))
 
 const feeding: FeedingEntry = {
@@ -45,6 +49,15 @@ const diaper: DiaperEntry = {
   createdBy: 'uid1',
   createdAt: '2026-03-05T07:00:00.000Z',
 }
+const medication: MedicationEntry = {
+  id: 'm1',
+  name: 'Vitamin D',
+  givenAt: '2026-03-05T07:30:00.000Z',
+  dose: '2 drops',
+  notes: '',
+  createdBy: 'uid1',
+  createdAt: '2026-03-05T07:30:00.000Z',
+}
 
 const range = dayRange(new Date('2026-03-05T12:00:00.000Z'))
 
@@ -53,16 +66,17 @@ describe('useEntriesInRange', () => {
     subscribeToFeedingEntriesInRange.mockReset()
     subscribeToSleepEntriesInRange.mockReset()
     subscribeToDiaperEntriesInRange.mockReset()
+    subscribeToMedicationEntriesInRange.mockReset()
   })
 
   it('returns empty arrays without subscribing when household or baby is missing', () => {
     const { result } = renderHook(() => useEntriesInRange(null, null, range))
 
-    expect(result.current).toEqual({ feeding: [], sleep: [], diaper: [] })
+    expect(result.current).toEqual({ feeding: [], sleep: [], diaper: [], medication: [] })
     expect(subscribeToFeedingEntriesInRange).not.toHaveBeenCalled()
   })
 
-  it('subscribes to all three collections and reflects their entries', () => {
+  it('subscribes to all four collections and reflects their entries', () => {
     subscribeToFeedingEntriesInRange.mockImplementation((_h, _b, _r, onChange) => {
       onChange([feeding])
       return vi.fn()
@@ -75,19 +89,30 @@ describe('useEntriesInRange', () => {
       onChange([diaper])
       return vi.fn()
     })
+    subscribeToMedicationEntriesInRange.mockImplementation((_h, _b, _r, onChange) => {
+      onChange([medication])
+      return vi.fn()
+    })
 
     const { result } = renderHook(() => useEntriesInRange('h1', 'b1', range))
 
-    expect(result.current).toEqual({ feeding: [feeding], sleep: [sleep], diaper: [diaper] })
+    expect(result.current).toEqual({
+      feeding: [feeding],
+      sleep: [sleep],
+      diaper: [diaper],
+      medication: [medication],
+    })
   })
 
-  it('unsubscribes all three subscriptions on unmount', () => {
+  it('unsubscribes all four subscriptions on unmount', () => {
     const unsubscribeFeeding = vi.fn()
     const unsubscribeSleep = vi.fn()
     const unsubscribeDiaper = vi.fn()
+    const unsubscribeMedication = vi.fn()
     subscribeToFeedingEntriesInRange.mockReturnValue(unsubscribeFeeding)
     subscribeToSleepEntriesInRange.mockReturnValue(unsubscribeSleep)
     subscribeToDiaperEntriesInRange.mockReturnValue(unsubscribeDiaper)
+    subscribeToMedicationEntriesInRange.mockReturnValue(unsubscribeMedication)
 
     const { unmount } = renderHook(() => useEntriesInRange('h1', 'b1', range))
     unmount()
@@ -95,5 +120,6 @@ describe('useEntriesInRange', () => {
     expect(unsubscribeFeeding).toHaveBeenCalled()
     expect(unsubscribeSleep).toHaveBeenCalled()
     expect(unsubscribeDiaper).toHaveBeenCalled()
+    expect(unsubscribeMedication).toHaveBeenCalled()
   })
 })

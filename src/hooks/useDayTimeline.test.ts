@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { useDayTimeline } from './useDayTimeline'
 
 const useEntriesInRange = vi.fn()
@@ -36,6 +36,15 @@ const diaper: DiaperEntry = {
   createdBy: 'uid1',
   createdAt: '2026-03-05T07:00:00.000Z',
 }
+const medication: MedicationEntry = {
+  id: 'm1',
+  name: 'Vitamin D',
+  givenAt: '2026-03-05T06:00:00.000Z',
+  dose: '2 drops',
+  notes: '',
+  createdBy: 'uid1',
+  createdAt: '2026-03-05T06:00:00.000Z',
+}
 
 describe('useDayTimeline', () => {
   beforeEach(() => {
@@ -43,17 +52,22 @@ describe('useDayTimeline', () => {
   })
 
   it('merges entries for the given reference date into a timeline', () => {
-    useEntriesInRange.mockReturnValue({ feeding: [feeding], sleep: [sleep], diaper: [diaper] })
+    useEntriesInRange.mockReturnValue({
+      feeding: [feeding],
+      sleep: [sleep],
+      diaper: [diaper],
+      medication: [medication],
+    })
 
     const { result } = renderHook(() =>
       useDayTimeline('h1', 'b1', new Date('2026-03-05T12:00:00.000Z')),
     )
 
-    expect(result.current.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper'])
+    expect(result.current.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper', 'medication'])
   })
 
   it('requests the day range for the given reference date', () => {
-    useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [] })
+    useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [], medication: [] })
     const reference = new Date('2026-03-04T15:00:00.000Z')
 
     renderHook(() => useDayTimeline('h1', 'b1', reference))

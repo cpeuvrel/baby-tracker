@@ -1,4 +1,4 @@
-import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 export interface DateRange {
   start: Date
@@ -76,16 +76,19 @@ export type TimelineEntry =
   | { kind: 'feeding'; at: string; entry: FeedingEntry }
   | { kind: 'sleep'; at: string; entry: SleepEntry }
   | { kind: 'diaper'; at: string; entry: DiaperEntry }
+  | { kind: 'medication'; at: string; entry: MedicationEntry }
 
 export function buildTimeline(
   feedingEntries: FeedingEntry[],
   sleepEntries: SleepEntry[],
   diaperEntries: DiaperEntry[],
+  medicationEntries: MedicationEntry[] = [],
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [
     ...feedingEntries.map((entry): TimelineEntry => ({ kind: 'feeding', at: entry.occurredAt, entry })),
     ...sleepEntries.map((entry): TimelineEntry => ({ kind: 'sleep', at: entry.startedAt, entry })),
     ...diaperEntries.map((entry): TimelineEntry => ({ kind: 'diaper', at: entry.occurredAt, entry })),
+    ...medicationEntries.map((entry): TimelineEntry => ({ kind: 'medication', at: entry.givenAt, entry })),
   ]
 
   return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())

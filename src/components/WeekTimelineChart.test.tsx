@@ -39,6 +39,7 @@ describe('WeekTimelineChart', () => {
       feeding: [],
       sleep: [],
       diaper: [],
+      medication: [],
     })
 
     const { container } = render(
@@ -53,6 +54,7 @@ describe('WeekTimelineChart', () => {
       feeding: [],
       sleep: [],
       diaper: [],
+      medication: [],
     })
     const onSelectDay = vi.fn()
     const user = userEvent.setup()
@@ -67,7 +69,7 @@ describe('WeekTimelineChart', () => {
     expect(onSelectDay).toHaveBeenCalled()
   })
 
-  it('hides sleep blocks when the Sleep filter is toggled off', async () => {
+  it('hides sleep blocks when the Sleep kind is excluded from visibleKinds', () => {
     const sleep: SleepEntry = {
       id: 's1',
       startedAt: new Date().toISOString(),
@@ -81,16 +83,40 @@ describe('WeekTimelineChart', () => {
       feeding: [],
       sleep: [sleep],
       diaper: [],
+      medication: [],
     })
-    const user = userEvent.setup()
 
-    const { container } = render(
+    const { container, rerender } = render(
       <WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />,
     )
 
     expect(container.querySelectorAll('.week-chart-block')).toHaveLength(1)
-    await user.click(screen.getByRole('button', { name: 'Sleep' }))
+
+    rerender(
+      <WeekTimelineChart
+        onSelectDay={vi.fn()}
+        selectedDayKey={dayKey(new Date())}
+        visibleKinds={new Set(['feeding', 'diaper', 'medication'])}
+      />,
+    )
     expect(container.querySelectorAll('.week-chart-block')).toHaveLength(0)
+  })
+
+  it('omits the hour axis and per-day bar columns when showChart is false', () => {
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding: [],
+      sleep: [],
+      diaper: [],
+      medication: [],
+    })
+
+    const { container } = render(
+      <WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} showChart={false} />,
+    )
+
+    expect(container.querySelectorAll('.week-chart-axis')).toHaveLength(0)
+    expect(container.querySelectorAll('.week-chart-column')).toHaveLength(0)
+    expect(screen.getAllByRole('button', { name: /See details for/ })).toHaveLength(7)
   })
 
   it('changes the displayed month label when navigating to the previous week', async () => {
@@ -100,6 +126,7 @@ describe('WeekTimelineChart', () => {
       feeding: [],
       sleep: [],
       diaper: [],
+      medication: [],
     })
     render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
     expect(screen.getByText('March 2026')).toBeInTheDocument()

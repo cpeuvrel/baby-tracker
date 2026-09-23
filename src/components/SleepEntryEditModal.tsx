@@ -4,6 +4,7 @@ import { toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
 import { deleteSleepEntry, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
+import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
 
 interface SleepEntryEditModalProps {
@@ -26,13 +27,11 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
       ? Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000)
       : null
 
-  const handleDurationChange = (value: string) => {
-    if (value.trim() === '') {
+  const handleDurationChange = (minutes: number | null) => {
+    if (minutes == null) {
       setEndedAt('')
       return
     }
-    const minutes = Number(value)
-    if (Number.isNaN(minutes)) return
     setEndedAt(toDatetimeLocalValue(new Date(new Date(startedAt).getTime() + minutes * 60000)))
   }
 
@@ -68,17 +67,7 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
         <p className="modal-counter">
           {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
         </p>
-        <div>
-          <label htmlFor="sleep-duration">Duration (minutes)</label>
-          <input
-            id="sleep-duration"
-            type="number"
-            min="0"
-            inputMode="numeric"
-            value={durationMinutes ?? ''}
-            onChange={(event) => handleDurationChange(event.target.value)}
-          />
-        </div>
+        <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
         <div>
           <label htmlFor="sleep-started-at">Start Time</label>
           <input

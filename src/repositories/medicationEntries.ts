@@ -9,11 +9,13 @@ import {
   query,
   Timestamp,
   updateDoc,
+  where,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
 import { medicationEntriesCollection } from '../lib/paths'
+import type { DateRange } from '../lib/timeline'
 import type { MedicationEntry } from '../types/models'
 
 function toMedicationEntry(id: string, data: Record<string, unknown>): MedicationEntry {
@@ -26,6 +28,24 @@ function toMedicationEntry(id: string, data: Record<string, unknown>): Medicatio
     createdBy: data.createdBy as string,
     createdAt: timestampToIso(data.createdAt as Timestamp),
   }
+}
+
+export function subscribeToMedicationEntriesInRange(
+  householdId: string,
+  babyId: string,
+  range: DateRange,
+  onChange: (entries: MedicationEntry[]) => void,
+): Unsubscribe {
+  const rangeQuery = query(
+    medicationEntriesCollection(householdId, babyId),
+    where('givenAt', '>=', Timestamp.fromDate(range.start)),
+    where('givenAt', '<', Timestamp.fromDate(range.end)),
+    orderBy('givenAt', 'desc'),
+  )
+
+  return onSnapshot(rangeQuery, (snapshot) => {
+    onChange(snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data())))
+  })
 }
 
 export function subscribeToRecentMedicationEntries(

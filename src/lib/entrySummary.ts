@@ -37,8 +37,10 @@ export function summarizeFeedingPrimary(entry: FeedingEntry, now: Date): Primary
 }
 
 export function summarizeSleepPrimary(entry: SleepEntry, now: Date): PrimarySummary {
+  if (entry.durationSeconds != null && entry.endedAt != null) {
+    return { label: 'Woke up', meta: formatRelativeTime(new Date(entry.endedAt), now) }
+  }
   const meta = formatRelativeTime(new Date(entry.startedAt), now)
-  if (entry.durationSeconds != null) return { label: 'Woke up', meta }
   return { label: 'Sleeping', meta: `since ${meta}` }
 }
 

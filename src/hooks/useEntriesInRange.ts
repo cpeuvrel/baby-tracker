@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react'
 import type { DateRange } from '../lib/timeline'
 import { subscribeToDiaperEntriesInRange } from '../repositories/diaperEntries'
 import { subscribeToFeedingEntriesInRange } from '../repositories/feedingEntries'
+import { subscribeToMedicationEntriesInRange } from '../repositories/medicationEntries'
 import { subscribeToSleepEntriesInRange } from '../repositories/sleepEntries'
-import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 export interface EntriesInRange {
   feeding: FeedingEntry[]
   sleep: SleepEntry[]
   diaper: DiaperEntry[]
+  medication: MedicationEntry[]
 }
 
 export function useEntriesInRange(
@@ -19,6 +21,7 @@ export function useEntriesInRange(
   const [feeding, setFeeding] = useState<FeedingEntry[]>([])
   const [sleep, setSleep] = useState<SleepEntry[]>([])
   const [diaper, setDiaper] = useState<DiaperEntry[]>([])
+  const [medication, setMedication] = useState<MedicationEntry[]>([])
   const startTime = range.start.getTime()
   const endTime = range.end.getTime()
 
@@ -27,6 +30,7 @@ export function useEntriesInRange(
       setFeeding([])
       setSleep([])
       setDiaper([])
+      setMedication([])
       return
     }
     const effectiveRange: DateRange = { start: new Date(startTime), end: new Date(endTime) }
@@ -43,12 +47,19 @@ export function useEntriesInRange(
       effectiveRange,
       setDiaper,
     )
+    const unsubscribeMedication = subscribeToMedicationEntriesInRange(
+      householdId,
+      babyId,
+      effectiveRange,
+      setMedication,
+    )
     return () => {
       unsubscribeFeeding()
       unsubscribeSleep()
       unsubscribeDiaper()
+      unsubscribeMedication()
     }
   }, [householdId, babyId, startTime, endTime])
 
-  return { feeding, sleep, diaper }
+  return { feeding, sleep, diaper, medication }
 }

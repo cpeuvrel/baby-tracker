@@ -17,8 +17,11 @@ import { ActivityPage } from './ActivityPage'
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <ActivityPage />
+    <MemoryRouter initialEntries={['/']}>
+      <Routes>
+        <Route path="/" element={<ActivityPage />} />
+        <Route path="/history" element={<p>History screen</p>} />
+      </Routes>
     </MemoryRouter>,
   )
 }
@@ -223,11 +226,48 @@ describe('ActivityPage', () => {
     await user.click(screen.getByText('Woke up'))
 
     expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Duration (minutes)')).toHaveValue(60)
+    expect(screen.getByLabelText('Hours')).toHaveValue(1)
+    expect(screen.getByLabelText('Minutes')).toHaveValue(0)
     expect(startSleep).not.toHaveBeenCalled()
   })
 
-  it('shows earlier entries from today directly, and hides entries from before today behind Show more', async () => {
+  it('shows an overnight sleep entry that ended today directly, without needing to open history', () => {
+    const now = new Date()
+    const overnightEnd = new Date(now)
+    overnightEnd.setHours(0, 30, 0, 0)
+    const overnightStart = new Date(overnightEnd)
+    overnightStart.setDate(overnightStart.getDate() - 1)
+    overnightStart.setHours(20, 0, 0, 0)
+
+    const pureYesterdayStart = new Date(overnightStart)
+    pureYesterdayStart.setHours(6, 0, 0, 0)
+    const pureYesterdayEnd = new Date(overnightStart)
+    pureYesterdayEnd.setHours(8, 15, 0, 0)
+
+    const makeSleepEntry = (id: string, startedAt: Date, endedAt: Date): SleepEntry => ({
+      id,
+      startedAt: startedAt.toISOString(),
+      endedAt: endedAt.toISOString(),
+      durationSeconds: Math.round((endedAt.getTime() - startedAt.getTime()) / 1000),
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: startedAt.toISOString(),
+    })
+
+    const primaryEntry = makeSleepEntry('primary', new Date(now.getTime() - 15 * 60000), now)
+    const overnightEntry = makeSleepEntry('overnight', overnightStart, overnightEnd)
+    const pureYesterdayEntry = makeSleepEntry('pure-yesterday', pureYesterdayStart, pureYesterdayEnd)
+
+    setupHooks(null, { recentSleep: [primaryEntry, overnightEntry, pureYesterdayEntry] })
+
+    renderPage()
+
+    expect(screen.getByText('4h 30m')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entries since yesterday' })).toBeInTheDocument()
+    expect(screen.queryByText('2h 15m')).not.toBeInTheDocument()
+  })
+
+  it('shows earlier entries from today directly, and sends older ones to History', async () => {
     const now = new Date()
     const earlierToday = new Date(now)
     earlierToday.setHours(0, 30, 0, 0)
@@ -257,12 +297,12 @@ describe('ActivityPage', () => {
     renderPage()
 
     expect(screen.getByText('100 mL')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show more' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Entries since yesterday' })).toBeInTheDocument()
     expect(screen.queryByText('77 mL')).not.toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
+    await user.click(screen.getByRole('button', { name: 'Entries since yesterday' }))
 
-    expect(screen.getByText('77 mL')).toBeInTheDocument()
+    expect(screen.getByText('History screen')).toBeInTheDocument()
   })
 
   it('hides a category card turned off in Edit Activities', () => {

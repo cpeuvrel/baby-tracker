@@ -11,11 +11,13 @@ import { SleepTimerModal } from './SleepTimerModal'
 const startSleep = vi.fn()
 const stopSleep = vi.fn()
 const logSleep = vi.fn()
+const updateSleepEntry = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
   startSleep: (...args: unknown[]) => startSleep(...args),
   stopSleep: (...args: unknown[]) => stopSleep(...args),
   logSleep: (...args: unknown[]) => logSleep(...args),
+  updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -26,6 +28,7 @@ describe('SleepTimerModal', () => {
     startSleep.mockReset()
     stopSleep.mockReset()
     logSleep.mockReset()
+    updateSleepEntry.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -129,6 +132,48 @@ describe('SleepTimerModal', () => {
       notes: '',
     })
     expect(startSleep).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('lets you correct a quick timer entry after it stops, saving an update instead of a duplicate', async () => {
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    const spy = vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    const { rerender } = render(<SleepTimerModal onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+
+    expect(stopSleep).toHaveBeenCalledTimes(1)
+
+    spy.mockReturnValue(null)
+    rerender(<SleepTimerModal onClose={onClose} />)
+
+    expect(screen.queryByRole('button', { name: 'Stop Timer' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
+
+    await user.clear(screen.getByLabelText('Hours'))
+    await user.type(screen.getByLabelText('Hours'), '0')
+    await user.clear(screen.getByLabelText('Minutes'))
+    await user.type(screen.getByLabelText('Minutes'), '5')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    const expectedStart = new Date(activeEntry.startedAt)
+    const expectedEnd = new Date(expectedStart.getTime() + 5 * 60000)
+    expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', {
+      startedAt: expectedStart,
+      endedAt: expectedEnd,
+      notes: '',
+    })
+    expect(logSleep).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
 })

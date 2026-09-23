@@ -44,16 +44,18 @@ describe('SleepEntryEditModal', () => {
     render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
 
     expect(screen.getByText('1h 30m')).toBeInTheDocument()
-    expect(screen.getByLabelText('Duration (minutes)')).toHaveValue(90)
+    expect(screen.getByLabelText('Hours')).toHaveValue(1)
+    expect(screen.getByLabelText('Minutes')).toHaveValue(30)
   })
 
   it('adapts the end time when the duration is edited, keeping the start time fixed', async () => {
     const user = userEvent.setup()
     render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
 
-    const durationInput = screen.getByLabelText('Duration (minutes)')
-    await user.clear(durationInput)
-    await user.type(durationInput, '45')
+    await user.clear(screen.getByLabelText('Hours'))
+    await user.type(screen.getByLabelText('Hours'), '0')
+    await user.clear(screen.getByLabelText('Minutes'))
+    await user.type(screen.getByLabelText('Minutes'), '45')
 
     expect(screen.getByLabelText('Start Time')).toHaveValue('2026-03-05T20:00')
     expect(screen.getByLabelText('End Time')).toHaveValue('2026-03-05T20:45')
@@ -65,9 +67,10 @@ describe('SleepEntryEditModal', () => {
     const user = userEvent.setup()
     render(<SleepEntryEditModal entry={entry} onClose={onClose} />)
 
-    const durationInput = screen.getByLabelText('Duration (minutes)')
-    await user.clear(durationInput)
-    await user.type(durationInput, '45')
+    await user.clear(screen.getByLabelText('Hours'))
+    await user.type(screen.getByLabelText('Hours'), '0')
+    await user.clear(screen.getByLabelText('Minutes'))
+    await user.type(screen.getByLabelText('Minutes'), '45')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 's1', {

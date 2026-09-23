@@ -141,6 +141,8 @@ export function ActivityPage() {
 
   const closeModal = () => setModal(null)
 
+  const handleShowHistory = () => navigate('/history')
+
   const sleepRest = recentSleep.slice(1)
   const maxSleepSeconds = Math.max(
     0,
@@ -149,7 +151,7 @@ export function ActivityPage() {
   const { today: sleepTodayLines, older: sleepMoreLines } = splitTodayLines(
     sleepRest,
     now,
-    (entry) => entry.startedAt,
+    (entry) => entry.endedAt ?? entry.startedAt,
     (entry) => summarizeSleepRow(entry, now, maxSleepSeconds),
     handleSelectSleep,
     <SleepIcon />,
@@ -220,6 +222,7 @@ export function ActivityPage() {
           emptyLabel="No entries"
           todayLines={sleepTodayLines}
           moreLines={sleepMoreLines}
+          onShowHistory={handleShowHistory}
         />
       )}
       {isVisible('feeding') && (
@@ -234,6 +237,7 @@ export function ActivityPage() {
           emptyLabel="No entries"
           todayLines={feedingTodayLines}
           moreLines={feedingMoreLines}
+          onShowHistory={handleShowHistory}
           highlight={feedingHighlight}
         />
       )}
@@ -249,6 +253,7 @@ export function ActivityPage() {
           emptyLabel="No entries"
           todayLines={diaperTodayLines}
           moreLines={diaperMoreLines}
+          onShowHistory={handleShowHistory}
         />
       )}
       {isVisible('medication') && (
@@ -265,6 +270,7 @@ export function ActivityPage() {
           emptyLabel="No doses"
           todayLines={medicationTodayLines}
           moreLines={medicationMoreLines}
+          onShowHistory={handleShowHistory}
           secondaryAction={{ label: 'Set reminder', onClick: () => setModal({ kind: 'reminder' }) }}
         />
       )}

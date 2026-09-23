@@ -38,11 +38,33 @@ describe('CategoryCard', () => {
 
     expect(screen.getByText('Woke up')).toBeInTheDocument()
     expect(screen.getByText('30m ago')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Entries since yesterday' })).not.toBeInTheDocument()
   })
 
-  it('expands to show older entries on Show more', async () => {
+  it('shows an "Entries since yesterday" link that calls onShowHistory when there are older entries', async () => {
+    const onShowHistory = vi.fn()
     const user = userEvent.setup()
+    render(
+      <CategoryCard
+        title="Sleep"
+        colorVar="--category-sleep"
+        addLabel="Add a sleep entry"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
+        moreLines={[{ title: 'Older entry', onClick: vi.fn() }]}
+        onShowHistory={onShowHistory}
+      />,
+    )
+
+    expect(screen.queryByText('Older entry')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Entries since yesterday' }))
+
+    expect(onShowHistory).toHaveBeenCalled()
+  })
+
+  it('does not show the history link when onShowHistory is not provided', () => {
     render(
       <CategoryCard
         title="Sleep"
@@ -56,37 +78,10 @@ describe('CategoryCard', () => {
       />,
     )
 
-    expect(screen.queryByText('Older entry')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
-
-    expect(screen.getByText('Older entry')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Entries since yesterday' })).not.toBeInTheDocument()
   })
 
-  it('calls the onClick of a more-line entry when clicked', async () => {
-    const onSelect = vi.fn()
-    const user = userEvent.setup()
-    render(
-      <CategoryCard
-        title="Sleep"
-        colorVar="--category-sleep"
-        addLabel="Add a sleep entry"
-        onAdd={vi.fn()}
-        icon={<SleepIcon />}
-        primary={{ label: 'Woke up', meta: '30m ago' }}
-        emptyLabel="No entries"
-        moreLines={[{ title: 'Older entry', onClick: onSelect }]}
-      />,
-    )
-
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
-    await user.click(screen.getByRole('button', { name: /Older entry/ }))
-
-    expect(onSelect).toHaveBeenCalled()
-  })
-
-  it('shows a value and proportional bar next to a row when provided', async () => {
-    const user = userEvent.setup()
+  it('shows a value and proportional bar next to a today row when provided', () => {
     render(
       <CategoryCard
         title="Feed"
@@ -96,11 +91,10 @@ describe('CategoryCard', () => {
         icon={<SleepIcon />}
         primary={{ label: 'Last feeding', meta: '30m ago' }}
         emptyLabel="No entries"
-        moreLines={[{ title: '08:33 Bottle', value: '40 mL', barFraction: 0.5, onClick: vi.fn() }]}
+        todayLines={[{ title: '08:33 Bottle', value: '40 mL', barFraction: 0.5, onClick: vi.fn() }]}
+        moreLines={[]}
       />,
     )
-
-    await user.click(screen.getByRole('button', { name: 'Show more' }))
 
     expect(screen.getByText('40 mL')).toBeInTheDocument()
   })
@@ -123,7 +117,7 @@ describe('CategoryCard', () => {
     )
 
     expect(screen.getByText("Today's entry")).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Show more' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Entries since yesterday' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: /Today's entry/ }))
 

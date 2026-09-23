@@ -1,12 +1,7 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
+import { EntryRowItem, type CategoryCardEntryRow } from './EntryRowItem'
 
-export interface CategoryCardEntryRow {
-  icon?: ReactNode
-  title: string
-  value?: string
-  barFraction?: number
-  onClick: () => void
-}
+export type { CategoryCardEntryRow } from './EntryRowItem'
 
 interface CategoryCardProps {
   title: string
@@ -22,39 +17,9 @@ interface CategoryCardProps {
   emptyLabel: string
   todayLines?: CategoryCardEntryRow[]
   moreLines: CategoryCardEntryRow[]
+  onShowHistory?: () => void
   secondaryAction?: { label: string; onClick: () => void }
   highlight?: { value: string; unit: string }
-}
-
-function EntryRowItem({ icon, title, value, barFraction, onClick, colorVar }: CategoryCardEntryRow & { colorVar: string }) {
-  return (
-    <li>
-      <button type="button" className="category-card-row" onClick={onClick}>
-        {icon && (
-          <span className="category-card-row-icon" style={{ color: `var(${colorVar})` }}>
-            {icon}
-          </span>
-        )}
-        <span className="category-card-row-title">{title}</span>
-        {value != null && (
-          <span className="category-card-row-meta">
-            {barFraction != null && (
-              <span className="category-card-row-bar-track">
-                <span
-                  className="category-card-row-bar-fill"
-                  style={{ width: `${Math.min(barFraction, 1) * 100}%`, background: `var(${colorVar})` }}
-                />
-              </span>
-            )}
-            <span className="category-card-row-value">{value}</span>
-          </span>
-        )}
-        <span className="category-card-row-chevron" aria-hidden="true">
-          ›
-        </span>
-      </button>
-    </li>
-  )
 }
 
 export function CategoryCard({
@@ -71,11 +36,10 @@ export function CategoryCard({
   emptyLabel,
   todayLines = [],
   moreLines,
+  onShowHistory,
   secondaryAction,
   highlight,
 }: CategoryCardProps) {
-  const [expanded, setExpanded] = useState(false)
-
   const primaryText = primary ? (
     <div className="category-card-primary-text">
       <p className="category-card-label">{primary.label}</p>
@@ -133,19 +97,10 @@ export function CategoryCard({
             ))}
           </ul>
         )}
-        {moreLines.length > 0 && (
-          <>
-            <button type="button" className="link-button" onClick={() => setExpanded((value) => !value)}>
-              {expanded ? 'Show less' : 'Show more'}
-            </button>
-            {expanded && (
-              <ul>
-                {moreLines.map((row, index) => (
-                  <EntryRowItem key={index} {...row} colorVar={colorVar} />
-                ))}
-              </ul>
-            )}
-          </>
+        {moreLines.length > 0 && onShowHistory && (
+          <button type="button" className="link-button" onClick={onShowHistory}>
+            Entries since yesterday
+          </button>
         )}
       </div>
     </section>
