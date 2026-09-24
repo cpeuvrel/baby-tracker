@@ -93,17 +93,32 @@ describe('TrendDetailPage', () => {
     expect(screen.getByRole('button', { name: /Bottle/ })).toBeInTheDocument()
   })
 
-  it('draws counts as one block per entry and shows the tapped day in the legend', async () => {
+  it('draws counts as one block per entry', async () => {
     const user = userEvent.setup()
     const { container } = renderPage('feedSessions')
 
     await user.click(screen.getByRole('button', { name: 'Graph' }))
     expect(container.querySelectorAll('.metric-graph-block')).toHaveLength(1)
     expect(container.querySelector('.metric-graph-bar')).toBeNull()
+  })
 
-    const todayLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-    await user.click(screen.getByRole('button', { name: `${todayLabel}: 1.0` }))
-    expect(screen.getByText(todayLabel)).toBeInTheDocument()
+  it('opens the Entries view on the tapped day', async () => {
+    const user = userEvent.setup()
+    renderPage('feedSessions')
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+
+    const yesterday = new Date(now)
+    yesterday.setDate(now.getDate() - 1)
+    const columnLabel = yesterday.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    await user.click(screen.getByRole('button', { name: `${columnLabel}: 0.0` }))
+
+    expect(screen.getByRole('button', { name: 'Entries' })).toHaveAttribute('aria-pressed', 'true')
+    const heading = screen.getByRole('heading', {
+      name: yesterday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    })
+    expect(heading).toHaveClass('is-focused')
+    expect(screen.getByText('No entries this day')).toBeInTheDocument()
+    expect(screen.getByText('120 mL')).toBeInTheDocument()
   })
 
   it('draws quantities as bars', async () => {

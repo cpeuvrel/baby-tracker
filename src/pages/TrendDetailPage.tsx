@@ -45,6 +45,7 @@ export function TrendDetailPage() {
   const [days, setDays] = useState(14)
   const [view, setView] = useState<ViewMode>('calendar')
   const [editing, setEditing] = useState<EditState>(null)
+  const [focusDayKey, setFocusDayKey] = useState<string | null>(null)
   const now = useMemo(() => new Date(), [])
 
   const metric = metricId ? getTrendMetric(metricId) : undefined
@@ -55,6 +56,11 @@ export function TrendDetailPage() {
   const previous = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, previousRange)
 
   if (!household || !selectedBaby || !metric) return null
+
+  const showView = (next: ViewMode) => {
+    setFocusDayKey(null)
+    setView(next)
+  }
 
   const currentDayKeys = dayKeysInRange(currentRange)
   const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
@@ -89,13 +95,13 @@ export function TrendDetailPage() {
       <p className="detail-headline">{formatMetricHeadline(metric.id, currentAvg)}</p>
 
       <div role="group" aria-label="View" className="segmented-control detail-view-tabs">
-        <button type="button" aria-pressed={view === 'calendar'} onClick={() => setView('calendar')}>
+        <button type="button" aria-pressed={view === 'calendar'} onClick={() => showView('calendar')}>
           Calendar
         </button>
-        <button type="button" aria-pressed={view === 'graph'} onClick={() => setView('graph')}>
+        <button type="button" aria-pressed={view === 'graph'} onClick={() => showView('graph')}>
           Graph
         </button>
-        <button type="button" aria-pressed={view === 'entries'} onClick={() => setView('entries')}>
+        <button type="button" aria-pressed={view === 'entries'} onClick={() => showView('entries')}>
           Entries
         </button>
       </div>
@@ -133,6 +139,10 @@ export function TrendDetailPage() {
           seriesLabel={metric.seriesLabel}
           formatValue={(value) => formatMetricValue(metric.id, value)}
           formatTick={(value) => formatMetricAxisValue(metric.id, value)}
+          onSelectDay={(key) => {
+            setFocusDayKey(key)
+            setView('entries')
+          }}
         />
       )}
 
@@ -140,6 +150,7 @@ export function TrendDetailPage() {
         <TrendEntriesList
           kind="feeding"
           colorVar={metric.colorVar}
+          focusDayKey={focusDayKey}
           entries={current.feeding}
           onSelect={(entry) => setEditing({ kind: 'feeding', entry })}
         />
@@ -148,6 +159,7 @@ export function TrendDetailPage() {
         <TrendEntriesList
           kind="sleep"
           colorVar={metric.colorVar}
+          focusDayKey={focusDayKey}
           entries={current.sleep}
           onSelect={(entry) => setEditing({ kind: 'sleep', entry })}
         />
@@ -156,6 +168,7 @@ export function TrendDetailPage() {
         <TrendEntriesList
           kind="diaper"
           colorVar={metric.colorVar}
+          focusDayKey={focusDayKey}
           entries={current.diaper}
           onSelect={(entry) => setEditing({ kind: 'diaper', entry })}
         />

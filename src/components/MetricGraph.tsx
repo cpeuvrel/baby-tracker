@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { DailyPoint } from '../lib/aggregations'
 import { dayKey, parseDayKey } from '../lib/timeline'
 import type { TrendChartStyle } from '../lib/trendMetrics'
@@ -13,6 +13,8 @@ interface MetricGraphProps {
   seriesLabel: string
   formatValue: (value: number) => string
   formatTick: (value: number) => string
+  /** Called with the day key when a day's column is tapped. */
+  onSelectDay: (dayKey: string) => void
 }
 
 function formatWeekday(key: string): string {
@@ -26,7 +28,7 @@ function formatLongDay(key: string): string {
 /**
  * Per-day graph of a trend metric: one column per day under a weekday/date header,
  * a plain bar for quantities or one block per unit for counts, and a dashed AVG line.
- * Tapping a column shows that day's value in the legend.
+ * Tapping a day's column calls `onSelectDay` (the page opens that day's entries).
  */
 export function MetricGraph({
   data,
@@ -38,13 +40,12 @@ export function MetricGraph({
   seriesLabel,
   formatValue,
   formatTick,
+  onSelectDay,
 }: MetricGraphProps) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const todayKey = dayKey(new Date())
   const max = ticks[ticks.length - 1] || 1
   const percent = (value: number) => `${Math.min(value / max, 1) * 100}%`
   const color = `var(${colorVar})`
-  const selected = data.find((point) => point.dayKey === selectedKey)
   const month = data.length > 0 ? parseDayKey(data[0].dayKey).toLocaleDateString('en-US', { month: 'short' }) : ''
 
   return (
@@ -56,9 +57,7 @@ export function MetricGraph({
         {data.map((point) => (
           <span
             key={point.dayKey}
-            className={`metric-graph-day${point.dayKey === todayKey ? ' is-today' : ''}${
-              point.dayKey === selectedKey ? ' is-selected' : ''
-            }`}
+            className={`metric-graph-day${point.dayKey === todayKey ? ' is-today' : ''}`}
           >
             <span>{formatWeekday(point.dayKey)}</span>
             <span className="metric-graph-day-number">{parseDayKey(point.dayKey).getDate()}</span>
@@ -84,10 +83,9 @@ export function MetricGraph({
             <button
               key={point.dayKey}
               type="button"
-              className={`metric-graph-column${point.dayKey === selectedKey ? ' is-selected' : ''}`}
+              className="metric-graph-column"
               aria-label={`${formatLongDay(point.dayKey)}: ${formatValue(point.value)}`}
-              aria-pressed={point.dayKey === selectedKey}
-              onClick={() => setSelectedKey(point.dayKey === selectedKey ? null : point.dayKey)}
+              onClick={() => onSelectDay(point.dayKey)}
             >
               {chartStyle === 'bar' ? (
                 point.value > 0 && (
@@ -115,8 +113,8 @@ export function MetricGraph({
         <span className="metric-graph-legend-icon" style={{ background: color }}>
           {icon}
         </span>
-        <span>{selected ? formatLongDay(selected.dayKey) : seriesLabel}</span>
-        <strong>{formatValue(selected ? selected.value : average)}</strong>
+        <span>{seriesLabel}</span>
+        <strong>{formatValue(average)}</strong>
       </p>
     </div>
   )

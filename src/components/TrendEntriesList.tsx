@@ -1,10 +1,14 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { formatDuration } from '../lib/duration'
 import { dayKey, parseDayKey } from '../lib/timeline'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import { DiaperIcon, FeedIcon, SleepIcon } from './icons'
 
-type TrendEntriesListProps = { colorVar: string } & (
+type TrendEntriesListProps = {
+  colorVar: string
+  /** Day (from the Graph view) to scroll to and highlight. */
+  focusDayKey?: string | null
+} & (
   | { kind: 'feeding'; entries: FeedingEntry[]; onSelect: (entry: FeedingEntry) => void }
   | { kind: 'sleep'; entries: SleepEntry[]; onSelect: (entry: SleepEntry) => void }
   | { kind: 'diaper'; entries: DiaperEntry[]; onSelect: (entry: DiaperEntry) => void }
@@ -85,9 +89,16 @@ const ICONS: Record<TrendEntriesListProps['kind'], () => ReactNode> = {
 
 /** Entries of a trend metric, newest first, grouped under one heading per day. */
 export function TrendEntriesList(props: TrendEntriesListProps) {
+  const focusRef = useRef<HTMLElement>(null)
+  const { focusDayKey } = props
+
+  useEffect(() => {
+    focusRef.current?.scrollIntoView?.({ block: 'start' })
+  }, [focusDayKey])
+
   const items = toItems(props).sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
 
-  if (items.length === 0) return <p className="trend-entries-empty">No entries for this period</p>
+  if (items.length === 0 && !focusDayKey) return <p className="trend-entries-empty">No entries for this period</p>
 
   const groups: { key: string; items: ListItem[] }[] = []
   for (const item of items) {
@@ -96,14 +107,25 @@ export function TrendEntriesList(props: TrendEntriesListProps) {
     if (last?.key === key) last.items.push(item)
     else groups.push({ key, items: [item] })
   }
+  if (focusDayKey && !groups.some((group) => group.key === focusDayKey)) {
+    groups.push({ key: focusDayKey, items: [] })
+    groups.sort((a, b) => b.key.localeCompare(a.key))
+  }
 
   const color = `var(${props.colorVar})`
 
   return (
     <div className="trend-entries">
       {groups.map((group) => (
-        <section key={group.key} aria-label={formatDayHeading(group.key)}>
-          <h3 className="trend-entries-day">{formatDayHeading(group.key)}</h3>
+        <section
+          key={group.key}
+          ref={group.key === focusDayKey ? focusRef : undefined}
+          aria-label={formatDayHeading(group.key)}
+        >
+          <h3 className={`trend-entries-day${group.key === focusDayKey ? ' is-focused' : ''}`}>
+            {formatDayHeading(group.key)}
+          </h3>
+          {group.items.length === 0 && <p className="trend-entries-empty">No entries this day</p>}
           <ul>
             {group.items.map((item) => {
               return (
