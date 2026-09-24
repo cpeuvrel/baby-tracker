@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import type { FeedingEntry } from '../types/models'
 import {
+  computeAxisTicks,
   computeMetricSeries,
+  formatMetricAxisValue,
   formatMetricHeadline,
   formatMetricValue,
   getTrendMetric,
@@ -76,5 +78,21 @@ describe('formatMetricHeadline', () => {
   it('appends the metric-specific suffix', () => {
     expect(formatMetricHeadline('feedSessions', 3.6)).toBe('3.6 bottles / day')
     expect(formatMetricHeadline('feedAvgVolume', 128)).toBe('128 mL average')
+  })
+})
+
+describe('computeAxisTicks', () => {
+  it('rounds volumes up to a round maximum', () => {
+    expect(computeAxisTicks('feedVolume', 660)).toEqual([0, 200, 400, 600, 800])
+  })
+
+  it('keeps whole steps for small counts', () => {
+    expect(computeAxisTicks('feedSessions', 5)).toEqual([0, 2, 4, 6])
+    expect(computeAxisTicks('diaperCount', 0)).toEqual([0, 1])
+  })
+
+  it('steps sleep in whole hours', () => {
+    expect(computeAxisTicks('sleepTotal', 14 * 3600)).toEqual([0, 5, 10, 15].map((h) => h * 3600))
+    expect(formatMetricAxisValue('sleepTotal', 5 * 3600)).toBe('5h')
   })
 })

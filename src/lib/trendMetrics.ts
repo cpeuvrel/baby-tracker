@@ -21,12 +21,20 @@ export type TrendMetricId =
 
 export type TrendKind = 'feeding' | 'sleep' | 'diaper'
 
+/** How a metric is drawn in the Graph view: stacked blocks for counts, plain bars for quantities. */
+export type TrendChartStyle = 'stack' | 'bar'
+
 export interface TrendMetricMeta {
   id: TrendMetricId
   title: string
   section: string
   colorVar: string
   kind: TrendKind
+  chartStyle: TrendChartStyle
+  /** Legend label under the graph. */
+  seriesLabel: string
+  /** Unit word used in the delta caption ("Fewer bottles than…"). */
+  unitWord: string
 }
 
 export const TREND_METRICS: TrendMetricMeta[] = [
@@ -36,6 +44,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
+    chartStyle: 'stack',
+    seriesLabel: 'Bottle',
+    unitWord: 'bottles',
   },
   {
     id: 'feedVolume',
@@ -43,6 +54,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
+    chartStyle: 'bar',
+    seriesLabel: 'Bottle',
+    unitWord: 'mL',
   },
   {
     id: 'feedAvgVolume',
@@ -50,6 +64,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Feed',
     colorVar: '--category-feeding',
     kind: 'feeding',
+    chartStyle: 'bar',
+    seriesLabel: 'Bottle',
+    unitWord: 'mL',
   },
   {
     id: 'sleepTotal',
@@ -57,6 +74,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Sleep',
     colorVar: '--category-sleep',
     kind: 'sleep',
+    chartStyle: 'bar',
+    seriesLabel: 'Sleep',
+    unitWord: 'sleep',
   },
   {
     id: 'nightWakings',
@@ -64,6 +84,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Sleep',
     colorVar: '--category-sleep',
     kind: 'sleep',
+    chartStyle: 'stack',
+    seriesLabel: 'Night waking',
+    unitWord: 'wakings',
   },
   {
     id: 'diaperCount',
@@ -71,6 +94,9 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     section: 'Diaper',
     colorVar: '--category-diaper',
     kind: 'diaper',
+    chartStyle: 'stack',
+    seriesLabel: 'Diaper',
+    unitWord: 'diapers',
   },
 ]
 
@@ -131,4 +157,24 @@ const HEADLINE_SUFFIX: Record<TrendMetricId, string> = {
 
 export function formatMetricHeadline(id: TrendMetricId, average: number): string {
   return `${formatMetricValue(id, average)} ${HEADLINE_SUFFIX[id]}`
+}
+
+/** Short tick label for the Graph view's y axis. */
+export function formatMetricAxisValue(id: TrendMetricId, value: number): string {
+  switch (id) {
+    case 'sleepTotal':
+      return `${Math.round(value / 3600)}h`
+    default:
+      return String(Math.round(value))
+  }
+}
+
+/** Evenly spaced y axis ticks (whole units: counts, mL or hours) from 0 up to a round maximum covering `max`. */
+export function computeAxisTicks(id: TrendMetricId, max: number): number[] {
+  const unit = id === 'sleepTotal' ? 3600 : 1
+  const target = max / unit / 4
+  const magnitude = target > 0 ? 10 ** Math.floor(Math.log10(target)) : 1
+  const step = Math.max(1, [1, 2, 5, 10].map((m) => m * magnitude).find((m) => m >= target) ?? 1)
+  const count = Math.max(1, Math.ceil(max / unit / step))
+  return Array.from({ length: count + 1 }, (_, index) => index * step * unit)
 }
