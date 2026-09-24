@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { zonedTime } from '../lib/appTime'
 import type { FeedingEntry } from '../types/models'
 import { TrendEntriesList } from './TrendEntriesList'
 
@@ -19,9 +20,9 @@ function bottle(id: string, occurredAt: string, volumeMl: number | null): Feedin
 
 describe('TrendEntriesList', () => {
   const entries = [
-    bottle('a', new Date(2026, 8, 22, 8, 33).toISOString(), 40),
-    bottle('b', new Date(2026, 8, 23, 14, 0).toISOString(), 240),
-    bottle('c', new Date(2026, 8, 23, 18, 58).toISOString(), 110),
+    bottle('a', zonedTime(2026, 9, 22, 8, 33).toISOString(), 40),
+    bottle('b', zonedTime(2026, 9, 23, 14, 0).toISOString(), 240),
+    bottle('c', zonedTime(2026, 9, 23, 18, 58).toISOString(), 110),
   ]
 
   it('groups entries by day, newest first, with time and volume', () => {

@@ -78,6 +78,8 @@ describe('useDayTimeline', () => {
       expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
     )
     const rangeArg = useEntriesInRange.mock.calls[0][2]
-    expect(rangeArg.start.getDate()).toBe(reference.getDate())
+    // Paris day of 2026-03-04 16:00: from 2026-03-04 00:00 to 2026-03-05 00:00 (UTC+1)
+    expect(rangeArg.start.toISOString()).toBe('2026-03-03T23:00:00.000Z')
+    expect(rangeArg.end.toISOString()).toBe('2026-03-04T23:00:00.000Z')
   })
 })

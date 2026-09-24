@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
 import { deleteSleepEntry, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
@@ -24,7 +24,7 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
 
   const durationMinutes =
     endedAt !== ''
-      ? Math.round((new Date(endedAt).getTime() - new Date(startedAt).getTime()) / 60000)
+      ? Math.round((fromDatetimeLocalValue(endedAt).getTime() - fromDatetimeLocalValue(startedAt).getTime()) / 60000)
       : null
 
   const handleDurationChange = (minutes: number | null) => {
@@ -32,13 +32,13 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
       setEndedAt('')
       return
     }
-    setEndedAt(toDatetimeLocalValue(new Date(new Date(startedAt).getTime() + minutes * 60000)))
+    setEndedAt(toDatetimeLocalValue(new Date(fromDatetimeLocalValue(startedAt).getTime() + minutes * 60000)))
   }
 
   const submit = () => {
     void updateSleepEntry(household.id, selectedBaby.id, entry.id, {
-      startedAt: new Date(startedAt),
-      endedAt: endedAt !== '' ? new Date(endedAt) : null,
+      startedAt: fromDatetimeLocalValue(startedAt),
+      endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
       notes,
     })
     onClose()

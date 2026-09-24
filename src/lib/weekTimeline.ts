@@ -1,3 +1,4 @@
+import { addDays, secondsIntoDay, startOfDay } from './appTime'
 import { dayKey } from './timeline'
 
 export interface DayBlock {
@@ -12,7 +13,7 @@ export interface DayMark {
 }
 
 function fractionOfDay(date: Date): number {
-  return (date.getHours() * 3600 + date.getMinutes() * 60 + date.getSeconds()) / 86400
+  return secondsIntoDay(date) / 86400
 }
 
 /** Splits a [start, end) interval into one block per calendar day it touches. */
@@ -23,8 +24,7 @@ export function splitIntervalByDay(start: Date, end: Date): DayBlock[] {
   let segmentStart = start
 
   while (segmentStart.getTime() < end.getTime()) {
-    const nextMidnight = new Date(segmentStart)
-    nextMidnight.setHours(24, 0, 0, 0)
+    const nextMidnight = addDays(startOfDay(segmentStart), 1)
     const segmentEnd = end.getTime() < nextMidnight.getTime() ? end : nextMidnight
 
     blocks.push({

@@ -4,8 +4,8 @@ import { buildWeekBlocks, buildWeekMarks, markForInstant, splitIntervalByDay } f
 describe('splitIntervalByDay', () => {
   it('returns a single block for an interval within one day', () => {
     const blocks = splitIntervalByDay(
-      new Date('2026-03-05T20:00:00'),
-      new Date('2026-03-05T21:30:00'),
+      new Date('2026-03-05T20:00:00+01:00'),
+      new Date('2026-03-05T21:30:00+01:00'),
     )
 
     expect(blocks).toEqual([
@@ -15,8 +15,8 @@ describe('splitIntervalByDay', () => {
 
   it('splits an interval spanning midnight into two blocks', () => {
     const blocks = splitIntervalByDay(
-      new Date('2026-03-05T22:00:00'),
-      new Date('2026-03-06T06:00:00'),
+      new Date('2026-03-05T22:00:00+01:00'),
+      new Date('2026-03-06T06:00:00+01:00'),
     )
 
     expect(blocks).toEqual([
@@ -27,8 +27,8 @@ describe('splitIntervalByDay', () => {
 
   it('splits an interval spanning multiple full days', () => {
     const blocks = splitIntervalByDay(
-      new Date('2026-03-05T22:00:00'),
-      new Date('2026-03-07T02:00:00'),
+      new Date('2026-03-05T22:00:00+01:00'),
+      new Date('2026-03-07T02:00:00+01:00'),
     )
 
     expect(blocks).toEqual([
@@ -39,14 +39,14 @@ describe('splitIntervalByDay', () => {
   })
 
   it('returns an empty array when end is not after start', () => {
-    const same = new Date('2026-03-05T20:00:00')
+    const same = new Date('2026-03-05T20:00:00+01:00')
     expect(splitIntervalByDay(same, same)).toEqual([])
   })
 })
 
 describe('markForInstant', () => {
   it('reports the day key and fraction of day for a timestamp', () => {
-    expect(markForInstant(new Date('2026-03-05T06:00:00'))).toEqual({
+    expect(markForInstant(new Date('2026-03-05T06:00:00+01:00'))).toEqual({
       dayKey: '2026-03-05',
       atFraction: 0.25,
     })
@@ -58,8 +58,8 @@ describe('buildWeekBlocks', () => {
     const result = buildWeekBlocks(
       ['2026-03-04', '2026-03-05'],
       [
-        { start: new Date('2026-03-05T20:00:00'), end: new Date('2026-03-05T21:00:00') },
-        { start: new Date('2026-03-01T20:00:00'), end: new Date('2026-03-01T21:00:00') },
+        { start: new Date('2026-03-05T20:00:00+01:00'), end: new Date('2026-03-05T21:00:00+01:00') },
+        { start: new Date('2026-03-01T20:00:00+01:00'), end: new Date('2026-03-01T21:00:00+01:00') },
       ],
     )
 
@@ -72,7 +72,7 @@ describe('buildWeekMarks', () => {
   it('buckets instants into their day', () => {
     const result = buildWeekMarks(
       ['2026-03-05'],
-      [new Date('2026-03-05T08:00:00'), new Date('2026-03-06T08:00:00')],
+      [new Date('2026-03-05T08:00:00+01:00'), new Date('2026-03-06T08:00:00+01:00')],
     )
 
     expect(result['2026-03-05']).toHaveLength(1)

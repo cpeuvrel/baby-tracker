@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { dayKey, parseDayKey } from '../lib/timeline'
+import { formatDate } from '../lib/appTime'
+import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
 import { buildWeekBlocks, buildWeekMarks } from '../lib/weekTimeline'
 
 const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21, 24]
@@ -34,8 +35,8 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
         return (
           <div key={key} className="week-chart-day">
             <div className={`week-chart-day-header${key === todayKey ? ' is-today' : ''}`}>
-              <span>{date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)}</span>
-              <span>{date.getDate()}</span>
+              <span>{formatDate(date, { weekday: 'short' }).slice(0, 2)}</span>
+              <span>{dayOfMonth(key)}</span>
             </div>
             <div className="week-chart-column">
               {HOUR_LABELS.slice(1, -1).map((hour) => (

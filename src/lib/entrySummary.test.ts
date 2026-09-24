@@ -209,9 +209,7 @@ describe('summarizeSleepRow', () => {
   })
 
   it('prefixes with "Yesterday" for an entry started the day before', () => {
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
-    yesterday.setHours(20, 0, 0, 0)
+    const yesterday = new Date('2026-03-04T20:00:00+01:00')
     const endedAt = new Date(yesterday.getTime() + 3600_000)
 
     const row = summarizeSleepRow(

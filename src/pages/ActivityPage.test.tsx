@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addDays, zonedParts, zonedTime } from '../lib/appTime'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
@@ -233,16 +234,12 @@ describe('ActivityPage', () => {
 
   it('shows an overnight sleep entry that ended today directly, without needing to open history', () => {
     const now = new Date()
-    const overnightEnd = new Date(now)
-    overnightEnd.setHours(0, 30, 0, 0)
-    const overnightStart = new Date(overnightEnd)
-    overnightStart.setDate(overnightStart.getDate() - 1)
-    overnightStart.setHours(20, 0, 0, 0)
+    const { year, month, day } = zonedParts(now)
+    const overnightEnd = zonedTime(year, month, day, 0, 30)
+    const overnightStart = zonedTime(year, month, day - 1, 20, 0)
 
-    const pureYesterdayStart = new Date(overnightStart)
-    pureYesterdayStart.setHours(6, 0, 0, 0)
-    const pureYesterdayEnd = new Date(overnightStart)
-    pureYesterdayEnd.setHours(8, 15, 0, 0)
+    const pureYesterdayStart = zonedTime(year, month, day - 1, 6, 0)
+    const pureYesterdayEnd = zonedTime(year, month, day - 1, 8, 15)
 
     const makeSleepEntry = (id: string, startedAt: Date, endedAt: Date): SleepEntry => ({
       id,
@@ -269,10 +266,9 @@ describe('ActivityPage', () => {
 
   it('shows earlier entries from today directly, and sends older ones to History', async () => {
     const now = new Date()
-    const earlierToday = new Date(now)
-    earlierToday.setHours(0, 30, 0, 0)
-    const yesterday = new Date(now)
-    yesterday.setDate(yesterday.getDate() - 1)
+    const { year, month, day } = zonedParts(now)
+    const earlierToday = zonedTime(year, month, day, 0, 30)
+    const yesterday = addDays(now, -1)
 
     const makeEntry = (id: string, occurredAt: Date, volumeMl: number): FeedingEntry => ({
       id,

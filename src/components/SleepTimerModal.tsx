@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
 import { logSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
@@ -34,7 +34,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
 
   const endedAt =
     durationMinutes != null
-      ? toDatetimeLocalValue(new Date(new Date(startedAt).getTime() + durationMinutes * 60000))
+      ? toDatetimeLocalValue(new Date(fromDatetimeLocalValue(startedAt).getTime() + durationMinutes * 60000))
       : ''
 
   const handleToggleTimer = () => {
@@ -47,7 +47,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setTimerEntryId(activeEntry.id)
     } else if (!pendingStart) {
       setPendingStart(true)
-      void startSleep(household.id, selectedBaby.id, user.uid, new Date(startedAt))
+      void startSleep(household.id, selectedBaby.id, user.uid, fromDatetimeLocalValue(startedAt))
     }
   }
 
@@ -55,15 +55,15 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (timerEntryId) {
       if (!isActive) {
         void updateSleepEntry(household.id, selectedBaby.id, timerEntryId, {
-          startedAt: new Date(startedAt),
-          endedAt: endedAt !== '' ? new Date(endedAt) : null,
+          startedAt: fromDatetimeLocalValue(startedAt),
+          endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
           notes,
         })
       }
     } else if (!isActive && endedAt !== '') {
       void logSleep(household.id, selectedBaby.id, user.uid, {
-        startedAt: new Date(startedAt),
-        endedAt: new Date(endedAt),
+        startedAt: fromDatetimeLocalValue(startedAt),
+        endedAt: fromDatetimeLocalValue(endedAt),
         notes,
       })
     }
@@ -75,7 +75,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setDurationMinutes(null)
       return
     }
-    setDurationMinutes(Math.round((new Date(value).getTime() - new Date(startedAt).getTime()) / 60000))
+    setDurationMinutes(Math.round((fromDatetimeLocalValue(value).getTime() - fromDatetimeLocalValue(startedAt).getTime()) / 60000))
   }
 
   const startTimeValue = activeEntry ? toDatetimeLocalValue(new Date(activeEntry.startedAt)) : startedAt

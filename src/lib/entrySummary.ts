@@ -1,3 +1,4 @@
+import { formatDate, formatTime } from './appTime'
 import { formatDuration, formatRelativeTime } from './duration'
 import { isToday, isYesterday } from './timeline'
 import type {
@@ -23,11 +24,11 @@ export interface EntryRow {
 }
 
 function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+  return formatTime(new Date(iso), { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatShortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
+  return formatDate(new Date(iso), { day: 'numeric', month: 'short' })
 }
 
 export function summarizeFeedingPrimary(entry: FeedingEntry, now: Date): PrimarySummary {

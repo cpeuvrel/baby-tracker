@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { deleteDiaperEntry, logDiaper, updateDiaperEntry } from '../repositories/diaperEntries'
 import type { DiaperEntry, DiaperType } from '../types/models'
 import { Modal } from './Modal'
@@ -32,7 +32,7 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
   const handleLog = (loggedType: DiaperType) => {
     void logDiaper(household.id, selectedBaby.id, user.uid, {
       type: loggedType,
-      occurredAt: new Date(occurredAt),
+      occurredAt: fromDatetimeLocalValue(occurredAt),
       notes,
     })
     setNotes('')
@@ -43,7 +43,7 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
     if (!entry) return
     void updateDiaperEntry(household.id, selectedBaby.id, entry.id, {
       type,
-      occurredAt: new Date(occurredAt),
+      occurredAt: fromDatetimeLocalValue(occurredAt),
       notes,
     })
     onClose()
