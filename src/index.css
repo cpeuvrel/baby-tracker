@@ -1177,14 +1177,30 @@ main {
 
 /* Graph view: one column per day, bars (quantities) or stacked blocks (counts) */
 .metric-graph {
+  touch-action: pan-y;
+  user-select: none;
   --graph-axis-width: 36px;
   --graph-height: 360px;
   margin: 16px -16px 8px;
 }
 
+.metric-graph-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: calc(var(--graph-axis-width) - 28px);
+}
+
+.metric-graph-nav button {
+  padding: 2px 10px;
+  background: none;
+  color: var(--text);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 1;
+}
+
 .metric-graph-month {
-  display: inline-block;
-  margin-left: calc(var(--graph-axis-width) + 4px);
   padding: 4px 6px;
   font-size: 13px;
   color: var(--text-muted);
@@ -1210,10 +1226,13 @@ main {
   align-items: center;
   gap: 4px;
   padding: 8px 0;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: none;
+  font: inherit;
   font-size: 11px;
   font-weight: 600;
   color: var(--text-muted);
-  border-radius: 6px 6px 0 0;
 }
 
 .metric-graph-day-number {
@@ -1222,12 +1241,17 @@ main {
   color: var(--text);
 }
 
-.metric-graph-day.is-today {
+.metric-graph-day.is-today .metric-graph-day-number {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.metric-graph-day.is-selected {
   background: var(--button-add);
   color: var(--button-add-contrast);
 }
 
-.metric-graph-day.is-today .metric-graph-day-number {
+.metric-graph-day.is-selected .metric-graph-day-number {
   color: var(--button-add-contrast);
 }
 
@@ -1284,6 +1308,7 @@ main {
   font: inherit;
 }
 
+.metric-graph-column.is-selected,
 .metric-graph-column:hover,
 .metric-graph-column:active {
   background: color-mix(in srgb, var(--button-add) 15%, transparent);

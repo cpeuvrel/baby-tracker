@@ -47,9 +47,13 @@ export function TrendDetailPage() {
   const [editing, setEditing] = useState<EditState>(null)
   const [focusDayKey, setFocusDayKey] = useState<string | null>(null)
   const now = useMemo(() => new Date(), [])
+  /** How many whole periods back from today the page shows (0 = ending today, the maximum). */
+  const [periodsBack, setPeriodsBack] = useState(0)
 
   const metric = metricId ? getTrendMetric(metricId) : undefined
-  const currentRange = days === 1 ? dayRange(now) : lastNDaysRange(now, days)
+  const periodEnd = new Date(now)
+  periodEnd.setDate(periodEnd.getDate() - periodsBack * days)
+  const currentRange = days === 1 ? dayRange(periodEnd) : lastNDaysRange(periodEnd, days)
   const previousRange = precedingRange(currentRange)
 
   const current = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, currentRange)
@@ -82,7 +86,10 @@ export function TrendDetailPage() {
           className="detail-period-select"
           aria-label="Period"
           value={days}
-          onChange={(event) => setDays(Number(event.target.value))}
+          onChange={(event) => {
+            setDays(Number(event.target.value))
+            setPeriodsBack(0)
+          }}
         >
           {RANGE_DAYS.map((d) => (
             <option key={d} value={d}>
@@ -130,6 +137,7 @@ export function TrendDetailPage() {
 
       {view === 'graph' && (
         <MetricGraph
+          key={currentDayKeys[0]}
           data={series}
           average={currentAvg}
           ticks={computeAxisTicks(metric.id, Math.max(currentAvg, ...series.map((point) => point.value)))}
@@ -143,6 +151,8 @@ export function TrendDetailPage() {
             setFocusDayKey(key)
             setView('entries')
           }}
+          onPrevious={() => setPeriodsBack((back) => back + 1)}
+          onNext={periodsBack > 0 ? () => setPeriodsBack((back) => back - 1) : undefined}
         />
       )}
 

@@ -121,6 +121,50 @@ describe('TrendDetailPage', () => {
     expect(screen.getByText('120 mL')).toBeInTheDocument()
   })
 
+  it('selects a day from the date header', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage('feedSessions')
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+
+    const yesterday = new Date(now)
+    yesterday.setDate(now.getDate() - 1)
+    const label = yesterday.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const headerButton = screen.getByRole('button', { name: label })
+
+    await user.click(headerButton)
+    expect(headerButton).toHaveAttribute('aria-pressed', 'true')
+    expect(headerButton).toHaveClass('is-selected')
+    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent(`${label}0.0`)
+
+    await user.click(headerButton)
+    expect(headerButton).toHaveAttribute('aria-pressed', 'false')
+    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent('Bottle')
+  })
+
+  it('pages to earlier periods but never past today', async () => {
+    const user = userEvent.setup()
+    renderPage('feedSessions')
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+
+    const todayLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    expect(screen.getByRole('button', { name: 'Next period' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: todayLabel })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Previous period' }))
+    expect(screen.queryByRole('button', { name: todayLabel })).toBeNull()
+    const twoWeeksAgo = new Date(now)
+    twoWeeksAgo.setDate(now.getDate() - 14)
+    expect(
+      screen.getByRole('button', {
+        name: twoWeeksAgo.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+      }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Next period' }))
+    expect(screen.getByRole('button', { name: todayLabel })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next period' })).toBeDisabled()
+  })
+
   it('draws quantities as bars', async () => {
     const user = userEvent.setup()
     const { container } = renderPage('feedVolume')
