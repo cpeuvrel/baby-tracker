@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { deleteFeedingEntry, logFeeding, updateFeedingEntry } from '../repositories/feedingEntries'
 import type { FeedingEntry, FeedingType } from '../types/models'
 import { Modal } from './Modal'
@@ -27,7 +27,7 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
   const submit = () => {
     const input = {
       type,
-      occurredAt: new Date(occurredAt),
+      occurredAt: fromDatetimeLocalValue(occurredAt),
       volumeMl: type === 'bottle' && volumeMl.trim() !== '' ? Number(volumeMl) : null,
       foodType: type === 'solid' && foodType.trim() !== '' ? foodType.trim() : null,
       notes,

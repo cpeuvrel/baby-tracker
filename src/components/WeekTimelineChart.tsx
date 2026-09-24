@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
+import { addDays, formatDate, startOfDay, zonedParts } from '../lib/appTime'
 import { ALL_ENTRY_KINDS, type EntryKind } from '../lib/historyFilters'
-import { dayKey, parseDayKey } from '../lib/timeline'
+import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
 import { buildWeekBlocks, buildWeekMarks } from '../lib/weekTimeline'
 import type { DateRange } from '../lib/timeline'
 
@@ -11,19 +12,12 @@ const MIN_VISIBLE_BLOCK_MS = 60_000
 const DAY_LABELS = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']
 
 function startOfWeek(reference: Date): Date {
-  const start = new Date(reference)
-  start.setHours(0, 0, 0, 0)
-  const isoWeekday = (start.getDay() + 6) % 7 // Monday = 0
-  start.setDate(start.getDate() - isoWeekday)
-  return start
+  const isoWeekday = (zonedParts(reference).weekday + 6) % 7 // Monday = 0
+  return addDays(startOfDay(reference), -isoWeekday)
 }
 
 function weekDayKeys(weekStart: Date): string[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const day = new Date(weekStart)
-    day.setDate(day.getDate() + i)
-    return dayKey(day)
-  })
+  return Array.from({ length: 7 }, (_, i) => dayKey(addDays(weekStart, i)))
 }
 
 interface WeekTimelineChartProps {
@@ -42,16 +36,8 @@ export function WeekTimelineChart({
   const { household, selectedBaby } = useHousehold()
   const [weekOffset, setWeekOffset] = useState(0)
 
-  const weekStart = useMemo(() => {
-    const start = startOfWeek(new Date())
-    start.setDate(start.getDate() + weekOffset * 7)
-    return start
-  }, [weekOffset])
-  const weekEnd = useMemo(() => {
-    const end = new Date(weekStart)
-    end.setDate(end.getDate() + 7)
-    return end
-  }, [weekStart])
+  const weekStart = useMemo(() => addDays(startOfWeek(new Date()), weekOffset * 7), [weekOffset])
+  const weekEnd = useMemo(() => addDays(weekStart, 7), [weekStart])
   const dayKeys = useMemo(() => weekDayKeys(weekStart), [weekStart])
   const range: DateRange = useMemo(() => ({ start: weekStart, end: weekEnd }), [weekStart, weekEnd])
 
@@ -90,7 +76,7 @@ export function WeekTimelineChart({
 
   if (!household || !selectedBaby) return null
 
-  const monthLabel = weekStart.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const monthLabel = formatDate(weekStart, { month: 'long', year: 'numeric' })
   const todayKey = dayKey(new Date())
 
   return (
@@ -123,10 +109,10 @@ export function WeekTimelineChart({
                 type="button"
                 className={`week-chart-day-header${isSelected ? ' is-selected' : ''}${isToday ? ' is-today' : ''}`}
                 onClick={() => onSelectDay(date)}
-                aria-label={`See details for ${date.toLocaleDateString('en-US')}`}
+                aria-label={`See details for ${formatDate(date)}`}
               >
                 <span>{DAY_LABELS[index]}</span>
-                <span>{date.getDate()}</span>
+                <span>{dayOfMonth(key)}</span>
               </button>
               {showChart && (
                 <div className="week-chart-column">

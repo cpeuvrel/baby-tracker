@@ -127,8 +127,8 @@ describe('SleepTimerModal', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', {
-      startedAt: new Date('2026-03-05T20:00'),
-      endedAt: new Date('2026-03-05T21:30'),
+      startedAt: new Date('2026-03-05T20:00:00+01:00'),
+      endedAt: new Date('2026-03-05T21:30:00+01:00'),
       notes: '',
     })
     expect(startSleep).not.toHaveBeenCalled()

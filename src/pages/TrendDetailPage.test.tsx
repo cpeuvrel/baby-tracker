@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { addDays, formatDate } from '../lib/appTime'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { FeedingEntry } from '../types/models'
@@ -87,7 +88,7 @@ describe('TrendDetailPage', () => {
     expect(screen.getByText('AVG')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
-    const dayHeading = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    const dayHeading = formatDate(now, { month: 'short', day: 'numeric', year: 'numeric' })
     expect(screen.getByRole('heading', { name: dayHeading })).toBeInTheDocument()
     expect(screen.getByText('120 mL')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Bottle/ })).toBeInTheDocument()
@@ -107,14 +108,13 @@ describe('TrendDetailPage', () => {
     renderPage('feedSessions')
     await user.click(screen.getByRole('button', { name: 'Graph' }))
 
-    const yesterday = new Date(now)
-    yesterday.setDate(now.getDate() - 1)
-    const columnLabel = yesterday.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const yesterday = addDays(now, -1)
+    const columnLabel = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
     await user.click(screen.getByRole('button', { name: `${columnLabel}: 0.0` }))
 
     expect(screen.getByRole('button', { name: 'Entries' })).toHaveAttribute('aria-pressed', 'true')
     const heading = screen.getByRole('heading', {
-      name: yesterday.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      name: formatDate(yesterday, { month: 'short', day: 'numeric', year: 'numeric' }),
     })
     expect(heading).toHaveClass('is-focused')
     expect(screen.getByText('No entries this day')).toBeInTheDocument()
@@ -126,9 +126,8 @@ describe('TrendDetailPage', () => {
     const { container } = renderPage('feedSessions')
     await user.click(screen.getByRole('button', { name: 'Graph' }))
 
-    const yesterday = new Date(now)
-    yesterday.setDate(now.getDate() - 1)
-    const label = yesterday.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const yesterday = addDays(now, -1)
+    const label = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
     const headerButton = screen.getByRole('button', { name: label })
 
     await user.click(headerButton)
@@ -146,17 +145,16 @@ describe('TrendDetailPage', () => {
     renderPage('feedSessions')
     await user.click(screen.getByRole('button', { name: 'Graph' }))
 
-    const todayLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    const todayLabel = formatDate(now, { weekday: 'short', month: 'short', day: 'numeric' })
     expect(screen.getByRole('button', { name: 'Next period' })).toBeDisabled()
     expect(screen.getByRole('button', { name: todayLabel })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Previous period' }))
     expect(screen.queryByRole('button', { name: todayLabel })).toBeNull()
-    const twoWeeksAgo = new Date(now)
-    twoWeeksAgo.setDate(now.getDate() - 14)
+    const twoWeeksAgo = addDays(now, -14)
     expect(
       screen.getByRole('button', {
-        name: twoWeeksAgo.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        name: formatDate(twoWeeksAgo, { weekday: 'short', month: 'short', day: 'numeric' }),
       }),
     ).toBeInTheDocument()
 

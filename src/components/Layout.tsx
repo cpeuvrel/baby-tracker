@@ -1,11 +1,12 @@
 import { Outlet } from 'react-router-dom'
+import { formatDate } from '../lib/appTime'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 import { BabySelector } from './BabySelector'
 import { BabyAvatarIcon } from './icons'
 import { TabBar } from './TabBar'
 
 function formatHeaderDate(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return formatDate(date, { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 export function Layout() {

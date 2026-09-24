@@ -1,4 +1,5 @@
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { formatDate } from '../../lib/appTime'
 
 export interface GrowthPoint {
   measuredAt: string
@@ -10,8 +11,8 @@ interface GrowthLineChartProps {
   formatValue: (value: number) => string
 }
 
-function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' })
+function formatShortDate(value: string): string {
+  return formatDate(new Date(value), { day: '2-digit', month: '2-digit' })
 }
 
 export function GrowthLineChart({ data, formatValue }: GrowthLineChartProps) {
@@ -22,7 +23,7 @@ export function GrowthLineChart({ data, formatValue }: GrowthLineChartProps) {
           <CartesianGrid vertical={false} stroke="var(--gridline)" />
           <XAxis
             dataKey="measuredAt"
-            tickFormatter={formatDate}
+            tickFormatter={formatShortDate}
             stroke="var(--baseline)"
             tick={{ fill: 'var(--text-muted-chart)', fontSize: 12 }}
             tickLine={false}
@@ -44,7 +45,7 @@ export function GrowthLineChart({ data, formatValue }: GrowthLineChartProps) {
               color: 'var(--text-primary)',
               fontSize: 13,
             }}
-            labelFormatter={(value) => formatDate(String(value))}
+            labelFormatter={(value) => formatShortDate(String(value))}
             formatter={(value) => formatValue(Number(value))}
           />
           <Line

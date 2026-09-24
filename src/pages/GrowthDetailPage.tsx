@@ -6,6 +6,7 @@ import { GrowthIcon, ListViewIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useUnitPreference } from '../hooks/useUnitPreference'
+import { formatDate } from '../lib/appTime'
 import { ageInMonths, formatAge } from '../lib/age'
 import {
   formatGrowthValue,
@@ -31,8 +32,8 @@ function isGrowthMetric(value: string | undefined): value is GrowthMetric {
   return value === 'weight' || value === 'height' || value === 'headCircumference'
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+function formatMeasuredDate(iso: string): string {
+  return formatDate(new Date(iso), { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function GrowthDetailPage() {
@@ -119,8 +120,8 @@ export function GrowthDetailPage() {
         ) : (
           <ul className="detail-entries growth-entry-list">
             {listEntries.map((point, index) => {
-              const dateLabel = formatDate(point.entry.measuredAt)
-              const previousDateLabel = index > 0 ? formatDate(listEntries[index - 1].entry.measuredAt) : null
+              const dateLabel = formatMeasuredDate(point.entry.measuredAt)
+              const previousDateLabel = index > 0 ? formatMeasuredDate(listEntries[index - 1].entry.measuredAt) : null
               const pointPercentile = sex
                 ? percentileForValue(metric, sex, point.ageMonths, point.value)
                 : undefined

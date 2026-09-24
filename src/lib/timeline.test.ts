@@ -15,86 +15,91 @@ import {
 
 describe('dayRange', () => {
   it('returns midnight to midnight for the reference date', () => {
-    const { start, end } = dayRange(new Date('2026-03-05T14:30:00'))
+    const { start, end } = dayRange(new Date('2026-03-05T14:30:00+01:00'))
 
-    expect(start.getHours()).toBe(0)
-    expect(start.getMinutes()).toBe(0)
+    expect(start.toISOString()).toBe('2026-03-04T23:00:00.000Z')
     expect(end.getTime() - start.getTime()).toBe(24 * 60 * 60 * 1000)
+  })
+
+  it('uses Paris midnight even when the UTC date differs', () => {
+    // 00:30 in Paris is still the previous day in UTC
+    expect(dayRange(new Date('2026-07-01T22:30:00Z')).start.toISOString()).toBe('2026-07-01T22:00:00.000Z')
+  })
+
+  it('spans 23 hours on the spring daylight saving day', () => {
+    const { start, end } = dayRange(new Date('2026-03-29T12:00:00+02:00'))
+    expect(end.getTime() - start.getTime()).toBe(23 * 60 * 60 * 1000)
   })
 })
 
 describe('lastNDaysRange', () => {
   it('spans N full days ending at midnight after the reference date', () => {
-    const { start, end } = lastNDaysRange(new Date('2026-03-05T14:30:00'), 7)
+    const { start, end } = lastNDaysRange(new Date('2026-03-05T14:30:00+01:00'), 7)
 
     expect(end.getTime() - start.getTime()).toBe(7 * 24 * 60 * 60 * 1000)
-    expect(end.getHours()).toBe(0)
+    expect(end.toISOString()).toBe('2026-03-05T23:00:00.000Z')
   })
 })
 
 describe('dayKey', () => {
   it('formats a date as YYYY-MM-DD', () => {
-    expect(dayKey(new Date('2026-03-05T23:59:00'))).toBe('2026-03-05')
+    expect(dayKey(new Date('2026-03-05T23:59:00+01:00'))).toBe('2026-03-05')
   })
 
   it('pads single-digit months and days', () => {
-    expect(dayKey(new Date('2026-01-02T00:00:00'))).toBe('2026-01-02')
+    expect(dayKey(new Date('2026-01-02T00:00:00+01:00'))).toBe('2026-01-02')
   })
 })
 
 describe('lastNDayKeys', () => {
   it('returns N day keys ending with the reference day, oldest first', () => {
-    const keys = lastNDayKeys(new Date('2026-03-05T10:00:00'), 3)
+    const keys = lastNDayKeys(new Date('2026-03-05T10:00:00+01:00'), 3)
 
     expect(keys).toEqual(['2026-03-03', '2026-03-04', '2026-03-05'])
   })
 })
 
 describe('parseDayKey', () => {
-  it('parses a YYYY-MM-DD key as a local midnight date', () => {
-    const date = parseDayKey('2026-03-05')
-
-    expect(date.getFullYear()).toBe(2026)
-    expect(date.getMonth()).toBe(2)
-    expect(date.getDate()).toBe(5)
-    expect(date.getHours()).toBe(0)
+  it('parses a YYYY-MM-DD key as Paris midnight', () => {
+    expect(parseDayKey('2026-03-05').toISOString()).toBe('2026-03-04T23:00:00.000Z')
+    expect(parseDayKey('2026-07-05').toISOString()).toBe('2026-07-04T22:00:00.000Z')
   })
 })
 
 describe('isToday', () => {
   it('returns true for a timestamp on the same local day as now', () => {
-    const now = new Date('2026-03-05T22:00:00')
-    expect(isToday('2026-03-05T06:00:00', now)).toBe(true)
+    const now = new Date('2026-03-05T22:00:00+01:00')
+    expect(isToday('2026-03-05T06:00:00+01:00', now)).toBe(true)
   })
 
   it('returns false for a timestamp on a different day', () => {
-    const now = new Date('2026-03-05T06:00:00')
-    expect(isToday('2026-03-04T23:59:00', now)).toBe(false)
+    const now = new Date('2026-03-05T06:00:00+01:00')
+    expect(isToday('2026-03-04T23:59:00+01:00', now)).toBe(false)
   })
 })
 
 describe('isYesterday', () => {
   it('returns true for a timestamp on the day before now', () => {
-    const now = new Date('2026-03-05T06:00:00')
-    expect(isYesterday('2026-03-04T23:59:00', now)).toBe(true)
+    const now = new Date('2026-03-05T06:00:00+01:00')
+    expect(isYesterday('2026-03-04T23:59:00+01:00', now)).toBe(true)
   })
 
   it('returns false for today or two days ago', () => {
-    const now = new Date('2026-03-05T06:00:00')
-    expect(isYesterday('2026-03-05T05:00:00', now)).toBe(false)
-    expect(isYesterday('2026-03-03T23:59:00', now)).toBe(false)
+    const now = new Date('2026-03-05T06:00:00+01:00')
+    expect(isYesterday('2026-03-05T05:00:00+01:00', now)).toBe(false)
+    expect(isYesterday('2026-03-03T23:59:00+01:00', now)).toBe(false)
   })
 })
 
 describe('dayKeysInRange', () => {
   it('lists every calendar day touched by the range', () => {
-    const range = { start: new Date('2026-03-04T18:00:00'), end: new Date('2026-03-07T06:00:00') }
+    const range = { start: new Date('2026-03-04T18:00:00+01:00'), end: new Date('2026-03-07T06:00:00+01:00') }
 
     expect(dayKeysInRange(range)).toEqual(['2026-03-04', '2026-03-05', '2026-03-06', '2026-03-07'])
   })
 
   it('returns a single key for a same-day range', () => {
-    const range = dayRange(new Date('2026-03-05T14:00:00'))
+    const range = dayRange(new Date('2026-03-05T14:00:00+01:00'))
 
     expect(dayKeysInRange(range)).toEqual(['2026-03-05'])
   })
@@ -102,7 +107,7 @@ describe('dayKeysInRange', () => {
 
 describe('precedingRange', () => {
   it('returns the range of the same length immediately before', () => {
-    const range = lastNDaysRange(new Date('2026-03-05T14:00:00'), 7)
+    const range = lastNDaysRange(new Date('2026-03-05T14:00:00+01:00'), 7)
     const preceding = precedingRange(range)
 
     expect(preceding.end.getTime()).toBe(range.start.getTime())

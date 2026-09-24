@@ -125,9 +125,9 @@ describe('computeDiaperStats', () => {
 describe('sumSecondsByDay', () => {
   it('buckets sleep duration by local day, ignoring entries outside the range', () => {
     const entries = [
-      sleepEntry({ startedAt: '2026-03-05T10:00:00', durationSeconds: 1000 }),
-      sleepEntry({ startedAt: '2026-03-05T20:00:00', durationSeconds: 500 }),
-      sleepEntry({ startedAt: '2026-03-01T10:00:00', durationSeconds: 9999 }),
+      sleepEntry({ startedAt: '2026-03-05T10:00:00+01:00', durationSeconds: 1000 }),
+      sleepEntry({ startedAt: '2026-03-05T20:00:00+01:00', durationSeconds: 500 }),
+      sleepEntry({ startedAt: '2026-03-01T10:00:00+01:00', durationSeconds: 9999 }),
     ]
 
     const buckets = sumSecondsByDay(['2026-03-04', '2026-03-05'], entries)
@@ -142,9 +142,9 @@ describe('sumSecondsByDay', () => {
 describe('sumVolumeByDay', () => {
   it('buckets bottle volume by local day and ignores solids', () => {
     const entries = [
-      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00' }),
-      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00' }),
-      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00+01:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00+01:00' }),
+      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00+01:00' }),
     ]
 
     const buckets = sumVolumeByDay(['2026-03-05'], entries)
@@ -156,9 +156,9 @@ describe('sumVolumeByDay', () => {
 describe('averageVolumeByDay', () => {
   it('averages bottle volume per day, ignoring solids and days with no bottle', () => {
     const entries = [
-      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00' }),
-      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00' }),
-      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 100, occurredAt: '2026-03-05T10:00:00+01:00' }),
+      feedingEntry({ type: 'bottle', volumeMl: 50, occurredAt: '2026-03-05T18:00:00+01:00' }),
+      feedingEntry({ type: 'solid', volumeMl: null, occurredAt: '2026-03-05T12:00:00+01:00' }),
     ]
 
     const buckets = averageVolumeByDay(['2026-03-04', '2026-03-05'], entries)
@@ -173,9 +173,9 @@ describe('averageVolumeByDay', () => {
 describe('countFeedingSessionsByDay', () => {
   it('counts bottle entries per day, ignoring solids', () => {
     const entries = [
-      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T10:00:00' }),
-      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T18:00:00' }),
-      feedingEntry({ type: 'solid', occurredAt: '2026-03-05T12:00:00' }),
+      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T10:00:00+01:00' }),
+      feedingEntry({ type: 'bottle', occurredAt: '2026-03-05T18:00:00+01:00' }),
+      feedingEntry({ type: 'solid', occurredAt: '2026-03-05T12:00:00+01:00' }),
     ]
 
     expect(countFeedingSessionsByDay(['2026-03-05'], entries)).toEqual([
@@ -211,8 +211,8 @@ describe('countNightWakingsByDay', () => {
 describe('countDiapersByDay', () => {
   it('counts diaper entries per day', () => {
     const entries = [
-      diaperEntry({ occurredAt: '2026-03-05T08:00:00' }),
-      diaperEntry({ occurredAt: '2026-03-05T18:00:00' }),
+      diaperEntry({ occurredAt: '2026-03-05T08:00:00+01:00' }),
+      diaperEntry({ occurredAt: '2026-03-05T18:00:00+01:00' }),
     ]
 
     expect(countDiapersByDay(['2026-03-05'], entries)).toEqual([{ dayKey: '2026-03-05', value: 2 }])

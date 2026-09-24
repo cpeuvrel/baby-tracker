@@ -1,3 +1,4 @@
+import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 export interface DateRange {
@@ -5,31 +6,32 @@ export interface DateRange {
   end: Date
 }
 
+/** The Paris calendar day containing `reference`. */
 export function dayRange(reference: Date): DateRange {
-  const start = new Date(reference)
-  start.setHours(0, 0, 0, 0)
-  const end = new Date(start)
-  end.setDate(end.getDate() + 1)
-  return { start, end }
+  const start = startOfDay(reference)
+  return { start, end: addDays(start, 1) }
 }
 
 export function lastNDaysRange(reference: Date, days: number): DateRange {
   const { end } = dayRange(reference)
-  const start = new Date(end)
-  start.setDate(start.getDate() - days)
-  return { start, end }
+  return { start: addDays(end, -days), end }
 }
 
+/** `YYYY-MM-DD` of the Paris calendar day containing `date`. */
 export function dayKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+  const { year, month, day } = zonedParts(date)
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
+/** Paris midnight starting the day `key` (`YYYY-MM-DD`). */
 export function parseDayKey(key: string): Date {
   const [year, month, day] = key.split('-').map(Number)
-  return new Date(year, month - 1, day)
+  return zonedTime(year, month, day)
+}
+
+/** Day of the month of a `YYYY-MM-DD` key. */
+export function dayOfMonth(key: string): number {
+  return Number(key.slice(8, 10))
 }
 
 export function isToday(iso: string, now: Date): boolean {
@@ -37,31 +39,21 @@ export function isToday(iso: string, now: Date): boolean {
 }
 
 export function isYesterday(iso: string, now: Date): boolean {
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  return dayKey(new Date(iso)) === dayKey(yesterday)
+  return dayKey(new Date(iso)) === dayKey(addDays(now, -1))
 }
 
 export function lastNDayKeys(reference: Date, days: number): string[] {
   const keys: string[] = []
-  for (let i = days - 1; i >= 0; i -= 1) {
-    const day = new Date(reference)
-    day.setHours(0, 0, 0, 0)
-    day.setDate(day.getDate() - i)
-    keys.push(dayKey(day))
-  }
+  const today = startOfDay(reference)
+  for (let i = days - 1; i >= 0; i -= 1) keys.push(dayKey(addDays(today, -i)))
   return keys
 }
 
 /** Day keys for every calendar day touched by [range.start, range.end). */
 export function dayKeysInRange(range: DateRange): string[] {
   const keys: string[] = []
-  const cursor = new Date(range.start)
-  cursor.setHours(0, 0, 0, 0)
-  const end = new Date(range.end)
-  while (cursor.getTime() < end.getTime()) {
+  for (let cursor = startOfDay(range.start); cursor.getTime() < range.end.getTime(); cursor = addDays(cursor, 1)) {
     keys.push(dayKey(cursor))
-    cursor.setDate(cursor.getDate() + 1)
   }
   return keys
 }

@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useUnitPreference } from '../hooks/useUnitPreference'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { GRAMS_PER_POUND, MM_PER_INCH } from '../lib/growthMetrics'
 import { addGrowthEntry, deleteGrowthEntry, updateGrowthEntry } from '../repositories/growthEntries'
 import type { GrowthEntry } from '../types/models'
@@ -37,7 +37,7 @@ export function GrowthForm({ entry, onClose }: GrowthFormProps) {
 
   const submit = () => {
     const input = {
-      measuredAt: new Date(measuredAt),
+      measuredAt: fromDatetimeLocalValue(measuredAt),
       weightG: weight.trim() === '' ? null : Math.round(Number(weight) * weightUnitToGrams),
       heightMm: height.trim() === '' ? null : Math.round(Number(height) * lengthUnitToMm),
       headCircumferenceMm:

@@ -3,6 +3,7 @@ import { getFirestore, Timestamp, type DocumentReference } from 'firebase-admin/
 import { getMessaging } from 'firebase-admin/messaging'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { logger } from 'firebase-functions'
+import { startOfParisDay, zonedParts } from './parisTime'
 
 initializeApp()
 
@@ -13,9 +14,11 @@ function minutesSinceMidnight(hhmm: string): number {
   return hours * 60 + minutes
 }
 
+/** Whether `now` (read in Paris time) falls in [timeOfDay, timeOfDay + interval). */
 export function isWithinCheckWindow(timeOfDay: string, now: Date, intervalMinutes: number): boolean {
   const target = minutesSinceMidnight(timeOfDay)
-  const current = now.getHours() * 60 + now.getMinutes()
+  const { hour, minute } = zonedParts(now)
+  const current = hour * 60 + minute
   return current >= target && current < target + intervalMinutes
 }
 
@@ -24,8 +27,7 @@ async function hasMedicationToday(
   medicationName: string,
   now: Date,
 ): Promise<boolean> {
-  const startOfDay = new Date(now)
-  startOfDay.setHours(0, 0, 0, 0)
+  const startOfDay = startOfParisDay(now)
 
   const snapshot = await babyRef
     .collection('medicationEntries')

@@ -1,6 +1,7 @@
 import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { formatDate } from '../lib/appTime'
 import type { DailyPoint } from '../lib/aggregations'
-import { dayKey, parseDayKey } from '../lib/timeline'
+import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
 import type { TrendChartStyle } from '../lib/trendMetrics'
 
 interface MetricGraphProps {
@@ -23,15 +24,15 @@ interface MetricGraphProps {
 const SWIPE_THRESHOLD_PX = 50
 
 function formatWeekday(key: string): string {
-  return parseDayKey(key).toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2)
+  return formatDate(parseDayKey(key), { weekday: 'short' }).slice(0, 2)
 }
 
 function formatMonth(key: string): string {
-  return parseDayKey(key).toLocaleDateString('en-US', { month: 'short' })
+  return formatDate(parseDayKey(key), { month: 'short' })
 }
 
 function formatLongDay(key: string): string {
-  return parseDayKey(key).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+  return formatDate(parseDayKey(key), { weekday: 'short', month: 'short', day: 'numeric' })
 }
 
 /**
@@ -122,7 +123,7 @@ export function MetricGraph({
               onClick={unlessSwiped(() => setSelectedKey(point.dayKey === selectedKey ? null : point.dayKey))}
             >
               <span>{formatWeekday(point.dayKey)}</span>
-              <span className="metric-graph-day-number">{parseDayKey(point.dayKey).getDate()}</span>
+              <span className="metric-graph-day-number">{dayOfMonth(point.dayKey)}</span>
             </button>
           )
         })}

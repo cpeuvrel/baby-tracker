@@ -18,12 +18,12 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const entry: SleepEntry = {
   id: 's1',
-  startedAt: '2026-03-05T20:00:00',
-  endedAt: '2026-03-05T21:30:00',
+  startedAt: '2026-03-05T20:00:00+01:00',
+  endedAt: '2026-03-05T21:30:00+01:00',
   durationSeconds: 5400,
   notes: 'nap',
   createdBy: 'uid1',
-  createdAt: '2026-03-05T20:00:00',
+  createdAt: '2026-03-05T20:00:00+01:00',
 }
 
 describe('SleepEntryEditModal', () => {
@@ -74,8 +74,8 @@ describe('SleepEntryEditModal', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 's1', {
-      startedAt: new Date('2026-03-05T20:00:00'),
-      endedAt: new Date('2026-03-05T20:45:00'),
+      startedAt: new Date('2026-03-05T20:00:00+01:00'),
+      endedAt: new Date('2026-03-05T20:45:00+01:00'),
       notes: 'nap',
     })
     expect(onClose).toHaveBeenCalled()

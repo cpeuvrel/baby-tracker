@@ -1,3 +1,4 @@
+import { zonedParts } from './appTime'
 import { dayKey } from './timeline'
 import type { DiaperEntry, DiaperType, FeedingEntry, NighttimeHours, SleepEntry } from '../types/models'
 
@@ -8,7 +9,7 @@ function parseHour(time: string): number {
 }
 
 function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
-  const hour = new Date(startedAt).getHours()
+  const { hour } = zonedParts(new Date(startedAt))
   const startHour = parseHour(nightRange.start)
   const endHour = parseHour(nightRange.end)
   return hour >= startHour || hour < endHour

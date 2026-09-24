@@ -10,6 +10,7 @@ import { SleepTimerModal } from '../components/SleepTimerModal'
 import { TrendEntriesList } from '../components/TrendEntriesList'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
+import { addDays } from '../lib/appTime'
 import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
@@ -51,8 +52,7 @@ export function TrendDetailPage() {
   const [periodsBack, setPeriodsBack] = useState(0)
 
   const metric = metricId ? getTrendMetric(metricId) : undefined
-  const periodEnd = new Date(now)
-  periodEnd.setDate(periodEnd.getDate() - periodsBack * days)
+  const periodEnd = addDays(now, -periodsBack * days)
   const currentRange = days === 1 ? dayRange(periodEnd) : lastNDaysRange(periodEnd, days)
   const previousRange = precedingRange(currentRange)
 

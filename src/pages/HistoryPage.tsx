@@ -3,11 +3,12 @@ import { DailyTimeline } from '../components/DailyTimeline'
 import { HistoryFiltersModal } from '../components/HistoryFiltersModal'
 import { GrowthIcon, ListViewIcon, SlidersIcon } from '../components/icons'
 import { WeekTimelineChart } from '../components/WeekTimelineChart'
+import { formatDate } from '../lib/appTime'
 import { ALL_ENTRY_KINDS, type EntryKind } from '../lib/historyFilters'
 import { dayKey } from '../lib/timeline'
 
 function formatDayTitle(date: Date): string {
-  return date.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })
+  return formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })
 }
 
 type HistoryView = 'graph' | 'data'

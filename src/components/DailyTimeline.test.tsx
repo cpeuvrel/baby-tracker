@@ -91,9 +91,8 @@ describe('DailyTimeline', () => {
 
     render(<DailyTimeline />)
 
-    // Displayed in the device's local time zone, so compute the expected clock instead of hard-coding it.
-    const feedingTime = new Date(feeding.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    expect(screen.getByText(new RegExp(`${feedingTime} Bottle`))).toBeInTheDocument()
+    // 18:00 UTC is 19:00 in Paris (UTC+1 in March), whatever the device's time zone
+    expect(screen.getByText(/07:00 PM Bottle/)).toBeInTheDocument()
     expect(screen.getByText('120 mL')).toBeInTheDocument()
     expect(screen.getByText(/Wet \+ Dirty/)).toBeInTheDocument()
     expect(screen.getByText(/Vitamin D/)).toBeInTheDocument()

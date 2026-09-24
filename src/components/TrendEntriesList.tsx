@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { formatDate, formatTime } from '../lib/appTime'
 import { formatDuration } from '../lib/duration'
 import { dayKey, parseDayKey } from '../lib/timeline'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
@@ -31,11 +32,11 @@ const DIAPER_LABELS: Record<DiaperEntry['type'], string> = {
 }
 
 function formatClock(iso: string): string {
-  return new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return formatTime(new Date(iso), { hour: '2-digit', minute: '2-digit' }, 'en-GB')
 }
 
 function formatDayHeading(key: string): string {
-  return parseDayKey(key).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return formatDate(parseDayKey(key), { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function fraction(value: number, max: number): number {

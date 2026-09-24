@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { toDatetimeLocalValue } from '../lib/datetimeInput'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import {
   deleteMedicationEntry,
   logMedication,
@@ -31,7 +31,7 @@ export function MedicationForm({ entry, onClose }: MedicationFormProps) {
 
   const submit = () => {
     if (name.trim() === '') return
-    const input = { name: name.trim(), givenAt: new Date(givenAt), dose, notes }
+    const input = { name: name.trim(), givenAt: fromDatetimeLocalValue(givenAt), dose, notes }
     if (entry) {
       void updateMedicationEntry(household.id, selectedBaby.id, entry.id, input)
     } else {
