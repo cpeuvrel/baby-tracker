@@ -82,11 +82,37 @@ describe('TrendDetailPage', () => {
 
     expect(screen.getByLabelText('Metric calendar')).toBeInTheDocument()
 
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+    expect(screen.getByLabelText('Metric graph')).toBeInTheDocument()
+    expect(screen.getByText('AVG')).toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Entries' }))
     const dayHeading = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     expect(screen.getByRole('heading', { name: dayHeading })).toBeInTheDocument()
     expect(screen.getByText('120 mL')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Bottle/ })).toBeInTheDocument()
+  })
+
+  it('draws counts as one block per entry and shows the tapped day in the legend', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage('feedSessions')
+
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+    expect(container.querySelectorAll('.metric-graph-block')).toHaveLength(1)
+    expect(container.querySelector('.metric-graph-bar')).toBeNull()
+
+    const todayLabel = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
+    await user.click(screen.getByRole('button', { name: `${todayLabel}: 1.0` }))
+    expect(screen.getByText(todayLabel)).toBeInTheDocument()
+  })
+
+  it('draws quantities as bars', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage('feedVolume')
+
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+    expect(container.querySelectorAll('.metric-graph-bar')).toHaveLength(1)
+    expect(container.querySelector('.metric-graph-block')).toBeNull()
   })
 
   it('changes the period from the header select', async () => {

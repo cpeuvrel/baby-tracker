@@ -1136,6 +1136,220 @@ main {
   text-align: center;
 }
 
+/* Trend delta vs. previous period (under Calendar / Graph / Entries) */
+.detail-delta {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.detail-delta-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.detail-delta-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--category-feeding);
+  color: #1f3a5c;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.detail-delta .detail-delta-caption {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* Graph view: one column per day, bars (quantities) or stacked blocks (counts) */
+.metric-graph {
+  --graph-axis-width: 36px;
+  --graph-height: 360px;
+  margin: 16px -16px 8px;
+}
+
+.metric-graph-month {
+  display: inline-block;
+  margin-left: calc(var(--graph-axis-width) + 4px);
+  padding: 4px 6px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.metric-graph-header {
+  display: flex;
+  gap: 2px;
+  padding-right: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric-graph-axis-spacer {
+  width: var(--graph-axis-width);
+  flex-shrink: 0;
+}
+
+.metric-graph-day {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 6px 6px 0 0;
+}
+
+.metric-graph-day-number {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.metric-graph-day.is-today {
+  background: var(--button-add);
+  color: var(--button-add-contrast);
+}
+
+.metric-graph-day.is-today .metric-graph-day-number {
+  color: var(--button-add-contrast);
+}
+
+.metric-graph-day.is-selected {
+  box-shadow: inset 0 -3px 0 var(--action);
+}
+
+.metric-graph-body {
+  display: flex;
+  padding: 16px 4px 0 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.metric-graph-axis {
+  position: relative;
+  width: var(--graph-axis-width);
+  flex-shrink: 0;
+  height: var(--graph-height);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.metric-graph-axis span {
+  position: absolute;
+  right: 6px;
+  transform: translateY(50%);
+  font-variant-numeric: tabular-nums;
+}
+
+.metric-graph-plot {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: var(--graph-height);
+  display: flex;
+  gap: 2px;
+}
+
+.metric-graph-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border);
+  pointer-events: none;
+}
+
+.metric-graph-column {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 2px;
+  border: none;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+}
+
+.metric-graph-column.is-selected {
+  background: color-mix(in srgb, var(--action) 12%, transparent);
+}
+
+.metric-graph-bar {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  border-radius: 3px 3px 0 0;
+}
+
+.metric-graph-stack {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 2px;
+  width: 100%;
+}
+
+.metric-graph-block {
+  flex: 1;
+  border-radius: 3px;
+}
+
+.metric-graph-average {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--button-add);
+  pointer-events: none;
+}
+
+.metric-graph-average-label {
+  position: absolute;
+  left: calc(-1 * var(--graph-axis-width));
+  top: 0;
+  transform: translateY(-50%);
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: var(--button-add);
+  color: var(--button-add-contrast);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.metric-graph-legend {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 20px 0 0;
+  font-size: 16px;
+}
+
+.metric-graph-legend-icon {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+  border-radius: 8px;
+  color: #1f3a5c;
+}
+
+.metric-graph-legend-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
 /* Jetons de dataviz (voir skill dataviz) */
 .viz-root {
   --surface-1: #fcfcfb;

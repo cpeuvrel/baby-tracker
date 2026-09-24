@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { DailyBarChart } from '../components/charts/DailyBarChart'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
+import { DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
 import { MetricCalendar } from '../components/MetricCalendar'
+import { MetricGraph } from '../components/MetricGraph'
 import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
 import { TrendEntriesList } from '../components/TrendEntriesList'
@@ -12,15 +13,24 @@ import { useEntriesInRange } from '../hooks/useEntriesInRange'
 import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
+  computeAxisTicks,
   computeMetricSeries,
+  formatMetricAxisValue,
   formatMetricHeadline,
   formatMetricValue,
   getTrendMetric,
+  type TrendKind,
 } from '../lib/trendMetrics'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 
 const RANGE_DAYS = [1, 7, 14]
 type ViewMode = 'calendar' | 'graph' | 'entries'
+
+const KIND_ICONS: Record<TrendKind, ReactNode> = {
+  feeding: <FeedIcon />,
+  sleep: <SleepIcon />,
+  diaper: <DiaperIcon />,
+}
 
 type EditState =
   | { kind: 'feeding'; entry: FeedingEntry }
@@ -113,11 +123,16 @@ export function TrendDetailPage() {
       )}
 
       {view === 'graph' && (
-        <DailyBarChart
-          title={metric.title}
+        <MetricGraph
           data={series}
-          seriesColorVar="--series-1"
+          average={currentAvg}
+          ticks={computeAxisTicks(metric.id, Math.max(currentAvg, ...series.map((point) => point.value)))}
+          chartStyle={metric.chartStyle}
+          colorVar={metric.colorVar}
+          icon={KIND_ICONS[metric.kind]}
+          seriesLabel={metric.seriesLabel}
           formatValue={(value) => formatMetricValue(metric.id, value)}
+          formatTick={(value) => formatMetricAxisValue(metric.id, value)}
         />
       )}
 
@@ -147,10 +162,18 @@ export function TrendDetailPage() {
       )}
 
       {delta.direction !== 'flat' && (
-        <p className="detail-delta-caption">
-          {delta.direction === 'up' ? '↑' : '↓'} {formatMetricValue(metric.id, Math.abs(delta.value))}{' '}
-          vs. the previous {days} days
-        </p>
+        <div className="detail-delta">
+          <p className="detail-delta-value">
+            <span className={`detail-delta-icon is-${delta.direction}`} aria-hidden="true">
+              {delta.direction === 'up' ? '↑' : '↓'}
+            </span>
+            {formatMetricValue(metric.id, Math.abs(delta.value))}
+          </p>
+          <p className="detail-delta-caption">
+            {delta.direction === 'up' ? 'More' : metric.id === 'sleepTotal' ? 'Less' : 'Fewer'} {metric.unitWord}{' '}
+            than the previous {days === 1 ? 'day' : `${days} days`}
+          </p>
+        </div>
       )}
 
       {editing?.kind === 'feeding' && <FeedingForm entry={editing.entry} onClose={() => setEditing(null)} />}
