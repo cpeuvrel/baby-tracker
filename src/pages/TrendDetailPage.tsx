@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { DailyBarChart } from '../components/charts/DailyBarChart'
+import { DiaperForm } from '../components/DiaperForm'
+import { FeedingForm } from '../components/FeedingForm'
 import { MetricCalendar } from '../components/MetricCalendar'
+import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
+import { SleepTimerModal } from '../components/SleepTimerModal'
+import { TrendEntriesList } from '../components/TrendEntriesList'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
 import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
@@ -12,26 +17,16 @@ import {
   formatMetricValue,
   getTrendMetric,
 } from '../lib/trendMetrics'
+import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 
 const RANGE_DAYS = [1, 7, 14]
 type ViewMode = 'calendar' | 'graph' | 'entries'
 
-function describeFeedingEntry(entry: { occurredAt: string; type: string; volumeMl: number | null; foodType: string | null }): string {
-  const time = new Date(entry.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  if (entry.type === 'bottle') return `${time} — Bottle${entry.volumeMl != null ? ` ${entry.volumeMl} mL` : ''}`
-  return `${time} — Solid${entry.foodType ? ` (${entry.foodType})` : ''}`
-}
-
-function describeSleepEntry(entry: { startedAt: string; durationSeconds: number | null }): string {
-  const time = new Date(entry.startedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  return `${time} — Sleep${entry.durationSeconds != null ? ` (${formatMetricValue('sleepTotal', entry.durationSeconds)})` : ' (in progress)'}`
-}
-
-function describeDiaperEntry(entry: { occurredAt: string; type: string }): string {
-  const time = new Date(entry.occurredAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-  const labels: Record<string, string> = { wet: 'Wet', dirty: 'Dirty', both: 'Wet + Dirty', dry: 'Dry' }
-  return `${time} — Diaper (${labels[entry.type]})`
-}
+type EditState =
+  | { kind: 'feeding'; entry: FeedingEntry }
+  | { kind: 'sleep'; entry: SleepEntry }
+  | { kind: 'diaper'; entry: DiaperEntry }
+  | null
 
 export function TrendDetailPage() {
   const { metricId } = useParams<{ metricId: string }>()
@@ -39,6 +34,7 @@ export function TrendDetailPage() {
   const { household, selectedBaby } = useHousehold()
   const [days, setDays] = useState(14)
   const [view, setView] = useState<ViewMode>('calendar')
+  const [editing, setEditing] = useState<EditState>(null)
   const now = useMemo(() => new Date(), [])
 
   const metric = metricId ? getTrendMetric(metricId) : undefined
@@ -63,14 +59,26 @@ export function TrendDetailPage() {
     <div>
       <div className="detail-header">
         <button type="button" aria-label="Back" onClick={() => navigate('/trends')}>
-          ‹
+          ←
         </button>
         <h2>{metric.title}</h2>
+        <select
+          className="detail-period-select"
+          aria-label="Period"
+          value={days}
+          onChange={(event) => setDays(Number(event.target.value))}
+        >
+          {RANGE_DAYS.map((d) => (
+            <option key={d} value={d}>
+              {d}d
+            </option>
+          ))}
+        </select>
       </div>
 
       <p className="detail-headline">{formatMetricHeadline(metric.id, currentAvg)}</p>
 
-      <div role="group" aria-label="View">
+      <div role="group" aria-label="View" className="segmented-control detail-view-tabs">
         <button type="button" aria-pressed={view === 'calendar'} onClick={() => setView('calendar')}>
           Calendar
         </button>
@@ -80,14 +88,6 @@ export function TrendDetailPage() {
         <button type="button" aria-pressed={view === 'entries'} onClick={() => setView('entries')}>
           Entries
         </button>
-      </div>
-
-      <div role="group" aria-label="Period">
-        {RANGE_DAYS.map((d) => (
-          <button key={d} type="button" aria-pressed={days === d} onClick={() => setDays(d)}>
-            {d}d
-          </button>
-        ))}
       </div>
 
       {view === 'calendar' && (
@@ -121,19 +121,29 @@ export function TrendDetailPage() {
         />
       )}
 
-      {view === 'entries' && (
-        <ul className="detail-entries">
-          {metric.kind === 'feeding' &&
-            [...current.feeding].reverse().map((entry) => (
-              <li key={entry.id}>{describeFeedingEntry(entry)}</li>
-            ))}
-          {metric.kind === 'sleep' &&
-            [...current.sleep].reverse().map((entry) => <li key={entry.id}>{describeSleepEntry(entry)}</li>)}
-          {metric.kind === 'diaper' &&
-            [...current.diaper].reverse().map((entry) => (
-              <li key={entry.id}>{describeDiaperEntry(entry)}</li>
-            ))}
-        </ul>
+      {view === 'entries' && metric.kind === 'feeding' && (
+        <TrendEntriesList
+          kind="feeding"
+          colorVar={metric.colorVar}
+          entries={current.feeding}
+          onSelect={(entry) => setEditing({ kind: 'feeding', entry })}
+        />
+      )}
+      {view === 'entries' && metric.kind === 'sleep' && (
+        <TrendEntriesList
+          kind="sleep"
+          colorVar={metric.colorVar}
+          entries={current.sleep}
+          onSelect={(entry) => setEditing({ kind: 'sleep', entry })}
+        />
+      )}
+      {view === 'entries' && metric.kind === 'diaper' && (
+        <TrendEntriesList
+          kind="diaper"
+          colorVar={metric.colorVar}
+          entries={current.diaper}
+          onSelect={(entry) => setEditing({ kind: 'diaper', entry })}
+        />
       )}
 
       {delta.direction !== 'flat' && (
@@ -142,6 +152,15 @@ export function TrendDetailPage() {
           vs. the previous {days} days
         </p>
       )}
+
+      {editing?.kind === 'feeding' && <FeedingForm entry={editing.entry} onClose={() => setEditing(null)} />}
+      {editing?.kind === 'diaper' && <DiaperForm entry={editing.entry} onClose={() => setEditing(null)} />}
+      {editing?.kind === 'sleep' &&
+        (editing.entry.endedAt === null ? (
+          <SleepTimerModal onClose={() => setEditing(null)} />
+        ) : (
+          <SleepEntryEditModal entry={editing.entry} onClose={() => setEditing(null)} />
+        ))}
     </div>
   )
 }

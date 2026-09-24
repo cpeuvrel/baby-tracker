@@ -83,6 +83,18 @@ describe('TrendDetailPage', () => {
     expect(screen.getByLabelText('Metric calendar')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
-    expect(screen.getByText(/Bottle 120 mL/)).toBeInTheDocument()
+    const dayHeading = now.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    expect(screen.getByRole('heading', { name: dayHeading })).toBeInTheDocument()
+    expect(screen.getByText('120 mL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Bottle/ })).toBeInTheDocument()
+  })
+
+  it('changes the period from the header select', async () => {
+    const user = userEvent.setup()
+    renderPage('feedSessions')
+
+    await user.selectOptions(screen.getByLabelText('Period'), '7')
+
+    expect(screen.getByLabelText('Period')).toHaveValue('7')
   })
 })
