@@ -4,7 +4,6 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
-import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import { TrendsPage } from './TrendsPage'
 
@@ -66,7 +65,6 @@ describe('TrendsPage', () => {
       selectBaby: vi.fn(),
     })
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({ feeding, sleep, diaper, medication: [] })
-    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
   })
 
   it('renders nothing without a resolved household and baby', () => {
@@ -111,9 +109,9 @@ describe('TrendsPage', () => {
     )
   })
 
-  it('also renders the growth section', () => {
+  it('does not render the growth section', () => {
     renderPage()
 
-    expect(screen.getByRole('region', { name: 'Growth chart' })).toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Growth chart' })).not.toBeInTheDocument()
   })
 })
