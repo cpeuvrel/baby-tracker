@@ -277,3 +277,20 @@ export function RoutineIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function HomeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 10.5 12 4l8 6.5V20h-5v-6h-6v6H4v-9.5Z" />
+    </Icon>
+  )
+}
+
+export function UserIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+    </Icon>
+  )
+}
