@@ -15,6 +15,25 @@ vi.mock('../repositories/growthEntries', () => ({
   deleteGrowthEntry: vi.fn(),
 }))
 
+// Recharts draws nothing in jsdom (no layout), so stand in one button per plotted point.
+vi.mock('../components/charts/GrowthPercentileChart', () => ({
+  GrowthPercentileChart: ({
+    childPoints,
+    onSelectPoint,
+  }: {
+    childPoints: { id: string; value: number }[]
+    onSelectPoint: (id: string) => void
+  }) => (
+    <div>
+      {childPoints.map((point) => (
+        <button key={point.id} type="button" onClick={() => onSelectPoint(point.id)}>
+          point {point.id}
+        </button>
+      ))}
+    </div>
+  ),
+}))
+
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const babyGirl = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: 'female' as const }
 const babyNoSex = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: null }
@@ -81,13 +100,58 @@ describe('GrowthDetailPage', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('shows only the chart in chart view, no data card below it', () => {
+  it('shows only the chart until a point is tapped', () => {
     renderPage('weight')
 
     expect(screen.getByRole('button', { name: 'Weight', pressed: true })).toBeInTheDocument()
     expect(screen.queryByText(/Girls Percentile/)).not.toBeInTheDocument()
     expect(screen.queryByText('Source: WHO')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+  })
+
+  it('shows the tapped point in a card with its date, value, percentile, age and source', async () => {
+    const user = userEvent.setup()
+    renderPage('weight')
+
+    await user.click(screen.getByRole('button', { name: 'point g1' }))
+
+    const card = screen.getByRole('region', { name: 'Selected measurement' })
+    expect(card).toHaveTextContent('Apr 5, 2026')
+    expect(card).toHaveTextContent('Weight 5.20 kg')
+    expect(card).toHaveTextContent(/Girls Percentile \d+%/)
+    expect(card).toHaveTextContent(/Age/)
+    expect(card).toHaveTextContent('Source: WHO')
+  })
+
+  it('closes the selection card', async () => {
+    const user = userEvent.setup()
+    renderPage('weight')
+
+    await user.click(screen.getByRole('button', { name: 'point g2' }))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    expect(screen.queryByRole('region', { name: 'Selected measurement' })).not.toBeInTheDocument()
+  })
+
+  it('edits the selected entry from the card', async () => {
+    const user = userEvent.setup()
+    renderPage('weight')
+
+    await user.click(screen.getByRole('button', { name: 'point g2' }))
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+
+    expect(screen.getByRole('dialog', { name: 'Growth' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Weight (kg)')).toHaveValue(6.48)
+  })
+
+  it('swaps the list button for a chart button in the list view', async () => {
+    const user = userEvent.setup()
+    renderPage('weight')
+
+    await user.click(screen.getByRole('button', { name: 'Show list' }))
+    await user.click(screen.getByRole('button', { name: 'Show chart' }))
+
+    expect(screen.getByRole('button', { name: 'point g1' })).toBeInTheDocument()
   })
 
   it('navigates back to the activity page', async () => {

@@ -131,6 +131,22 @@ export function ListViewIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function MenuIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M5 7h14M5 12h14M5 17h14" />
+    </Icon>
+  )
+}
+
+export function LineChartIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4 17l5-6 4 4 7-8" />
+    </Icon>
+  )
+}
+
 export function BibIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
