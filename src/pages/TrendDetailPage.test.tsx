@@ -117,7 +117,7 @@ describe('TrendDetailPage', () => {
 
     expect(screen.getByRole('button', { name: 'Graph' })).toHaveAttribute('aria-pressed', 'true')
     expect(column).toHaveAttribute('aria-pressed', 'true')
-    expect(headline).toHaveTextContent(/^0\.0 bottles$/)
+    expect(headline).toHaveTextContent(/^0 bottles$/)
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
     const heading = screen.getByRole('heading', {
@@ -154,7 +154,7 @@ describe('TrendDetailPage', () => {
     const label = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
     await user.click(screen.getByRole('button', { name: `${label} timeline` }))
     expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true')
-    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0\.0 bottles$/)
+    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 bottles$/)
 
     await user.click(screen.getByRole('button', { name: 'Graph' }))
     expect(screen.getByRole('button', { name: `${label}: 0.0` })).toHaveAttribute('aria-pressed', 'true')
@@ -183,7 +183,7 @@ describe('TrendDetailPage', () => {
     expect(headerButton).toHaveClass('is-selected')
     expect(screen.getByRole('button', { name: `${label}: 0.0` })).toHaveAttribute('aria-pressed', 'true')
     expect(container.querySelector('.metric-graph-legend')).toHaveTextContent(`${label}0.0`)
-    expect(container.querySelector('.detail-headline')).toHaveTextContent('0.0 bottles')
+    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 bottles$/)
 
     await user.click(headerButton)
     expect(headerButton).toHaveAttribute('aria-pressed', 'false')

@@ -4,6 +4,7 @@ import {
   computeAxisTicks,
   computeMetricSeries,
   formatMetricAxisValue,
+  formatMetricDayHeadline,
   formatMetricHeadline,
   formatMetricValue,
   getTrendMetric,
@@ -78,6 +79,15 @@ describe('formatMetricHeadline', () => {
   it('appends the metric-specific suffix', () => {
     expect(formatMetricHeadline('feedSessions', 3.6)).toBe('3.6 bottles / day')
     expect(formatMetricHeadline('feedAvgVolume', 128)).toBe('128 mL average')
+  })
+})
+
+describe('formatMetricDayHeadline', () => {
+  it('drops "/ day" and shows whole counts or a total', () => {
+    expect(formatMetricDayHeadline('feedSessions', 5)).toBe('5 bottles')
+    expect(formatMetricDayHeadline('diaperCount', 7)).toBe('7 diapers')
+    expect(formatMetricDayHeadline('feedVolume', 540)).toBe('540 mL total')
+    expect(formatMetricDayHeadline('feedAvgVolume', 128)).toBe('128 mL average')
   })
 })
 
