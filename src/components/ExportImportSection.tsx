@@ -1,12 +1,13 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { exportBabyData, importBabyData, parseImportFile, serializeBabyExport, type BabyExport } from '../lib/babyExport'
+import { deleteAllBabyData, exportBabyData, importBabyData, parseImportFile, serializeBabyExport, type BabyExport } from '../lib/babyExport'
 import type { Baby } from '../types/models'
 
 type Status =
   | { kind: 'idle' }
   | { kind: 'exporting' }
   | { kind: 'importing' }
+  | { kind: 'deleting' }
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string }
 
@@ -82,6 +83,17 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
     }
   }
 
+  const handleDeleteAll = async () => {
+    if (!window.confirm(`Delete all of ${baby.name}'s data? This cannot be undone.`)) return
+    setStatus({ kind: 'deleting' })
+    try {
+      const deleted = await deleteAllBabyData(householdId, baby.id)
+      setStatus({ kind: 'success', message: `${deleted} entries deleted.` })
+    } catch {
+      setStatus({ kind: 'error', message: 'Delete failed.' })
+    }
+  }
+
   return (
     <section aria-label="Import / export">
       <h2>Import / export</h2>
@@ -113,6 +125,14 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
           Import Data
         </button>
       </div>
+      <button
+        type="button"
+        className="settings-action settings-action-danger"
+        onClick={() => void handleDeleteAll()}
+        disabled={status.kind === 'deleting'}
+      >
+        Delete All Data
+      </button>
       {status.kind === 'success' && <p role="status">{status.message}</p>}
       {status.kind === 'error' && <p role="alert">{status.message}</p>}
     </section>

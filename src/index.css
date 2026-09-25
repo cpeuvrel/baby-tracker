@@ -983,6 +983,10 @@ main {
   border-bottom: none;
 }
 
+.settings-action-danger {
+  color: var(--danger);
+}
+
 .settings-action:disabled {
   color: var(--text-muted);
 }

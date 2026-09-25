@@ -1,4 +1,13 @@
 import { parseCsv, toCsv } from './csv'
+import { batchDeleteAll } from './firestoreBatch'
+import {
+  bathEntriesCollection,
+  diaperEntriesCollection,
+  feedingEntriesCollection,
+  growthEntriesCollection,
+  medicationEntriesCollection,
+  sleepEntriesCollection,
+} from './paths'
 import { getAllBathEntries, importBathEntries } from '../repositories/bathEntries'
 import { getAllDiaperEntries, importDiaperEntries } from '../repositories/diaperEntries'
 import { getAllFeedingEntries, importFeedingEntries } from '../repositories/feedingEntries'
@@ -41,6 +50,21 @@ export async function exportBabyData(householdId: string, baby: Baby): Promise<B
     ])
 
   return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries }
+}
+
+/** Deletes every logged entry for a baby (the baby and its settings are kept). Returns the count. */
+export async function deleteAllBabyData(householdId: string, babyId: string): Promise<number> {
+  const counts = await Promise.all(
+    [
+      feedingEntriesCollection,
+      sleepEntriesCollection,
+      diaperEntriesCollection,
+      growthEntriesCollection,
+      medicationEntriesCollection,
+      bathEntriesCollection,
+    ].map((collectionFor) => batchDeleteAll(collectionFor(householdId, babyId))),
+  )
+  return counts.reduce((sum, count) => sum + count, 0)
 }
 
 // --- App's native format: a single CSV, one category per row ---
