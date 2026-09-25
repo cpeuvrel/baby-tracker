@@ -1,19 +1,20 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { addDays, zonedParts, zonedTime } from '../lib/appTime'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { zonedTime } from '../lib/appTime'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
+import * as useRecentBathEntriesModule from '../hooks/useRecentBathEntries'
 import * as useRecentDiaperEntriesModule from '../hooks/useRecentDiaperEntries'
 import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries'
 import * as useRecentMedicationEntriesModule from '../hooks/useRecentMedicationEntries'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
-import type { FeedingEntry, SleepEntry } from '../types/models'
+import type { BathEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
 function renderPage() {
@@ -68,7 +69,12 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 function setupHooks(
   activeSleepEntry: SleepEntry | null = null,
-  options: { recentSleep?: SleepEntry[]; recentFeeding?: FeedingEntry[] } = {},
+  options: {
+    recentSleep?: SleepEntry[]
+    recentFeeding?: FeedingEntry[]
+    recentMedication?: MedicationEntry[]
+    recentBath?: BathEntry[]
+  } = {},
 ) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
@@ -95,7 +101,10 @@ function setupHooks(
     options.recentFeeding ?? [],
   )
   vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntries').mockReturnValue([])
-  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue([])
+  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue(
+    options.recentMedication ?? [],
+  )
+  vi.spyOn(useRecentBathEntriesModule, 'useRecentBathEntries').mockReturnValue(options.recentBath ?? [])
   vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
   vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
 }
@@ -111,7 +120,7 @@ describe('ActivityPage', () => {
     localStorage.clear()
   })
 
-  it('renders a category card for each of the four categories', () => {
+  it('renders a category card for each category', () => {
     setupHooks()
 
     renderPage()
@@ -119,7 +128,7 @@ describe('ActivityPage', () => {
     expect(screen.getByRole('region', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Feed' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Diaper' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Medication' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Routine' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Growth' })).toBeInTheDocument()
   })
 
@@ -171,13 +180,25 @@ describe('ActivityPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens the medication modal and the reminder settings modal', async () => {
+  it('adds a bath, a vitamin or another medication from the Routine card', async () => {
     setupHooks()
     const user = userEvent.setup()
 
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'Add a dose' }))
+    await user.click(screen.getByRole('button', { name: 'Add a routine entry' }))
+    await user.click(within(screen.getByRole('dialog', { name: 'Add to Routine' })).getByRole('button', { name: 'Bath' }))
+    expect(screen.getByRole('dialog', { name: 'Bath' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    await user.click(screen.getByRole('button', { name: 'Add a routine entry' }))
+    await user.click(screen.getByRole('button', { name: 'Other medication' }))
+    expect(screen.getByRole('textbox', { name: 'Medication' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
+    await user.click(routineCard.getByRole('button', { name: /Vitamin D/ }))
     expect(screen.getByRole('dialog', { name: 'Medication' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Medication' })).toHaveValue('Vitamin D')
     await user.click(screen.getByRole('button', { name: 'Close' }))
 
     await user.click(screen.getByRole('button', { name: 'Set reminder' }))
@@ -232,14 +253,18 @@ describe('ActivityPage', () => {
     expect(startSleep).not.toHaveBeenCalled()
   })
 
-  it('shows an overnight sleep entry that ended today directly, without needing to open history', () => {
-    const now = new Date()
-    const { year, month, day } = zonedParts(now)
-    const overnightEnd = zonedTime(year, month, day, 0, 30)
-    const overnightStart = zonedTime(year, month, day - 1, 20, 0)
+  describe('recent entries since last night', () => {
+    // 18:03 in Paris: the cards list entries since yesterday 20:00.
+    const now = zonedTime(2026, 3, 5, 18, 3)
 
-    const pureYesterdayStart = zonedTime(year, month, day - 1, 6, 0)
-    const pureYesterdayEnd = zonedTime(year, month, day - 1, 8, 15)
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(now)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
 
     const makeSleepEntry = (id: string, startedAt: Date, endedAt: Date): SleepEntry => ({
       id,
@@ -251,26 +276,7 @@ describe('ActivityPage', () => {
       createdAt: startedAt.toISOString(),
     })
 
-    const primaryEntry = makeSleepEntry('primary', new Date(now.getTime() - 15 * 60000), now)
-    const overnightEntry = makeSleepEntry('overnight', overnightStart, overnightEnd)
-    const pureYesterdayEntry = makeSleepEntry('pure-yesterday', pureYesterdayStart, pureYesterdayEnd)
-
-    setupHooks(null, { recentSleep: [primaryEntry, overnightEntry, pureYesterdayEntry] })
-
-    renderPage()
-
-    expect(screen.getByText('4h 30m')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Entries since yesterday' })).toBeInTheDocument()
-    expect(screen.queryByText('2h 15m')).not.toBeInTheDocument()
-  })
-
-  it('shows earlier entries from today directly, and sends older ones to History', async () => {
-    const now = new Date()
-    const { year, month, day } = zonedParts(now)
-    const earlierToday = zonedTime(year, month, day, 0, 30)
-    const yesterday = addDays(now, -1)
-
-    const makeEntry = (id: string, occurredAt: Date, volumeMl: number): FeedingEntry => ({
+    const makeFeeding = (id: string, occurredAt: Date, volumeMl: number): FeedingEntry => ({
       id,
       type: 'bottle',
       occurredAt: occurredAt.toISOString(),
@@ -281,24 +287,115 @@ describe('ActivityPage', () => {
       createdAt: occurredAt.toISOString(),
     })
 
-    setupHooks(null, {
-      recentFeeding: [
-        makeEntry('latest', now, 40),
-        makeEntry('earlier-today', earlierToday, 100),
-        makeEntry('yesterday', yesterday, 77),
-      ],
+    it("lists last night's sleep behind Show More, but not older ones", async () => {
+      setupHooks(null, {
+        recentSleep: [
+          makeSleepEntry('nap', zonedTime(2026, 3, 5, 15, 1), zonedTime(2026, 3, 5, 16, 1)),
+          makeSleepEntry('night', zonedTime(2026, 3, 4, 19, 37), zonedTime(2026, 3, 5, 7, 25)),
+          makeSleepEntry('yesterday-nap', zonedTime(2026, 3, 4, 13, 0), zonedTime(2026, 3, 4, 15, 15)),
+        ],
+      })
+      const user = userEvent.setup()
+
+      renderPage()
+      const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
+      await user.click(sleepCard.getByRole('button', { name: 'Show More' }))
+
+      expect(sleepCard.getByText('YD 19:37 – 07:25')).toBeInTheDocument()
+      expect(sleepCard.getByText('11h 48m')).toBeInTheDocument()
+      expect(sleepCard.queryByText('2h 15m')).not.toBeInTheDocument()
     })
+
+    it('sends older feeds to History from the "Entries before 20:00" link', async () => {
+      setupHooks(null, {
+        recentFeeding: [
+          makeFeeding('latest', zonedTime(2026, 3, 5, 16, 1), 180),
+          makeFeeding('last-night', zonedTime(2026, 3, 4, 22, 0), 100),
+          makeFeeding('yesterday', zonedTime(2026, 3, 4, 16, 0), 77),
+        ],
+      })
+      const user = userEvent.setup()
+
+      renderPage()
+      const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
+      expect(feedCard.getByText('180')).toBeInTheDocument()
+      await user.click(feedCard.getByRole('button', { name: 'Show More' }))
+
+      expect(feedCard.getByText('YD 22:00 Bottle')).toBeInTheDocument()
+      expect(feedCard.queryByText('77 mL')).not.toBeInTheDocument()
+
+      await user.click(feedCard.getByRole('button', { name: 'Entries before 20:00' }))
+
+      expect(screen.getByText('History screen')).toBeInTheDocument()
+    })
+  })
+
+  it("shows when the last bath and vitamin were, and today's routine behind Show More", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(zonedTime(2026, 3, 5, 18, 3))
+    const bath: BathEntry = {
+      id: 'bath1',
+      occurredAt: zonedTime(2026, 3, 4, 19, 0).toISOString(),
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: zonedTime(2026, 3, 4, 19, 0).toISOString(),
+    }
+    const vitamin: MedicationEntry = {
+      id: 'm1',
+      name: 'Vitamin/Probiotic',
+      givenAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
+      dose: '',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
+    }
+    setupHooks(null, { recentBath: [bath], recentMedication: [vitamin] })
     const user = userEvent.setup()
+
+    try {
+      renderPage()
+      const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
+      expect(routineCard.getByText('23h 3m ago')).toBeInTheDocument()
+      expect(routineCard.getByText('2h 0m ago')).toBeInTheDocument()
+
+      await user.click(routineCard.getByRole('button', { name: 'Show More' }))
+      expect(routineCard.getByText('16:03 Vitamin/Probiotic')).toBeInTheDocument()
+      // Yesterday 19:00 is before last night's 20:00 start.
+      expect(routineCard.queryByText('YD 19:00 Bath')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('orders the cards like the reference app: Feed, Diaper, Sleep, Routine, Growth', () => {
+    setupHooks()
 
     renderPage()
 
-    expect(screen.getByText('100 mL')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Entries since yesterday' })).toBeInTheDocument()
-    expect(screen.queryByText('77 mL')).not.toBeInTheDocument()
+    expect(screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual([
+      'Feed',
+      'Diaper',
+      'Sleep',
+      'Routine',
+      'Growth',
+    ])
+  })
 
-    await user.click(screen.getByRole('button', { name: 'Entries since yesterday' }))
+  it('opens Edit Activities for the selected baby from the bottom of the screen', async () => {
+    setupHooks()
+    const user = userEvent.setup()
 
-    expect(screen.getByText('History screen')).toBeInTheDocument()
+    render(
+      <MemoryRouter>
+        <Routes>
+          <Route path="/" element={<ActivityPage />} />
+          <Route path="account/family/:babyId/activities" element={<p>Edit activities screen</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+    await user.click(screen.getByRole('button', { name: 'Edit Activities' }))
+
+    expect(screen.getByText('Edit activities screen')).toBeInTheDocument()
   })
 
   it('hides a category card turned off in Edit Activities', () => {

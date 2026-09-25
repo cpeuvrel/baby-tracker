@@ -41,7 +41,7 @@ export function WeekTimelineChart({
   const dayKeys = useMemo(() => weekDayKeys(weekStart), [weekStart])
   const range: DateRange = useMemo(() => ({ start: weekStart, end: weekEnd }), [weekStart, weekEnd])
 
-  const { feeding, sleep, diaper, medication } = useEntriesInRange(
+  const { feeding, sleep, diaper, medication, bath } = useEntriesInRange(
     household?.id ?? null,
     selectedBaby?.id ?? null,
     range,
@@ -72,6 +72,10 @@ export function WeekTimelineChart({
   const medicationMarksByDay = useMemo(
     () => buildWeekMarks(dayKeys, medication.map((entry) => new Date(entry.givenAt))),
     [dayKeys, medication],
+  )
+  const bathMarksByDay = useMemo(
+    () => buildWeekMarks(dayKeys, bath.map((entry) => new Date(entry.occurredAt))),
+    [dayKeys, bath],
   )
 
   if (!household || !selectedBaby) return null
@@ -153,6 +157,14 @@ export function WeekTimelineChart({
                         key={markIndex}
                         className="week-chart-mark"
                         style={{ top: `${mark.atFraction * 100}%`, background: 'var(--category-medication)' }}
+                      />
+                    ))}
+                  {visibleKinds.has('bath') &&
+                    bathMarksByDay[key]?.map((mark, markIndex) => (
+                      <span
+                        key={markIndex}
+                        className="week-chart-mark"
+                        style={{ top: `${mark.atFraction * 100}%`, background: 'var(--category-routine)' }}
                       />
                     ))}
                 </div>

@@ -1,13 +1,14 @@
 import { renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
-import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { useEntriesInRange } from './useEntriesInRange'
 
 const subscribeToFeedingEntriesInRange = vi.fn()
 const subscribeToSleepEntriesInRange = vi.fn()
 const subscribeToDiaperEntriesInRange = vi.fn()
 const subscribeToMedicationEntriesInRange = vi.fn()
+const subscribeToBathEntriesInRange = vi.fn()
 
 vi.mock('../repositories/feedingEntries', () => ({
   subscribeToFeedingEntriesInRange: (...args: unknown[]) => subscribeToFeedingEntriesInRange(...args),
@@ -17,6 +18,9 @@ vi.mock('../repositories/sleepEntries', () => ({
 }))
 vi.mock('../repositories/diaperEntries', () => ({
   subscribeToDiaperEntriesInRange: (...args: unknown[]) => subscribeToDiaperEntriesInRange(...args),
+}))
+vi.mock('../repositories/bathEntries', () => ({
+  subscribeToBathEntriesInRange: (...args: unknown[]) => subscribeToBathEntriesInRange(...args),
 }))
 vi.mock('../repositories/medicationEntries', () => ({
   subscribeToMedicationEntriesInRange: (...args: unknown[]) => subscribeToMedicationEntriesInRange(...args),
@@ -59,6 +63,14 @@ const medication: MedicationEntry = {
   createdAt: '2026-03-05T07:30:00.000Z',
 }
 
+const bath: BathEntry = {
+  id: 'b1',
+  occurredAt: '2026-03-05T18:30:00.000Z',
+  notes: '',
+  createdBy: 'uid1',
+  createdAt: '2026-03-05T18:30:00.000Z',
+}
+
 const range = dayRange(new Date('2026-03-05T12:00:00.000Z'))
 
 describe('useEntriesInRange', () => {
@@ -67,16 +79,17 @@ describe('useEntriesInRange', () => {
     subscribeToSleepEntriesInRange.mockReset()
     subscribeToDiaperEntriesInRange.mockReset()
     subscribeToMedicationEntriesInRange.mockReset()
+    subscribeToBathEntriesInRange.mockReset()
   })
 
   it('returns empty arrays without subscribing when household or baby is missing', () => {
     const { result } = renderHook(() => useEntriesInRange(null, null, range))
 
-    expect(result.current).toEqual({ feeding: [], sleep: [], diaper: [], medication: [] })
+    expect(result.current).toEqual({ feeding: [], sleep: [], diaper: [], medication: [], bath: [] })
     expect(subscribeToFeedingEntriesInRange).not.toHaveBeenCalled()
   })
 
-  it('subscribes to all four collections and reflects their entries', () => {
+  it('subscribes to all five collections and reflects their entries', () => {
     subscribeToFeedingEntriesInRange.mockImplementation((_h, _b, _r, onChange) => {
       onChange([feeding])
       return vi.fn()
@@ -93,6 +106,10 @@ describe('useEntriesInRange', () => {
       onChange([medication])
       return vi.fn()
     })
+    subscribeToBathEntriesInRange.mockImplementation((_h, _b, _r, onChange) => {
+      onChange([bath])
+      return vi.fn()
+    })
 
     const { result } = renderHook(() => useEntriesInRange('h1', 'b1', range))
 
@@ -101,10 +118,11 @@ describe('useEntriesInRange', () => {
       sleep: [sleep],
       diaper: [diaper],
       medication: [medication],
+      bath: [bath],
     })
   })
 
-  it('unsubscribes all four subscriptions on unmount', () => {
+  it('unsubscribes all five subscriptions on unmount', () => {
     const unsubscribeFeeding = vi.fn()
     const unsubscribeSleep = vi.fn()
     const unsubscribeDiaper = vi.fn()
@@ -113,6 +131,8 @@ describe('useEntriesInRange', () => {
     subscribeToSleepEntriesInRange.mockReturnValue(unsubscribeSleep)
     subscribeToDiaperEntriesInRange.mockReturnValue(unsubscribeDiaper)
     subscribeToMedicationEntriesInRange.mockReturnValue(unsubscribeMedication)
+    const unsubscribeBath = vi.fn()
+    subscribeToBathEntriesInRange.mockReturnValue(unsubscribeBath)
 
     const { unmount } = renderHook(() => useEntriesInRange('h1', 'b1', range))
     unmount()
@@ -121,5 +141,6 @@ describe('useEntriesInRange', () => {
     expect(unsubscribeSleep).toHaveBeenCalled()
     expect(unsubscribeDiaper).toHaveBeenCalled()
     expect(unsubscribeMedication).toHaveBeenCalled()
+    expect(unsubscribeBath).toHaveBeenCalled()
   })
 })

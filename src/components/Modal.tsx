@@ -36,7 +36,13 @@ export function Modal({ title, bandColorVar, onClose, headerAction, children }: 
         tabIndex={-1}
         ref={dialogRef}
       >
-        <header style={{ background: `var(${bandColorVar})` }}>
+        <header
+          style={{
+            background: `var(${bandColorVar})`,
+            // Category bands keep their light color in dark mode: keep their text dark too.
+            color: bandColorVar.startsWith('--category-') ? 'var(--on-category)' : 'var(--text)',
+          }}
+        >
           <button type="button" aria-label="Close" onClick={onClose}>
             ✕
           </button>

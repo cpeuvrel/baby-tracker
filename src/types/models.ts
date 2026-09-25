@@ -17,6 +17,8 @@ export interface Baby {
   birthDate: string
   sex: BabySex | null
   nighttimeHours?: NighttimeHours | null
+  /** Small square JPEG as a data URL, cropped in the app (kept on the doc: no Storage bucket needed). */
+  photoDataUrl?: string | null
 }
 
 export type FeedingType = 'bottle' | 'solid'
@@ -47,6 +49,14 @@ export type DiaperType = 'wet' | 'dirty' | 'both' | 'dry'
 export interface DiaperEntry {
   id: string
   type: DiaperType
+  occurredAt: string
+  notes: string
+  createdBy: string
+  createdAt: string
+}
+
+export interface BathEntry {
+  id: string
   occurredAt: string
   notes: string
   createdBy: string

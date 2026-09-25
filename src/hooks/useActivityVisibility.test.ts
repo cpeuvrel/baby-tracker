@@ -14,7 +14,7 @@ describe('useActivityVisibility', () => {
     expect(result.current.isVisible('sleep')).toBe(true)
     expect(result.current.isVisible('diaper')).toBe(true)
     expect(result.current.isVisible('growth')).toBe(true)
-    expect(result.current.isVisible('medication')).toBe(true)
+    expect(result.current.isVisible('routine')).toBe(true)
   })
 
   it('hides a category on toggle and persists it', () => {

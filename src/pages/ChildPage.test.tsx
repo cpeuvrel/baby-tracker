@@ -10,6 +10,7 @@ const exportBabyData = vi.fn()
 
 vi.mock('../repositories/babies', () => ({
   updateBaby: (...args: unknown[]) => updateBaby(...args),
+  updateBabyPhoto: vi.fn(),
 }))
 
 vi.mock('../lib/babyExport', () => ({

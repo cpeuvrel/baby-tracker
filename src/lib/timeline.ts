@@ -1,5 +1,5 @@
 import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
-import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 export interface DateRange {
   start: Date
@@ -32,6 +32,16 @@ export function parseDayKey(key: string): Date {
 /** Day of the month of a `YYYY-MM-DD` key. */
 export function dayOfMonth(key: string): number {
   return Number(key.slice(8, 10))
+}
+
+/**
+ * Start of the Activity cards' window: yesterday at the start of the baby's
+ * night (e.g. 20:00), so last night's sleep and feeds still show today.
+ */
+export function activityWindowStart(now: Date, nightStart: string): Date {
+  const { year, month, day } = zonedParts(now)
+  const [hour, minute] = nightStart.split(':').map(Number)
+  return zonedTime(year, month, day - 1, hour, minute)
 }
 
 export function isToday(iso: string, now: Date): boolean {
@@ -69,18 +79,21 @@ export type TimelineEntry =
   | { kind: 'sleep'; at: string; entry: SleepEntry }
   | { kind: 'diaper'; at: string; entry: DiaperEntry }
   | { kind: 'medication'; at: string; entry: MedicationEntry }
+  | { kind: 'bath'; at: string; entry: BathEntry }
 
 export function buildTimeline(
   feedingEntries: FeedingEntry[],
   sleepEntries: SleepEntry[],
   diaperEntries: DiaperEntry[],
   medicationEntries: MedicationEntry[] = [],
+  bathEntries: BathEntry[] = [],
 ): TimelineEntry[] {
   const entries: TimelineEntry[] = [
     ...feedingEntries.map((entry): TimelineEntry => ({ kind: 'feeding', at: entry.occurredAt, entry })),
     ...sleepEntries.map((entry): TimelineEntry => ({ kind: 'sleep', at: entry.startedAt, entry })),
     ...diaperEntries.map((entry): TimelineEntry => ({ kind: 'diaper', at: entry.occurredAt, entry })),
     ...medicationEntries.map((entry): TimelineEntry => ({ kind: 'medication', at: entry.givenAt, entry })),
+    ...bathEntries.map((entry): TimelineEntry => ({ kind: 'bath', at: entry.occurredAt, entry })),
   ]
 
   return entries.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())

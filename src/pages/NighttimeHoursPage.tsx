@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { updateNighttimeHours } from '../repositories/babies'
+import { TimeSelect } from '../components/TimeSelect'
 
 export function NighttimeHoursPage() {
   const { babyId } = useParams<{ babyId: string }>()
@@ -35,24 +36,12 @@ export function NighttimeHoursPage() {
       </div>
 
       <div>
-        <label htmlFor="nighttime-hours-start">From</label>
-        <input
-          id="nighttime-hours-start"
-          type="time"
-          required
-          value={start}
-          onChange={(event) => setStart(event.target.value)}
-        />
+        <span className="field-label">From</span>
+        <TimeSelect label="From" value={start} onChange={setStart} />
       </div>
       <div>
-        <label htmlFor="nighttime-hours-end">To</label>
-        <input
-          id="nighttime-hours-end"
-          type="time"
-          required
-          value={end}
-          onChange={(event) => setEnd(event.target.value)}
-        />
+        <span className="field-label">To</span>
+        <TimeSelect label="To" value={end} onChange={setEnd} />
       </div>
     </form>
   )

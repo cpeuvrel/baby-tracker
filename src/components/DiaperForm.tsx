@@ -5,6 +5,7 @@ import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInp
 import { deleteDiaperEntry, logDiaper, updateDiaperEntry } from '../repositories/diaperEntries'
 import type { DiaperEntry, DiaperType } from '../types/models'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
   { value: 'wet', label: 'Wet' },
@@ -69,15 +70,7 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
       headerAction={entry ? { label: 'Save', onClick: submit } : undefined}
     >
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="diaper-occurred-at">Time</label>
-          <input
-            id="diaper-occurred-at"
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(event) => setOccurredAt(event.target.value)}
-          />
-        </div>
+        <DateTimeField id="diaper-occurred-at" label="Time" value={occurredAt} onChange={setOccurredAt} />
         <div>
           <label htmlFor="diaper-notes">Notes (optional)</label>
           <input

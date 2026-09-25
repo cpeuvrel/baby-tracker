@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import {
+  activityWindowStart,
   buildTimeline,
   dayKey,
   dayKeysInRange,
@@ -63,6 +64,20 @@ describe('parseDayKey', () => {
   it('parses a YYYY-MM-DD key as Paris midnight', () => {
     expect(parseDayKey('2026-03-05').toISOString()).toBe('2026-03-04T23:00:00.000Z')
     expect(parseDayKey('2026-07-05').toISOString()).toBe('2026-07-04T22:00:00.000Z')
+  })
+})
+
+describe('activityWindowStart', () => {
+  it('is yesterday at the start of the night, in Paris time', () => {
+    const now = new Date('2026-03-05T17:03:00+01:00')
+
+    expect(activityWindowStart(now, '20:00').toISOString()).toBe('2026-03-04T19:00:00.000Z')
+  })
+
+  it('stays on yesterday evening just after midnight', () => {
+    const now = new Date('2026-03-05T00:10:00+01:00')
+
+    expect(activityWindowStart(now, '19:30').toISOString()).toBe('2026-03-04T18:30:00.000Z')
   })
 })
 

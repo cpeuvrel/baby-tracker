@@ -4,6 +4,7 @@ import { useDayTimeline } from '../hooks/useDayTimeline'
 import { computeFeedingStats, computeSleepStats } from '../lib/aggregations'
 import { formatDuration } from '../lib/duration'
 import {
+  summarizeBathRow,
   summarizeDiaperRow,
   summarizeFeedingRow,
   summarizeMedicationRow,
@@ -11,11 +12,12 @@ import {
 } from '../lib/entrySummary'
 import { KIND_OPTIONS, type EntryKind } from '../lib/historyFilters'
 import type { TimelineEntry } from '../lib/timeline'
-import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import { BathForm } from './BathForm'
 import { DiaperForm } from './DiaperForm'
 import { EntryRowItem, type CategoryCardEntryRow } from './EntryRowItem'
 import { FeedingForm } from './FeedingForm'
-import { DiaperIcon, FeedIcon, MedicationIcon, SleepIcon } from './icons'
+import { BathIcon, DiaperIcon, FeedIcon, MedicationIcon, SleepIcon } from './icons'
 import { MedicationForm } from './MedicationForm'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
 import { SleepTimerModal } from './SleepTimerModal'
@@ -29,6 +31,7 @@ const KIND_ICON: Record<EntryKind, ReturnType<typeof SleepIcon>> = {
   feeding: <FeedIcon />,
   diaper: <DiaperIcon />,
   medication: <MedicationIcon />,
+  bath: <BathIcon />,
 }
 
 type ModalState =
@@ -37,6 +40,7 @@ type ModalState =
   | { kind: 'feeding'; entry: FeedingEntry }
   | { kind: 'diaper'; entry: DiaperEntry }
   | { kind: 'medication'; entry: MedicationEntry }
+  | { kind: 'bath'; entry: BathEntry }
   | null
 
 interface DailyTimelineProps {
@@ -106,6 +110,12 @@ export function DailyTimeline({ date, title = 'Today', visibleKinds }: DailyTime
           icon: KIND_ICON.medication,
           onClick: () => setModal({ kind: 'medication', entry: item.entry }),
         }
+      case 'bath':
+        return {
+          ...summarizeBathRow(item.entry),
+          icon: KIND_ICON.bath,
+          onClick: () => setModal({ kind: 'bath', entry: item.entry }),
+        }
     }
   })
 
@@ -156,6 +166,7 @@ export function DailyTimeline({ date, title = 'Today', visibleKinds }: DailyTime
       {modal?.kind === 'feeding' && <FeedingForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'diaper' && <DiaperForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'medication' && <MedicationForm entry={modal.entry} onClose={closeModal} />}
+      {modal?.kind === 'bath' && <BathForm entry={modal.entry} onClose={closeModal} />}
     </section>
   )
 }

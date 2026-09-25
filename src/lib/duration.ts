@@ -31,10 +31,10 @@ export function formatRelativeTime(date: Date, now: Date): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60)
 
   if (days > 0) {
-    return `${days}d ago`
+    return days === 1 ? '1 day ago' : `${days} days ago`
   }
   if (hours > 0) {
-    return `${hours}h ${String(minutes).padStart(2, '0')}m ago`
+    return `${hours}h ${minutes}m ago`
   }
   return `${minutes}m ago`
 }

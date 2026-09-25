@@ -64,7 +64,7 @@ describe('summarizeSleepPrimary', () => {
       createdAt: '2026-03-05T10:00:00.000Z',
     }
 
-    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Woke up', meta: '1h 00m ago' })
+    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Woke up', meta: '1h 0m ago' })
   })
 
   it('labels an active entry as "Sleeping"', () => {
@@ -83,7 +83,7 @@ describe('summarizeSleepPrimary', () => {
 })
 
 describe('summarizeDiaperPrimary', () => {
-  it('splits the diaper type and relative time', () => {
+  it('reads "Last change" with the relative time', () => {
     const entry: DiaperEntry = {
       id: 'd1',
       type: 'both',
@@ -93,7 +93,7 @@ describe('summarizeDiaperPrimary', () => {
       createdAt: '2026-03-05T11:30:00.000Z',
     }
 
-    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Wet + Dirty', meta: '30m ago' })
+    expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Last change', meta: '30m ago' })
   })
 })
 
@@ -208,7 +208,7 @@ describe('summarizeSleepRow', () => {
     expect(row.barFraction).toBeUndefined()
   })
 
-  it('prefixes with "Yesterday" for an entry started the day before', () => {
+  it('prefixes with "YD" for an entry started the day before', () => {
     const yesterday = new Date('2026-03-04T20:00:00+01:00')
     const endedAt = new Date(yesterday.getTime() + 3600_000)
 
@@ -218,7 +218,7 @@ describe('summarizeSleepRow', () => {
       3600,
     )
 
-    expect(row.title.startsWith('Yesterday ')).toBe(true)
+    expect(row.title.startsWith('YD ')).toBe(true)
   })
 })
 
@@ -240,6 +240,23 @@ describe('summarizeDiaperRow', () => {
     }
 
     expect(summarizeDiaperRow(entry).title).toContain('Wet')
+  })
+})
+
+describe('row clock prefix', () => {
+  it('prefixes a row from yesterday with "YD" when given the current time', () => {
+    const entry: DiaperEntry = {
+      id: 'd1',
+      type: 'wet',
+      occurredAt: '2026-03-04T20:30:00.000Z',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-04T20:30:00.000Z',
+    }
+
+    expect(summarizeDiaperRow(entry, now).title).toBe('YD 21:30 Wet')
+    expect(summarizeFeedingRow(feedingEntry({ occurredAt: entry.occurredAt }), 150, now).title).toBe('YD 21:30 Bottle')
+    expect(summarizeDiaperRow(entry).title).toBe('21:30 Wet')
   })
 })
 

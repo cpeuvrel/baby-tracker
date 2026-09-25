@@ -7,6 +7,7 @@ import { GRAMS_PER_POUND, MM_PER_INCH } from '../lib/growthMetrics'
 import { addGrowthEntry, deleteGrowthEntry, updateGrowthEntry } from '../repositories/growthEntries'
 import type { GrowthEntry } from '../types/models'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 interface GrowthFormProps {
   entry?: GrowthEntry
@@ -78,15 +79,7 @@ export function GrowthForm({ entry, onClose }: GrowthFormProps) {
       headerAction={{ label: 'Save', onClick: submit }}
     >
       <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="growth-measured-at">Time</label>
-          <input
-            id="growth-measured-at"
-            type="datetime-local"
-            value={measuredAt}
-            onChange={(event) => setMeasuredAt(event.target.value)}
-          />
-        </div>
+        <DateTimeField id="growth-measured-at" label="Time" value={measuredAt} onChange={setMeasuredAt} />
         <div>
           <label htmlFor="growth-weight">{weightLabel}</label>
           <input

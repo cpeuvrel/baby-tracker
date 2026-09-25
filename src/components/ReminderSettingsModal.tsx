@@ -6,6 +6,7 @@ import { requestNotificationToken } from '../lib/messaging'
 import { saveFcmToken } from '../repositories/fcmTokens'
 import { setReminder } from '../repositories/reminders'
 import { Modal } from './Modal'
+import { TimeSelect } from './TimeSelect'
 
 const DEFAULT_TIME_OF_DAY = '09:00'
 
@@ -67,13 +68,8 @@ export function ReminderSettingsModal({ medicationName, onClose }: ReminderSetti
         </label>
       </div>
       <div>
-        <label htmlFor="reminder-time">Reminder time</label>
-        <input
-          id="reminder-time"
-          type="time"
-          value={timeOfDay}
-          onChange={(event) => handleTimeChange(event.target.value)}
-        />
+        <span className="field-label">Reminder time</span>
+        <TimeSelect label="Reminder time" value={timeOfDay} onChange={handleTimeChange} />
       </div>
       <div>
         <button

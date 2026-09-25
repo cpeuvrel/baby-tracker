@@ -21,6 +21,7 @@ export function subscribeToBabies(
             birthDate: data.birthDate as string,
             sex: (data.sex as BabySex | null) ?? null,
             nighttimeHours: (data.nighttimeHours as NighttimeHours | null) ?? null,
+            photoDataUrl: (data.photoDataUrl as string | null) ?? null,
           }
         }),
       )
@@ -54,4 +55,12 @@ export async function updateNighttimeHours(
   nighttimeHours: NighttimeHours,
 ): Promise<void> {
   await updateDoc(doc(babiesCollection(householdId), babyId), { nighttimeHours })
+}
+
+export async function updateBabyPhoto(
+  householdId: string,
+  babyId: string,
+  photoDataUrl: string | null,
+): Promise<void> {
+  await updateDoc(doc(babiesCollection(householdId), babyId), { photoDataUrl })
 }

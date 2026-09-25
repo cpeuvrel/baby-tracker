@@ -6,6 +6,7 @@ import { deleteSleepEntry, updateSleepEntry } from '../repositories/sleepEntries
 import type { SleepEntry } from '../types/models'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 interface SleepEntryEditModalProps {
   entry: SleepEntry
@@ -68,24 +69,8 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
           {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
         </p>
         <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
-        <div>
-          <label htmlFor="sleep-started-at">Start Time</label>
-          <input
-            id="sleep-started-at"
-            type="datetime-local"
-            value={startedAt}
-            onChange={(event) => setStartedAt(event.target.value)}
-          />
-        </div>
-        <div>
-          <label htmlFor="sleep-ended-at">End Time</label>
-          <input
-            id="sleep-ended-at"
-            type="datetime-local"
-            value={endedAt}
-            onChange={(event) => setEndedAt(event.target.value)}
-          />
-        </div>
+        <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={setStartedAt} />
+        <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={setEndedAt} />
         <div>
           <label htmlFor="sleep-notes">Notes (optional)</label>
           <input

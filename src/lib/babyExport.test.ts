@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   Baby,
+  BathEntry,
   DiaperEntry,
   FeedingEntry,
   GrowthEntry,
@@ -24,7 +25,9 @@ const importDiaperEntries = vi.fn()
 const getAllGrowthEntries = vi.fn()
 const importGrowthEntries = vi.fn()
 const getAllMedicationEntries = vi.fn()
+const getAllBathEntries = vi.fn()
 const importMedicationEntries = vi.fn()
+const importBathEntries = vi.fn()
 
 vi.mock('../repositories/feedingEntries', () => ({
   getAllFeedingEntries: (...args: unknown[]) => getAllFeedingEntries(...args),
@@ -41,6 +44,10 @@ vi.mock('../repositories/diaperEntries', () => ({
 vi.mock('../repositories/growthEntries', () => ({
   getAllGrowthEntries: (...args: unknown[]) => getAllGrowthEntries(...args),
   importGrowthEntries: (...args: unknown[]) => importGrowthEntries(...args),
+}))
+vi.mock('../repositories/bathEntries', () => ({
+  getAllBathEntries: (...args: unknown[]) => getAllBathEntries(...args),
+  importBathEntries: (...args: unknown[]) => importBathEntries(...args),
 }))
 vi.mock('../repositories/medicationEntries', () => ({
   getAllMedicationEntries: (...args: unknown[]) => getAllMedicationEntries(...args),
@@ -106,6 +113,16 @@ const medication: MedicationEntry[] = [
   },
 ]
 
+const bath: BathEntry[] = [
+  {
+    id: 'bath1',
+    occurredAt: '2026-01-01T18:30:00.000Z',
+    notes: 'warm',
+    createdBy: 'uid1',
+    createdAt: '2026-01-01T18:30:00.000Z',
+  },
+]
+
 describe('exportBabyData', () => {
   beforeEach(() => {
     getAllFeedingEntries.mockReset().mockResolvedValue(feeding)
@@ -113,6 +130,7 @@ describe('exportBabyData', () => {
     getAllDiaperEntries.mockReset().mockResolvedValue(diaper)
     getAllGrowthEntries.mockReset().mockResolvedValue(growth)
     getAllMedicationEntries.mockReset().mockResolvedValue(medication)
+    getAllBathEntries.mockReset().mockResolvedValue(bath)
   })
 
   it('assembles every collection for the given baby', async () => {
@@ -120,6 +138,7 @@ describe('exportBabyData', () => {
 
     expect(result.feedingEntries).toEqual(feeding)
     expect(result.sleepEntries).toEqual(sleep)
+    expect(result.bathEntries).toEqual(bath)
     expect(getAllFeedingEntries).toHaveBeenCalledWith('h1', 'b1')
   })
 })
@@ -131,6 +150,7 @@ describe('serializeBabyExport / parseImportFile (native format)', () => {
     diaperEntries: diaper,
     growthEntries: growth,
     medicationEntries: medication,
+    bathEntries: bath,
   }
 
   it('round-trips every entry type through CSV', () => {
@@ -143,6 +163,7 @@ describe('serializeBabyExport / parseImportFile (native format)', () => {
     expect(data.diaperEntries).toEqual([{ ...diaper[0], id: expect.any(String) }])
     expect(data.growthEntries).toEqual([{ ...growth[0], id: expect.any(String) }])
     expect(data.medicationEntries).toEqual([{ ...medication[0], id: expect.any(String) }])
+    expect(data.bathEntries).toEqual([{ ...bath[0], id: expect.any(String) }])
   })
 
   it('preserves commas and quotes in notes', () => {
@@ -324,11 +345,26 @@ describe('parseImportFile (Nara export format)', () => {
     ])
   })
 
-  it('skips unsupported rows (Bath routine, Profile) and reports the count', () => {
+  it('imports a Bath routine as a bath entry', () => {
     const csv = `${NARA_HEADER}\n${naraRow({
       Type: 'Routine',
       'Start Date/time (Epoch)': '1790058780000',
       '[Routine] Routine': 'Bath',
+    })}`
+
+    const { data, skipped } = parseImportFile(csv, 'uid1')
+
+    expect(skipped).toBe(0)
+    expect(data.bathEntries).toEqual([
+      expect.objectContaining({ occurredAt: new Date(1790058780000).toISOString(), createdBy: 'uid1' }),
+    ])
+  })
+
+  it('skips unsupported rows (other routines, Profile) and reports the count', () => {
+    const csv = `${NARA_HEADER}\n${naraRow({
+      Type: 'Routine',
+      'Start Date/time (Epoch)': '1790058780000',
+      '[Routine] Routine': 'Brush Teeth',
     })}\n${naraRow({ Type: 'Profile' })}`
 
     const { data, skipped } = parseImportFile(csv, 'uid1')
@@ -346,6 +382,7 @@ describe('importBabyData', () => {
     importDiaperEntries.mockReset().mockResolvedValue(undefined)
     importGrowthEntries.mockReset().mockResolvedValue(undefined)
     importMedicationEntries.mockReset().mockResolvedValue(undefined)
+    importBathEntries.mockReset().mockResolvedValue(undefined)
   })
 
   it('imports every collection into the target baby', async () => {
@@ -355,6 +392,7 @@ describe('importBabyData', () => {
       diaperEntries: diaper,
       growthEntries: growth,
       medicationEntries: medication,
+      bathEntries: bath,
     }
 
     await importBabyData('h1', 'b2', data)
@@ -364,5 +402,6 @@ describe('importBabyData', () => {
     expect(importDiaperEntries).toHaveBeenCalledWith('h1', 'b2', diaper)
     expect(importGrowthEntries).toHaveBeenCalledWith('h1', 'b2', growth)
     expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b2', medication)
+    expect(importBathEntries).toHaveBeenCalledWith('h1', 'b2', bath)
   })
 })

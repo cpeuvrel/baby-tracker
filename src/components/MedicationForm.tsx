@@ -9,18 +9,21 @@ import {
 } from '../repositories/medicationEntries'
 import type { MedicationEntry } from '../types/models'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 const DEFAULT_MEDICATION_NAME = 'Vitamin D'
 
 interface MedicationFormProps {
   entry?: MedicationEntry
+  /** Name pre-filled for a new dose ('' to type another medication). */
+  defaultName?: string
   onClose: () => void
 }
 
-export function MedicationForm({ entry, onClose }: MedicationFormProps) {
+export function MedicationForm({ entry, defaultName = DEFAULT_MEDICATION_NAME, onClose }: MedicationFormProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const [name, setName] = useState(entry?.name ?? DEFAULT_MEDICATION_NAME)
+  const [name, setName] = useState(entry?.name ?? defaultName)
   const [givenAt, setGivenAt] = useState(() =>
     toDatetimeLocalValue(entry ? new Date(entry.givenAt) : new Date()),
   )
@@ -55,7 +58,7 @@ export function MedicationForm({ entry, onClose }: MedicationFormProps) {
   return (
     <Modal
       title="Medication"
-      bandColorVar="--category-medication"
+      bandColorVar="--category-routine"
       onClose={onClose}
       headerAction={{ label: 'Save', onClick: submit }}
     >
@@ -69,15 +72,7 @@ export function MedicationForm({ entry, onClose }: MedicationFormProps) {
             onChange={(event) => setName(event.target.value)}
           />
         </div>
-        <div>
-          <label htmlFor="medication-given-at">Time</label>
-          <input
-            id="medication-given-at"
-            type="datetime-local"
-            value={givenAt}
-            onChange={(event) => setGivenAt(event.target.value)}
-          />
-        </div>
+        <DateTimeField id="medication-given-at" label="Time" value={givenAt} onChange={setGivenAt} />
         <div>
           <label htmlFor="medication-dose">Dose (optional)</label>
           <input

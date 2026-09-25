@@ -1,4 +1,4 @@
-export type EntryKind = 'sleep' | 'feeding' | 'diaper' | 'medication'
+export type EntryKind = 'sleep' | 'feeding' | 'diaper' | 'medication' | 'bath'
 
 export interface KindOption {
   kind: EntryKind
@@ -11,6 +11,7 @@ export const KIND_OPTIONS: KindOption[] = [
   { kind: 'feeding', label: 'Feed', colorVar: '--category-feeding' },
   { kind: 'diaper', label: 'Diaper', colorVar: '--category-diaper' },
   { kind: 'medication', label: 'Medication', colorVar: '--category-medication' },
+  { kind: 'bath', label: 'Bath', colorVar: '--category-routine' },
 ]
 
 export const ALL_ENTRY_KINDS: Set<EntryKind> = new Set(KIND_OPTIONS.map((option) => option.kind))

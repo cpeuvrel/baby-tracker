@@ -40,6 +40,10 @@ describe('formatDuration', () => {
 })
 
 describe('formatRelativeTime', () => {
+  it('says "1 day ago" for a single day', () => {
+    expect(formatRelativeTime(new Date('2026-03-04T09:00:00Z'), new Date('2026-03-05T10:00:00Z'))).toBe('1 day ago')
+  })
+
   it('reports "just now" for anything under a minute', () => {
     const now = new Date('2026-03-05T10:00:30Z')
     expect(formatRelativeTime(new Date('2026-03-05T10:00:00Z'), now)).toBe('just now')
@@ -57,6 +61,6 @@ describe('formatRelativeTime', () => {
 
   it('formats days only at or above 24h, ignoring the remaining hours', () => {
     const now = new Date('2026-09-22T12:00:00Z')
-    expect(formatRelativeTime(new Date('2026-03-18T14:50:21Z'), now)).toBe('187d ago')
+    expect(formatRelativeTime(new Date('2026-03-18T14:50:21Z'), now)).toBe('187 days ago')
   })
 })

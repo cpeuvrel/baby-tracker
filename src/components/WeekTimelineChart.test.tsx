@@ -40,6 +40,7 @@ describe('WeekTimelineChart', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
 
     const { container } = render(
@@ -55,6 +56,7 @@ describe('WeekTimelineChart', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
     const onSelectDay = vi.fn()
     const user = userEvent.setup()
@@ -84,6 +86,7 @@ describe('WeekTimelineChart', () => {
       sleep: [sleep],
       diaper: [],
       medication: [],
+      bath: [],
     })
 
     const { container, rerender } = render(
@@ -108,6 +111,7 @@ describe('WeekTimelineChart', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
 
     const { container } = render(
@@ -127,6 +131,7 @@ describe('WeekTimelineChart', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
     render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
     expect(screen.getByText('March 2026')).toBeInTheDocument()
