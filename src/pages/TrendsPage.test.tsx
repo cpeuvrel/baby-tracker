@@ -87,10 +87,10 @@ describe('TrendsPage', () => {
   it('renders a row per metric, grouped by section, linking to its detail page', () => {
     renderPage()
 
-    const feedRow = screen.getByRole('link', { name: /Bottles/ })
+    const feedRow = screen.getByRole('link', { name: /Feed Sessions/ })
     expect(feedRow).toHaveAttribute('href', '/trends/feedSessions')
 
-    const sleepRow = screen.getByRole('link', { name: /Total sleep/ })
+    const sleepRow = screen.getByRole('link', { name: /Total Sleep/ })
     expect(sleepRow).toHaveAttribute('href', '/trends/sleepTotal')
 
     expect(screen.getByRole('heading', { name: 'Feed' })).toBeInTheDocument()
