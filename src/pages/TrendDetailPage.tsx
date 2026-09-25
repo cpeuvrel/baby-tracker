@@ -47,7 +47,7 @@ export function TrendDetailPage() {
   const [days, setDays] = useState(14)
   const [view, setView] = useState<ViewMode>('calendar')
   const [editing, setEditing] = useState<EditState>(null)
-  /** Day selected in the Graph view: shown in the headline and focused in the Entries view. */
+  /** Day selected in the Calendar or Graph view: shown in the headline and focused in the Entries view. */
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
   const now = useMemo(() => new Date(), [])
   /** How many whole periods back from today the page shows (0 = ending today, the maximum). */
@@ -124,6 +124,8 @@ export function TrendDetailPage() {
         <MetricCalendar
           dayKeys={currentDayKeys}
           colorVar={metric.colorVar}
+          selectedKey={selectedDayKey}
+          onSelectDay={setSelectedDayKey}
           intervals={
             metric.kind === 'sleep'
               ? current.sleep.map((entry) => ({

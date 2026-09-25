@@ -146,6 +146,29 @@ describe('TrendDetailPage', () => {
     expect(screen.queryByText('No entries this day')).toBeNull()
   })
 
+  it('selects a day from the calendar, kept in the graph and focused in Entries', async () => {
+    const user = userEvent.setup()
+    const { container } = renderPage('feedSessions')
+
+    const yesterday = addDays(now, -1)
+    const label = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
+    await user.click(screen.getByRole('button', { name: `${label} timeline` }))
+    expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0\.0 bottles$/)
+
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+    expect(screen.getByRole('button', { name: `${label}: 0.0` })).toHaveAttribute('aria-pressed', 'true')
+
+    await user.click(screen.getByRole('button', { name: 'Entries' }))
+    expect(
+      screen.getByRole('heading', { name: formatDate(yesterday, { month: 'short', day: 'numeric', year: 'numeric' }) }),
+    ).toHaveClass('is-focused')
+
+    await user.click(screen.getByRole('button', { name: 'Calendar' }))
+    await user.click(screen.getByRole('button', { name: label }))
+    expect(container.querySelector('.detail-headline')).toHaveTextContent('bottles / day')
+  })
+
   it('selects a day from the date header', async () => {
     const user = userEvent.setup()
     const { container } = renderPage('feedSessions')
