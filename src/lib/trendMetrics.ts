@@ -414,6 +414,7 @@ export function formatMetricHeadline(id: TrendMetricId, value: number): string {
 /** Headline for a single selected day (no "per day": it is that day's own value), e.g. "5 sessions" or "620 mL total". */
 export function formatMetricDayHeadline(id: TrendMetricId, value: number): string {
   const metric = getTrendMetric(id)
+  if (id === 'sleepLongest') return `${formatMetricValue(id, value)} longest`
   if (metric?.reducer === 'mean') return `${formatMetricValue(id, value)} average`
   if (metric?.valueType === 'count') return `${Math.round(value)} ${metric.unitWord}`
   return `${formatMetricValue(id, value)} total`

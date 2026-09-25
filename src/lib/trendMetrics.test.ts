@@ -94,6 +94,7 @@ describe('formatMetricDayHeadline', () => {
     expect(formatMetricDayHeadline('diaperCount', 7)).toBe('7 diapers')
     expect(formatMetricDayHeadline('feedVolume', 540)).toBe('540 mL total')
     expect(formatMetricDayHeadline('feedAvgVolume', 128)).toBe('128 mL average')
+    expect(formatMetricDayHeadline('sleepLongest', 3 * 3600)).toBe(`${formatMetricValue('sleepLongest', 3 * 3600)} longest`)
   })
 })
 
