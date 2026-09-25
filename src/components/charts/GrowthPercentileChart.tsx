@@ -1,4 +1,4 @@
-import { CartesianGrid, ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from 'recharts'
+import { ComposedChart, Line, ResponsiveContainer, XAxis, YAxis } from 'recharts'
 import { referenceCurves, REFERENCE_PERCENTILES, type Sex } from '../../lib/growthPercentiles'
 import type { GrowthMetric } from '../../lib/growthMetrics'
 
@@ -30,6 +30,13 @@ interface GrowthPercentileChartProps {
   onSelectPoint: (id: string) => void
 }
 
+/** Babies under a year get a month-by-month first-year axis; older ones the full WHO 0-24 range. */
+function ageAxis(childPoints: GrowthChildPoint[]): { max: number; ticks: number[] } {
+  const oldest = Math.max(0, ...childPoints.map((point) => point.ageMonths))
+  if (oldest <= 11) return { max: 11, ticks: Array.from({ length: 12 }, (_, month) => month) }
+  return { max: 24, ticks: [0, 3, 6, 9, 12, 15, 18, 21, 24] }
+}
+
 export function GrowthPercentileChart({
   metric,
   sex,
@@ -38,13 +45,16 @@ export function GrowthPercentileChart({
   formatValue,
   onSelectPoint,
 }: GrowthPercentileChartProps) {
-  const referenceData = referenceCurves(metric, sex).map((point) => {
-    const row: Record<string, number> = { ageMonths: point.ageMonths }
-    REFERENCE_PERCENTILES.forEach((percentile, index) => {
-      row[`p${percentile}`] = point.values[index]
+  const axis = ageAxis(childPoints)
+  const referenceData = referenceCurves(metric, sex)
+    .filter((point) => point.ageMonths <= axis.max)
+    .map((point) => {
+      const row: Record<string, number> = { ageMonths: point.ageMonths }
+      REFERENCE_PERCENTILES.forEach((percentile, index) => {
+        row[`p${percentile}`] = point.values[index]
+      })
+      return row
     })
-    return row
-  })
   const lastIndex = referenceData.length - 1
 
   const renderEndLabel = (percentile: number) => {
@@ -68,7 +78,7 @@ export function GrowthPercentileChart({
         key={payload.id}
         cx={cx}
         cy={cy}
-        r={isSelected ? 7 : 4}
+        r={isSelected ? 10 : 5}
         fill={isSelected ? 'var(--surface)' : 'var(--category-growth)'}
         stroke="var(--category-growth)"
         strokeWidth={isSelected ? 2 : 0}
@@ -79,18 +89,20 @@ export function GrowthPercentileChart({
   }
 
   return (
-    <div className="viz-root">
-      <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart data={referenceData} margin={{ top: 8, right: 32, left: 0, bottom: 8 }}>
-          <CartesianGrid vertical={false} stroke="var(--gridline)" />
+    <div className="viz-root growth-chart">
+      <ResponsiveContainer width="100%" height={480}>
+        <ComposedChart data={referenceData} margin={{ top: 8, right: 36, left: 0, bottom: 8 }}>
           <XAxis
             type="number"
             dataKey="ageMonths"
-            domain={[0, 24]}
-            ticks={[0, 3, 6, 9, 12, 15, 18, 21, 24]}
-            stroke="var(--baseline)"
+            domain={[0, axis.max]}
+            ticks={axis.ticks}
+            interval={0}
+            axisLine={false}
+            height={40}
             tick={{ fill: 'var(--text-muted-chart)', fontSize: 12 }}
             tickLine={false}
+            label={{ value: 'months', position: 'insideBottomRight', offset: 0, fill: 'var(--text-muted-chart)', fontSize: 12 }}
           />
           <YAxis
             stroke="var(--baseline)"

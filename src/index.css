@@ -1873,4 +1873,85 @@ main {
 
 .time-select select:disabled {
   opacity: 0.6;
+
+/* Growth detail: bordered header toggle, full-width metric tabs, and the
+   selected-measurement card floating over the bottom-right of the chart. */
+.detail-header .detail-header-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.detail-header-toggle svg {
+  width: 22px;
+  height: 22px;
+}
+
+[role='group'].segmented-control.growth-metric-tabs {
+  display: flex;
+  border-radius: 10px;
+}
+
+[role='group'].segmented-control.growth-metric-tabs button {
+  flex: 1;
+  border-radius: 8px;
+  padding: 8px 4px;
+}
+
+.growth-chart-area {
+  position: relative;
+}
+
+.growth-selection-card {
+  position: absolute;
+  right: 0;
+  bottom: 48px;
+  width: min(240px, 70%);
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.growth-selection-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.growth-selection-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.growth-selection-header button {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.growth-selection-edit {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.growth-selection-close {
+  margin-left: auto;
+  color: var(--text);
+  font-size: 20px;
+  line-height: 1;
+}
+
+.growth-selection-source {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
