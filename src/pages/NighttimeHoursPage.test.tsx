@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import { NighttimeHoursPage } from './NighttimeHoursPage'
+import { timeValue } from '../test/timeFields'
 
 const updateNighttimeHours = vi.fn()
 
@@ -46,8 +47,8 @@ describe('NighttimeHoursPage', () => {
   it('defaults to 20:00–08:00 when the baby has no setting yet', () => {
     renderPage()
 
-    expect(screen.getByLabelText('From')).toHaveValue('20:00')
-    expect(screen.getByLabelText('To')).toHaveValue('08:00')
+    expect(timeValue('From')).toBe('20:00')
+    expect(timeValue('To')).toBe('08:00')
   })
 
   it('pre-fills with the baby\'s existing setting', () => {
@@ -62,8 +63,8 @@ describe('NighttimeHoursPage', () => {
 
     renderPage()
 
-    expect(screen.getByLabelText('From')).toHaveValue('21:00')
-    expect(screen.getByLabelText('To')).toHaveValue('06:30')
+    expect(timeValue('From')).toBe('21:00')
+    expect(timeValue('To')).toBe('06:30')
   })
 
   it('saves the edited range', async () => {
@@ -71,8 +72,8 @@ describe('NighttimeHoursPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.clear(screen.getByLabelText('From'))
-    await user.type(screen.getByLabelText('From'), '21:30')
+    await user.selectOptions(screen.getByLabelText('From hour'), '21')
+    await user.selectOptions(screen.getByLabelText('From minute'), '30')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateNighttimeHours).toHaveBeenCalledWith('h1', 'b1', { start: '21:30', end: '08:00' })

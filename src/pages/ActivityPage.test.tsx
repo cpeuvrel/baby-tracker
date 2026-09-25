@@ -8,12 +8,13 @@ import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
+import * as useRecentBathEntriesModule from '../hooks/useRecentBathEntries'
 import * as useRecentDiaperEntriesModule from '../hooks/useRecentDiaperEntries'
 import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries'
 import * as useRecentMedicationEntriesModule from '../hooks/useRecentMedicationEntries'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
-import type { FeedingEntry, SleepEntry } from '../types/models'
+import type { BathEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
 function renderPage() {
@@ -68,7 +69,12 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 function setupHooks(
   activeSleepEntry: SleepEntry | null = null,
-  options: { recentSleep?: SleepEntry[]; recentFeeding?: FeedingEntry[] } = {},
+  options: {
+    recentSleep?: SleepEntry[]
+    recentFeeding?: FeedingEntry[]
+    recentMedication?: MedicationEntry[]
+    recentBath?: BathEntry[]
+  } = {},
 ) {
   vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
     user: { uid: 'uid1' } as User,
@@ -95,7 +101,10 @@ function setupHooks(
     options.recentFeeding ?? [],
   )
   vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntries').mockReturnValue([])
-  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue([])
+  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue(
+    options.recentMedication ?? [],
+  )
+  vi.spyOn(useRecentBathEntriesModule, 'useRecentBathEntries').mockReturnValue(options.recentBath ?? [])
   vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
   vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
 }
@@ -111,7 +120,7 @@ describe('ActivityPage', () => {
     localStorage.clear()
   })
 
-  it('renders a category card for each of the four categories', () => {
+  it('renders a category card for each category', () => {
     setupHooks()
 
     renderPage()
@@ -119,7 +128,7 @@ describe('ActivityPage', () => {
     expect(screen.getByRole('region', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Feed' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Diaper' })).toBeInTheDocument()
-    expect(screen.getByRole('region', { name: 'Medication' })).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Routine' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Growth' })).toBeInTheDocument()
   })
 
@@ -171,13 +180,25 @@ describe('ActivityPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
-  it('opens the medication modal and the reminder settings modal', async () => {
+  it('adds a bath, a vitamin or another medication from the Routine card', async () => {
     setupHooks()
     const user = userEvent.setup()
 
     renderPage()
-    await user.click(screen.getByRole('button', { name: 'Add a dose' }))
+    await user.click(screen.getByRole('button', { name: 'Add a routine entry' }))
+    await user.click(within(screen.getByRole('dialog', { name: 'Add to Routine' })).getByRole('button', { name: 'Bath' }))
+    expect(screen.getByRole('dialog', { name: 'Bath' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    await user.click(screen.getByRole('button', { name: 'Add a routine entry' }))
+    await user.click(screen.getByRole('button', { name: 'Other medication' }))
+    expect(screen.getByRole('textbox', { name: 'Medication' })).toHaveValue('')
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+
+    const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
+    await user.click(routineCard.getByRole('button', { name: /Vitamin D/ }))
     expect(screen.getByRole('dialog', { name: 'Medication' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Medication' })).toHaveValue('Vitamin D')
     await user.click(screen.getByRole('button', { name: 'Close' }))
 
     await user.click(screen.getByRole('button', { name: 'Set reminder' }))
@@ -309,7 +330,44 @@ describe('ActivityPage', () => {
     })
   })
 
-  it('orders the cards like the reference app: Feed, Diaper, Sleep, Medication, Growth', () => {
+  it("shows when the last bath and vitamin were, and today's routine behind Show More", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(zonedTime(2026, 3, 5, 18, 3))
+    const bath: BathEntry = {
+      id: 'bath1',
+      occurredAt: zonedTime(2026, 3, 4, 19, 0).toISOString(),
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: zonedTime(2026, 3, 4, 19, 0).toISOString(),
+    }
+    const vitamin: MedicationEntry = {
+      id: 'm1',
+      name: 'Vitamin/Probiotic',
+      givenAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
+      dose: '',
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
+    }
+    setupHooks(null, { recentBath: [bath], recentMedication: [vitamin] })
+    const user = userEvent.setup()
+
+    try {
+      renderPage()
+      const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
+      expect(routineCard.getByText('23h 3m ago')).toBeInTheDocument()
+      expect(routineCard.getByText('2h 0m ago')).toBeInTheDocument()
+
+      await user.click(routineCard.getByRole('button', { name: 'Show More' }))
+      expect(routineCard.getByText('16:03 Vitamin/Probiotic')).toBeInTheDocument()
+      // Yesterday 19:00 is before last night's 20:00 start.
+      expect(routineCard.queryByText('YD 19:00 Bath')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('orders the cards like the reference app: Feed, Diaper, Sleep, Routine, Growth', () => {
     setupHooks()
 
     renderPage()
@@ -318,7 +376,7 @@ describe('ActivityPage', () => {
       'Feed',
       'Diaper',
       'Sleep',
-      'Medication',
+      'Routine',
       'Growth',
     ])
   })

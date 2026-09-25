@@ -31,7 +31,7 @@ function dose(givenAt: string): MedicationEntry {
   return { id: givenAt, name: 'Vitamin D', givenAt, dose: '', notes: '', createdBy: 'uid1', createdAt: givenAt }
 }
 
-const empty = { feeding: [], sleep: [], diaper: [], medication: [] }
+const empty = { feeding: [], sleep: [], diaper: [], medication: [], bath: [] }
 
 describe('buildActivitySummary', () => {
   it('is empty when nothing happened in the range', () => {
@@ -88,7 +88,7 @@ describe('buildActivitySummary', () => {
     expect(rows).toEqual([{ id: 'sleep', title: 'Sleep', count: 2, lines: ['1h 30m total sleep'] }])
   })
 
-  it('breaks diapers down by type and lists medication names', () => {
+  it('breaks diapers down by type, counts baths and lists medication names', () => {
     const rows = buildActivitySummary(
       {
         ...empty,
@@ -98,6 +98,9 @@ describe('buildActivitySummary', () => {
           diaper('2026-03-05T10:00:00.000Z', 'wet'),
         ],
         medication: [dose('2026-03-05T08:00:00.000Z')],
+        bath: [
+          { id: 'b1', occurredAt: '2026-03-05T16:00:00.000Z', notes: '', createdBy: 'u', createdAt: '2026-03-05T16:00:00.000Z' },
+        ],
       },
       range,
       now,
@@ -105,6 +108,7 @@ describe('buildActivitySummary', () => {
 
     expect(rows).toEqual([
       { id: 'diaper', title: 'Diaper', count: 3, lines: ['2 wet, 1 wet + dirty'] },
+      { id: 'bath', title: 'Bath', count: 1, lines: [] },
       { id: 'medication', title: 'Medication', count: 1, lines: ['Vitamin D'] },
     ])
   })

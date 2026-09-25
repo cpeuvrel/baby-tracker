@@ -21,6 +21,10 @@ export function diaperEntriesCollection(householdId: string, babyId: string): Co
   return collection(db, 'households', householdId, 'babies', babyId, 'diaperEntries')
 }
 
+export function bathEntriesCollection(householdId: string, babyId: string): CollectionReference {
+  return collection(db, 'households', householdId, 'babies', babyId, 'bathEntries')
+}
+
 export function growthEntriesCollection(householdId: string, babyId: string): CollectionReference {
   return collection(db, 'households', householdId, 'babies', babyId, 'growthEntries')
 }

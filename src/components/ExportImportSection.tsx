@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { exportBabyData, importBabyData, parseImportFile, serializeBabyExport } from '../lib/babyExport'
+import { exportBabyData, importBabyData, parseImportFile, serializeBabyExport, type BabyExport } from '../lib/babyExport'
 import type { Baby } from '../types/models'
 
 type Status =
@@ -20,13 +20,14 @@ function downloadCsvFile(filename: string, contents: string) {
   URL.revokeObjectURL(url)
 }
 
-function countEntries(data: { feedingEntries: unknown[]; sleepEntries: unknown[]; diaperEntries: unknown[]; growthEntries: unknown[]; medicationEntries: unknown[] }) {
+function countEntries(data: BabyExport) {
   return (
     data.feedingEntries.length +
     data.sleepEntries.length +
     data.diaperEntries.length +
     data.growthEntries.length +
-    data.medicationEntries.length
+    data.medicationEntries.length +
+    data.bathEntries.length
   )
 }
 

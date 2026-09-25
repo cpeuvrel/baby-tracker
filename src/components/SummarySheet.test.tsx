@@ -53,6 +53,7 @@ describe('SummarySheet', () => {
       ],
       diaper: [],
       medication: [],
+      bath: [],
     })
   })
 

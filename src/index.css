@@ -23,6 +23,7 @@
   --category-growth: #b7d98f;
   --category-medication: #c7c0e6;
   --category-diaper: #e8dfc8;
+  --category-routine: #dcc8f2;
   /* Text on a category-colored fill (Trends delta pills). */
   --on-category: #1f3a5c;
 
@@ -792,7 +793,7 @@ main {
 
 .modal-dialog header button {
   background: none;
-  color: var(--text);
+  color: inherit;
   padding: 4px 8px;
   font-size: 16px;
 }
@@ -1830,4 +1831,46 @@ main {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+/* 24-hour time picker (TimeSelect / DateTimeField) */
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.date-time-field-inputs {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.date-time-field-inputs input[type='date'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.time-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.time-select select {
+  appearance: none;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: center;
+}
+
+.time-select select:disabled {
+  opacity: 0.6;
 }

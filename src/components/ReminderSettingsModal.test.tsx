@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useReminderModule from '../hooks/useReminder'
 import type { Reminder } from '../types/models'
 import { ReminderSettingsModal } from './ReminderSettingsModal'
+import { setTime, timeValue } from '../test/timeFields'
 
 const setReminder = vi.fn()
 const requestNotificationToken = vi.fn()
@@ -55,7 +56,7 @@ describe('ReminderSettingsModal', () => {
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
 
     expect(screen.getByRole('checkbox', { name: 'Reminder active' })).not.toBeChecked()
-    expect(screen.getByLabelText('Reminder time')).toHaveValue('09:00')
+    expect(timeValue('Reminder time')).toBe('09:00')
   })
 
   it('reflects an existing reminder', () => {
@@ -70,7 +71,7 @@ describe('ReminderSettingsModal', () => {
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
 
     expect(screen.getByRole('checkbox', { name: 'Reminder active' })).toBeChecked()
-    expect(screen.getByLabelText('Reminder time')).toHaveValue('08:30')
+    expect(timeValue('Reminder time')).toBe('08:30')
   })
 
   it('saves the reminder when the active toggle changes', async () => {
@@ -87,7 +88,7 @@ describe('ReminderSettingsModal', () => {
     vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Reminder time'), { target: { value: '08:30' } })
+    setTime('Reminder time', '08:30')
 
     expect(setReminder).toHaveBeenLastCalledWith('h1', 'b1', 'Vitamine D', '08:30', false)
   })

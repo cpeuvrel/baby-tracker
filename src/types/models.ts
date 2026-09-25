@@ -55,6 +55,14 @@ export interface DiaperEntry {
   createdAt: string
 }
 
+export interface BathEntry {
+  id: string
+  occurredAt: string
+  notes: string
+  createdBy: string
+  createdAt: string
+}
+
 export interface GrowthEntry {
   id: string
   measuredAt: string

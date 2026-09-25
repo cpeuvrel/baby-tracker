@@ -84,12 +84,11 @@ describe('CategoryCard', () => {
     expect(screen.getByText('08:33 Bottle')).toBeInTheDocument()
   })
 
-  it('lists rows directly when not collapsible, with the value on the right of a subtitle', () => {
+  it('lists pinned rows directly, with the value on the right of a subtitle', () => {
     renderCard({
       showPrimary: false,
       primary: null,
-      collapsible: false,
-      lines: [{ title: 'Weight', subtitle: 'Jul 10, 2026', value: '6.48 kg', onClick: vi.fn() }],
+      pinnedRows: [{ title: 'Weight', subtitle: 'Jul 10, 2026', value: '6.48 kg', onClick: vi.fn() }],
     })
 
     expect(screen.getByText('Jul 10, 2026')).toBeInTheDocument()

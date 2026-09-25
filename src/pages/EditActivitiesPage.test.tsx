@@ -26,7 +26,7 @@ describe('EditActivitiesPage', () => {
     expect(screen.getByLabelText('Sleep')).toBeChecked()
     expect(screen.getByLabelText('Diaper Changes')).toBeChecked()
     expect(screen.getByLabelText('Growth')).toBeChecked()
-    expect(screen.getByLabelText('Medication')).toBeChecked()
+    expect(screen.getByLabelText('Routine (bath, vitamin)')).toBeChecked()
   })
 
   it('unchecks a category and persists it', async () => {

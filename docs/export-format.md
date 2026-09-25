@@ -34,6 +34,7 @@ Mapping by category:
 | diaper     | occurredAt  | `subtype` (wet/dirty/both/dry)                    |
 | growth     | measuredAt  | `weightG`, `heightMm`, `headCircumferenceMm`      |
 | medication | givenAt     | `medicationName`, `dose`                          |
+| bath       | occurredAt  | —                                                 |
 
 - `notes`, `createdBy`, `createdAt`: common to all categories.
 - Dates in ISO 8601 (`toISOString()`), converted back to a Firestore
@@ -72,7 +73,7 @@ Mappings:
   internal units (grams, millimeters) regardless of Nara's unit
   (KG/G/LB, CM/MM/IN).
 - **Routine** = `Vitamin/Probiotic` → `medication` (name="Vitamin/Probiotic",
-  empty dose). Any other routine (e.g. `Bath`) is ignored.
+  empty dose); `Bath` → `bath`. Any other routine is ignored.
 - **Profile**: ignored (baby metadata, not an entry).
 
 `parseImportFile` also returns `skipped`, the number of skipped rows

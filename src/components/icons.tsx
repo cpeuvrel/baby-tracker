@@ -228,3 +228,36 @@ export function CameraIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function BathIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M3 12h18v2a5 5 0 0 1-5 5H8a5 5 0 0 1-5-5v-2Z" />
+      <path d="M6 12V5.5a2 2 0 0 1 3.7-1" />
+      <path d="M7 19l-1 2M17 19l1 2" />
+      <circle cx="13" cy="7" r="1.2" />
+      <circle cx="16.5" cy="5" r="1" />
+      <circle cx="16" cy="9" r="0.8" />
+    </Icon>
+  )
+}
+
+export function VitaminIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="9.5" y="2.5" width="5" height="4" rx="1.5" />
+      <path d="M10.5 6.5h3v3l1.5 2V19a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-7.5l1.5-2v-3Z" />
+      <path d="M12 13.5c-1 1.3-1.5 2-1.5 2.8a1.5 1.5 0 0 0 3 0c0-.8-.5-1.5-1.5-2.8Z" />
+    </Icon>
+  )
+}
+
+export function RoutineIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="4" y="5" width="16" height="15" rx="2" />
+      <path d="M4 9.5h16M8.5 3v4M15.5 3v4" />
+      <path d="m9 14.5 2 2 4-4" />
+    </Icon>
+  )
+}

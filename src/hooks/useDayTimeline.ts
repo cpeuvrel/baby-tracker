@@ -6,6 +6,6 @@ export function useDayTimeline(
   babyId: string | null,
   referenceDate: Date,
 ): TimelineEntry[] {
-  const { feeding, sleep, diaper, medication } = useEntriesInRange(householdId, babyId, dayRange(referenceDate))
-  return buildTimeline(feeding, sleep, diaper, medication)
+  const { feeding, sleep, diaper, medication, bath } = useEntriesInRange(householdId, babyId, dayRange(referenceDate))
+  return buildTimeline(feeding, sleep, diaper, medication, bath)
 }

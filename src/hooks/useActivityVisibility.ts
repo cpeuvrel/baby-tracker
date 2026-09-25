@@ -2,14 +2,14 @@ import { useState } from 'react'
 
 const STORAGE_KEY = 'baby-tracker:hiddenActivities'
 
-export type ActivityCategory = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'medication'
+export type ActivityCategory = 'feeding' | 'sleep' | 'diaper' | 'growth' | 'routine'
 
 export const ACTIVITY_CATEGORIES: { id: ActivityCategory; label: string }[] = [
   { id: 'feeding', label: 'Feeding' },
   { id: 'sleep', label: 'Sleep' },
   { id: 'diaper', label: 'Diaper Changes' },
   { id: 'growth', label: 'Growth' },
-  { id: 'medication', label: 'Medication' },
+  { id: 'routine', label: 'Routine (bath, vitamin)' },
 ]
 
 function readHidden(): ActivityCategory[] {

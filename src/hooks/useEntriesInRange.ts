@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react'
 import type { DateRange } from '../lib/timeline'
+import { subscribeToBathEntriesInRange } from '../repositories/bathEntries'
 import { subscribeToDiaperEntriesInRange } from '../repositories/diaperEntries'
 import { subscribeToFeedingEntriesInRange } from '../repositories/feedingEntries'
 import { subscribeToMedicationEntriesInRange } from '../repositories/medicationEntries'
 import { subscribeToSleepEntriesInRange } from '../repositories/sleepEntries'
-import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 export interface EntriesInRange {
   feeding: FeedingEntry[]
   sleep: SleepEntry[]
   diaper: DiaperEntry[]
   medication: MedicationEntry[]
+  bath: BathEntry[]
 }
 
 export function useEntriesInRange(
@@ -22,6 +24,7 @@ export function useEntriesInRange(
   const [sleep, setSleep] = useState<SleepEntry[]>([])
   const [diaper, setDiaper] = useState<DiaperEntry[]>([])
   const [medication, setMedication] = useState<MedicationEntry[]>([])
+  const [bath, setBath] = useState<BathEntry[]>([])
   const startTime = range.start.getTime()
   const endTime = range.end.getTime()
 
@@ -31,6 +34,7 @@ export function useEntriesInRange(
       setSleep([])
       setDiaper([])
       setMedication([])
+      setBath([])
       return
     }
     const effectiveRange: DateRange = { start: new Date(startTime), end: new Date(endTime) }
@@ -53,7 +57,9 @@ export function useEntriesInRange(
       effectiveRange,
       setMedication,
     )
+    const unsubscribeBath = subscribeToBathEntriesInRange(householdId, babyId, effectiveRange, setBath)
     return () => {
+      unsubscribeBath()
       unsubscribeFeeding()
       unsubscribeSleep()
       unsubscribeDiaper()
@@ -61,5 +67,5 @@ export function useEntriesInRange(
     }
   }, [householdId, babyId, startTime, endTime])
 
-  return { feeding, sleep, diaper, medication }
+  return { feeding, sleep, diaper, medication, bath }
 }

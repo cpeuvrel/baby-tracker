@@ -1,4 +1,5 @@
 import { parseCsv, toCsv } from './csv'
+import { getAllBathEntries, importBathEntries } from '../repositories/bathEntries'
 import { getAllDiaperEntries, importDiaperEntries } from '../repositories/diaperEntries'
 import { getAllFeedingEntries, importFeedingEntries } from '../repositories/feedingEntries'
 import { getAllGrowthEntries, importGrowthEntries } from '../repositories/growthEntries'
@@ -9,6 +10,7 @@ import {
 import { getAllSleepEntries, importSleepEntries } from '../repositories/sleepEntries'
 import type {
   Baby,
+  BathEntry,
   DiaperEntry,
   DiaperType,
   FeedingEntry,
@@ -24,19 +26,21 @@ export interface BabyExport {
   diaperEntries: DiaperEntry[]
   growthEntries: GrowthEntry[]
   medicationEntries: MedicationEntry[]
+  bathEntries: BathEntry[]
 }
 
 export async function exportBabyData(householdId: string, baby: Baby): Promise<BabyExport> {
-  const [feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries] =
+  const [feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries] =
     await Promise.all([
       getAllFeedingEntries(householdId, baby.id),
       getAllSleepEntries(householdId, baby.id),
       getAllDiaperEntries(householdId, baby.id),
       getAllGrowthEntries(householdId, baby.id),
       getAllMedicationEntries(householdId, baby.id),
+      getAllBathEntries(householdId, baby.id),
     ])
 
-  return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries }
+  return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries }
 }
 
 // --- App's native format: a single CSV, one category per row ---
@@ -117,6 +121,13 @@ export function serializeBabyExport(data: BabyExport): string {
       entry.name, entry.dose, entry.notes, entry.createdBy, entry.createdAt,
     ])
   }
+  for (const entry of data.bathEntries) {
+    rows.push([
+      'bath', entry.occurredAt, '', '', '',
+      '', '', '', '', '',
+      '', '', entry.notes, entry.createdBy, entry.createdAt,
+    ])
+  }
 
   return toCsv(rows)
 }
@@ -131,6 +142,7 @@ function parseNativeRows(dataRows: string[][]): BabyExport {
   const diaperEntries: DiaperEntry[] = []
   const growthEntries: GrowthEntry[] = []
   const medicationEntries: MedicationEntry[] = []
+  const bathEntries: BathEntry[] = []
   let nextId = 0
 
   for (const row of dataRows) {
@@ -192,10 +204,19 @@ function parseNativeRows(dataRows: string[][]): BabyExport {
           createdAt: row[CREATED_AT],
         })
         break
+      case 'bath':
+        bathEntries.push({
+          id,
+          occurredAt: row[AT],
+          notes: row[NOTES],
+          createdBy: row[CREATED_BY],
+          createdAt: row[CREATED_AT],
+        })
+        break
     }
   }
 
-  return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries }
+  return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries }
 }
 
 // --- Format Nara (export RGPD) ---
@@ -285,6 +306,7 @@ function parseNaraRows(
   const diaperEntries: DiaperEntry[] = []
   const growthEntries: GrowthEntry[] = []
   const medicationEntries: MedicationEntry[] = []
+  const bathEntries: BathEntry[] = []
   let skipped = 0
   let nextId = 0
   const newId = () => `nara-${nextId++}`
@@ -382,6 +404,9 @@ function parseNaraRows(
             createdBy: currentUserUid,
             createdAt: givenAt,
           })
+        } else if (row[ROUTINE] === 'Bath') {
+          const occurredAt = epochToIso(row[START_EPOCH])
+          bathEntries.push({ id: newId(), occurredAt, notes: note, createdBy: currentUserUid, createdAt: occurredAt })
         } else {
           skipped += 1
         }
@@ -393,7 +418,7 @@ function parseNaraRows(
   }
 
   return {
-    data: { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries },
+    data: { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries },
     skipped,
   }
 }
@@ -432,5 +457,6 @@ export async function importBabyData(
     importDiaperEntries(householdId, babyId, data.diaperEntries),
     importGrowthEntries(householdId, babyId, data.growthEntries),
     importMedicationEntries(householdId, babyId, data.medicationEntries),
+    importBathEntries(householdId, babyId, data.bathEntries),
   ])
 }

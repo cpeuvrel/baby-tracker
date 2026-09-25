@@ -8,6 +8,7 @@ import { formatDuration } from '../lib/duration'
 import { logSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 interface SleepTimerModalProps {
   onClose: () => void
@@ -108,27 +109,9 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
           {isActive ? 'Stop Timer' : 'Start Timer'}
         </button>
       )}
-      <div>
-        <label htmlFor="sleep-started-at">Start Time</label>
-        <input
-          id="sleep-started-at"
-          type="datetime-local"
-          value={startTimeValue}
-          disabled={isActive}
-          onChange={(event) => setStartedAt(event.target.value)}
-        />
-      </div>
+      <DateTimeField id="sleep-started-at" label="Start Time" value={startTimeValue} disabled={isActive} onChange={setStartedAt} />
       <DurationInput totalMinutes={durationMinutes} onChange={setDurationMinutes} disabled={isActive} />
-      <div>
-        <label htmlFor="sleep-ended-at">End Time</label>
-        <input
-          id="sleep-ended-at"
-          type="datetime-local"
-          value={endedAt}
-          disabled={isActive}
-          onChange={(event) => handleEndedAtChange(event.target.value)}
-        />
-      </div>
+      <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} disabled={isActive} onChange={handleEndedAtChange} />
       <div>
         <label htmlFor="sleep-notes">Notes (optional)</label>
         <input

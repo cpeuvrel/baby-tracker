@@ -64,7 +64,7 @@ describe('summarizeSleepPrimary', () => {
       createdAt: '2026-03-05T10:00:00.000Z',
     }
 
-    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Woke up', meta: '1h 00m ago' })
+    expect(summarizeSleepPrimary(entry, now)).toEqual({ label: 'Woke up', meta: '1h 0m ago' })
   })
 
   it('labels an active entry as "Sleeping"', () => {

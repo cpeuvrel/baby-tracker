@@ -41,6 +41,7 @@ describe('Layout', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
   })
 

@@ -35,9 +35,10 @@ interface CategoryCardProps {
   onSelectPrimary?: () => void
   emptyLabel: string
   highlight?: { value: string; unit?: string }
-  /** Recent entries, behind a Show More / Show Less toggle unless `collapsible` is false. */
+  /** Always-visible rows (e.g. Growth's measurements, Routine's bath and vitamin). */
+  pinnedRows?: CategoryCardEntryRow[]
+  /** Recent entries, behind a Show More / Show Less toggle. */
   lines?: CategoryCardEntryRow[]
-  collapsible?: boolean
   onShowHistory?: () => void
   /** Label of the history link under the expanded entries (e.g. "Entries before 20:00"). */
   historyLabel?: string
@@ -57,8 +58,8 @@ export function CategoryCard({
   onSelectPrimary,
   emptyLabel,
   highlight,
+  pinnedRows = [],
   lines = [],
-  collapsible = true,
   onShowHistory,
   historyLabel = 'View History',
   secondaryAction,
@@ -77,9 +78,9 @@ export function CategoryCard({
     </span>
   )
 
-  const rowList = (
+  const rowList = (rows: CategoryCardEntryRow[]) => (
     <ul className="category-card-rows">
-      {lines.map((row, index) => (
+      {rows.map((row, index) => (
         <EntryRowItem key={index} {...row} colorVar={colorVar} />
       ))}
     </ul>
@@ -129,8 +130,8 @@ export function CategoryCard({
             )}
           </div>
         )}
-        {!collapsible && lines.length > 0 && rowList}
-        {collapsible && lines.length > 0 && (
+        {pinnedRows.length > 0 && rowList(pinnedRows)}
+        {lines.length > 0 && (
           <>
             <button type="button" className="category-card-link" aria-expanded={expanded} onClick={toggleExpanded}>
               {expanded ? 'Show Less' : 'Show More'}
@@ -140,13 +141,13 @@ export function CategoryCard({
             </button>
             {expanded && (
               <>
-                {rowList}
+                {rowList(lines)}
                 {historyLink(historyLabel)}
               </>
             )}
           </>
         )}
-        {collapsible && lines.length === 0 && primary && historyLink('View History')}
+        {lines.length === 0 && primary && historyLink('View History')}
         {secondaryAction && (
           <button type="button" className="category-card-link" onClick={secondaryAction.onClick}>
             {secondaryAction.label}

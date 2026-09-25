@@ -6,7 +6,7 @@ import { buildActivitySummary, type SummaryRowId } from '../lib/activitySummary'
 import { addDays } from '../lib/appTime'
 import { dayRange, type DateRange } from '../lib/timeline'
 import { BlobIcon } from './BlobIcon'
-import { DiaperIcon, FeedIcon, MedicationIcon, SleepIcon } from './icons'
+import { BathIcon, DiaperIcon, FeedIcon, MedicationIcon, SleepIcon } from './icons'
 import { Modal } from './Modal'
 
 type SummaryPeriod = 'today' | 'last24h'
@@ -18,7 +18,8 @@ const ROW_STYLE: Record<SummaryRowId, { icon: ReactNode; colorVar: string; categ
   solid: { icon: <FeedIcon />, colorVar: '--category-feeding', category: 'feeding' },
   sleep: { icon: <SleepIcon />, colorVar: '--category-sleep', category: 'sleep' },
   diaper: { icon: <DiaperIcon />, colorVar: '--category-diaper', category: 'diaper' },
-  medication: { icon: <MedicationIcon />, colorVar: '--category-medication', category: 'medication' },
+  bath: { icon: <BathIcon />, colorVar: '--category-routine', category: 'routine' },
+  medication: { icon: <MedicationIcon />, colorVar: '--category-routine', category: 'routine' },
 }
 
 function periodRange(period: SummaryPeriod, now: Date): DateRange {

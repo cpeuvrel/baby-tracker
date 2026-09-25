@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,6 +7,7 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import type { SleepEntry } from '../types/models'
 import { SleepTimerModal } from './SleepTimerModal'
+import { setDateTime } from '../test/timeFields'
 
 const startSleep = vi.fn()
 const stopSleep = vi.fn()
@@ -122,8 +123,8 @@ describe('SleepTimerModal', () => {
     const user = userEvent.setup()
 
     render(<SleepTimerModal onClose={onClose} />)
-    fireEvent.change(screen.getByLabelText('Start Time'), { target: { value: '2026-03-05T20:00' } })
-    fireEvent.change(screen.getByLabelText('End Time'), { target: { value: '2026-03-05T21:30' } })
+    setDateTime('Start Time', '2026-03-05T20:00')
+    setDateTime('End Time', '2026-03-05T21:30')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(logSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', {

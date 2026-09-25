@@ -1,8 +1,8 @@
 import { formatDuration } from './duration'
 import type { DateRange } from './timeline'
-import type { DiaperEntry, DiaperType, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { BathEntry, DiaperEntry, DiaperType, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
-export type SummaryRowId = 'bottle' | 'solid' | 'sleep' | 'diaper' | 'medication'
+export type SummaryRowId = 'bottle' | 'solid' | 'sleep' | 'diaper' | 'bath' | 'medication'
 
 export interface SummaryRow {
   id: SummaryRowId
@@ -16,6 +16,7 @@ export interface SummaryEntries {
   sleep: SleepEntry[]
   diaper: DiaperEntry[]
   medication: MedicationEntry[]
+  bath: BathEntry[]
 }
 
 const DIAPER_ORDER: { type: DiaperType; label: string }[] = [
@@ -86,6 +87,11 @@ export function buildActivitySummary(entries: SummaryEntries, range: DateRange, 
       count: diapers.length,
       lines: [counts.map(({ label, count }) => `${count} ${label}`).join(', ')],
     })
+  }
+
+  const baths = entries.bath.filter((entry) => isInRange(entry.occurredAt, range))
+  if (baths.length > 0) {
+    rows.push({ id: 'bath', title: 'Bath', count: baths.length, lines: [] })
   }
 
   const doses = entries.medication.filter((entry) => isInRange(entry.givenAt, range))

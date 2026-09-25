@@ -5,6 +5,7 @@ import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInp
 import { deleteFeedingEntry, logFeeding, updateFeedingEntry } from '../repositories/feedingEntries'
 import type { FeedingEntry, FeedingType } from '../types/models'
 import { Modal } from './Modal'
+import { DateTimeField } from './DateTimeField'
 
 interface FeedingFormProps {
   entry?: FeedingEntry
@@ -68,15 +69,7 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
             Solid
           </button>
         </div>
-        <div>
-          <label htmlFor="feeding-occurred-at">Time</label>
-          <input
-            id="feeding-occurred-at"
-            type="datetime-local"
-            value={occurredAt}
-            onChange={(event) => setOccurredAt(event.target.value)}
-          />
-        </div>
+        <DateTimeField id="feeding-occurred-at" label="Time" value={occurredAt} onChange={setOccurredAt} />
         {type === 'bottle' ? (
           <div>
             <label htmlFor="feeding-volume">Volume (mL, optional)</label>

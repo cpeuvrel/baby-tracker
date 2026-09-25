@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { BathForm } from '../components/BathForm'
 import { CategoryCard, type CategoryCardEntryRow } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
@@ -9,7 +10,10 @@ import {
   FeedIcon,
   GrowthIcon,
   HeadCircumferenceIcon,
+  BathIcon,
   MedicationIcon,
+  RoutineIcon,
+  VitaminIcon,
   RulerIcon,
   ScaleIcon,
   SleepIcon,
@@ -24,6 +28,7 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility } from '../hooks/useActivityVisibility'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useRecentBathEntries } from '../hooks/useRecentBathEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
 import { useRecentMedicationEntries } from '../hooks/useRecentMedicationEntries'
@@ -32,11 +37,11 @@ import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
   latestGrowthEntryWithField,
   DIAPER_SHORT_LABELS,
+  summarizeBathRow,
   summarizeDiaperPrimary,
   summarizeDiaperRow,
   summarizeFeedingPrimary,
   summarizeFeedingRow,
-  summarizeMedicationPrimary,
   summarizeMedicationRow,
   summarizeSleepPrimary,
   summarizeSleepRow,
@@ -45,8 +50,10 @@ import {
 import { formatGrowthValue, GROWTH_METRIC_FIELD, GROWTH_METRIC_LABELS, type GrowthMetric } from '../lib/growthMetrics'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { formatDate } from '../lib/appTime'
+import { formatRelativeTime } from '../lib/duration'
 import { activityWindowStart } from '../lib/timeline'
 import type {
+  BathEntry,
   DiaperEntry,
   FeedingEntry,
   GrowthEntry,
@@ -57,6 +64,11 @@ import type {
 // Enough to cover a full day of entries since last night's start.
 const RECENT_COUNT = 20
 const DEFAULT_MEDICATION_NAME = 'Vitamin D'
+
+/** Vitamin doses, whatever their exact name ("Vitamin D", Nara's "Vitamin/Probiotic"). */
+function isVitamin(name: string): boolean {
+  return name.trim().toLowerCase().startsWith('vitamin')
+}
 
 /** Rows for the entries at or after `windowStart` (the card only lists recent ones). */
 function windowLines<T>(
@@ -83,7 +95,9 @@ type ModalState =
   | { kind: 'sleep-edit'; entry: SleepEntry }
   | { kind: 'feeding'; entry?: FeedingEntry }
   | { kind: 'diaper'; entry?: DiaperEntry }
-  | { kind: 'medication'; entry?: MedicationEntry }
+  | { kind: 'medication'; entry?: MedicationEntry; name?: string }
+  | { kind: 'bath'; entry?: BathEntry }
+  | { kind: 'routine-menu' }
   | { kind: 'growth'; entry?: GrowthEntry }
   | { kind: 'reminder' }
   | null
@@ -117,6 +131,8 @@ export function ActivityPage() {
     selectedBaby?.id ?? null,
     RECENT_COUNT,
   )
+  const recentBath = useRecentBathEntries(household?.id ?? null, selectedBaby?.id ?? null, RECENT_COUNT)
+
   const growthEntries = useGrowthEntries(household?.id ?? null, selectedBaby?.id ?? null)
 
   if (!household || !selectedBaby || !user) return null
@@ -182,14 +198,40 @@ export function ActivityPage() {
     <DiaperIcon />,
   )
 
-  const medicationLines = windowLines(
-    recentMedication,
-    windowStart,
-    (entry) => entry.givenAt,
-    (entry) => summarizeMedicationRow(entry, now),
-    (entry) => setModal({ kind: 'medication', entry }),
-    <MedicationIcon />,
-  )
+  const lastBath = recentBath[0]
+  const lastVitamin = recentMedication.find((entry) => isVitamin(entry.name))
+  const routineRows: CategoryCardEntryRow[] = [
+    {
+      icon: <BathIcon />,
+      title: 'Bath',
+      subtitle: lastBath ? formatRelativeTime(new Date(lastBath.occurredAt), now) : 'Not yet',
+      onClick: () => setModal({ kind: 'bath' }),
+    },
+    {
+      icon: <VitaminIcon />,
+      title: DEFAULT_MEDICATION_NAME,
+      subtitle: lastVitamin ? formatRelativeTime(new Date(lastVitamin.givenAt), now) : 'Not yet',
+      onClick: () => setModal({ kind: 'medication', name: DEFAULT_MEDICATION_NAME }),
+    },
+  ]
+  // Baths and doses since last night, newest first, each opening its own form.
+  const routineLines = [
+    ...recentBath.map((entry) => ({
+      at: entry.occurredAt,
+      row: { ...summarizeBathRow(entry, now), icon: <BathIcon />, onClick: () => setModal({ kind: 'bath', entry }) },
+    })),
+    ...recentMedication.map((entry) => ({
+      at: entry.givenAt,
+      row: {
+        ...summarizeMedicationRow(entry, now),
+        icon: isVitamin(entry.name) ? <VitaminIcon /> : <MedicationIcon />,
+        onClick: () => setModal({ kind: 'medication', entry }),
+      },
+    })),
+  ]
+    .filter(({ at }) => new Date(at).getTime() >= windowStart.getTime())
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+    .map(({ row }) => row)
 
   const growthRows: CategoryCardEntryRow[] = (['weight', 'height', 'headCircumference'] as GrowthMetric[]).map(
     (metric) => {
@@ -258,19 +300,18 @@ export function ActivityPage() {
           historyLabel={historyLabel}
         />
       )}
-      {isVisible('medication') && (
+      {isVisible('routine') && (
         <CategoryCard
-          title="Medication"
-          colorVar="--category-medication"
-          addLabel="Add a dose"
-          onAdd={() => setModal({ kind: 'medication' })}
-          icon={<MedicationIcon />}
-          primary={recentMedication[0] ? summarizeMedicationPrimary(recentMedication[0], now) : null}
-          onSelectPrimary={
-            recentMedication[0] ? () => setModal({ kind: 'medication', entry: recentMedication[0] }) : undefined
-          }
-          emptyLabel="No doses"
-          lines={medicationLines}
+          title="Routine"
+          colorVar="--category-routine"
+          addLabel="Add a routine entry"
+          onAdd={() => setModal({ kind: 'routine-menu' })}
+          icon={<RoutineIcon />}
+          showPrimary={false}
+          primary={null}
+          emptyLabel="No entries"
+          pinnedRows={routineRows}
+          lines={routineLines}
           onShowHistory={handleShowHistory}
           historyLabel={historyLabel}
           secondaryAction={{ label: 'Set reminder', onClick: () => setModal({ kind: 'reminder' }) }}
@@ -286,8 +327,7 @@ export function ActivityPage() {
           showPrimary={false}
           primary={null}
           emptyLabel="No measurements"
-          lines={growthRows}
-          collapsible={false}
+          pinnedRows={growthRows}
         />
       )}
 
@@ -303,7 +343,35 @@ export function ActivityPage() {
       {modal?.kind === 'sleep-edit' && <SleepEntryEditModal entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'feeding' && <FeedingForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'diaper' && <DiaperForm entry={modal.entry} onClose={closeModal} />}
-      {modal?.kind === 'medication' && <MedicationForm entry={modal.entry} onClose={closeModal} />}
+      {modal?.kind === 'medication' && (
+        <MedicationForm entry={modal.entry} defaultName={modal.name} onClose={closeModal} />
+      )}
+      {modal?.kind === 'bath' && <BathForm entry={modal.entry} onClose={closeModal} />}
+      {modal?.kind === 'routine-menu' && (
+        <div className="action-menu-overlay" onClick={closeModal}>
+          <div
+            className="action-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add to Routine"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>Add to Routine</h2>
+            <button type="button" onClick={() => setModal({ kind: 'bath' })}>
+              Bath
+            </button>
+            <button type="button" onClick={() => setModal({ kind: 'medication', name: DEFAULT_MEDICATION_NAME })}>
+              {DEFAULT_MEDICATION_NAME}
+            </button>
+            <button type="button" onClick={() => setModal({ kind: 'medication', name: '' })}>
+              Other medication
+            </button>
+            <button type="button" onClick={closeModal}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
       {modal?.kind === 'reminder' && (
         <ReminderSettingsModal medicationName={DEFAULT_MEDICATION_NAME} onClose={closeModal} />
       )}

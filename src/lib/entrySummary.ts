@@ -2,6 +2,7 @@ import { formatDate, formatTime } from './appTime'
 import { formatDuration, formatRelativeTime } from './duration'
 import { isToday, isYesterday } from './timeline'
 import type {
+  BathEntry,
   DiaperEntry,
   DiaperType,
   FeedingEntry,
@@ -108,6 +109,10 @@ export function summarizeSleepRow(entry: SleepEntry, now: Date, maxDurationSecon
 
 export function summarizeDiaperRow(entry: DiaperEntry, now?: Date): EntryRow {
   return { title: `${formatRowClock(entry.occurredAt, now)} ${DIAPER_LABELS[entry.type]}` }
+}
+
+export function summarizeBathRow(entry: BathEntry, now?: Date): EntryRow {
+  return { title: `${formatRowClock(entry.occurredAt, now)} Bath` }
 }
 
 export function summarizeMedicationRow(entry: MedicationEntry, now?: Date): EntryRow {

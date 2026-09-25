@@ -25,6 +25,7 @@ const emptyExport = {
   diaperEntries: [],
   growthEntries: [],
   medicationEntries: [],
+  bathEntries: [],
 }
 
 describe('ExportImportSection', () => {

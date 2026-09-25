@@ -52,6 +52,7 @@ describe('TrendDetailPage', () => {
       sleep: [],
       diaper: [],
       medication: [],
+      bath: [],
     })
   })
 

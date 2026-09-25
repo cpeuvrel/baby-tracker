@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import type { SleepEntry } from '../types/models'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
+import { dateTimeValue } from '../test/timeFields'
 
 const updateSleepEntry = vi.fn()
 const deleteSleepEntry = vi.fn()
@@ -57,8 +58,8 @@ describe('SleepEntryEditModal', () => {
     await user.clear(screen.getByLabelText('Minutes'))
     await user.type(screen.getByLabelText('Minutes'), '45')
 
-    expect(screen.getByLabelText('Start Time')).toHaveValue('2026-03-05T20:00')
-    expect(screen.getByLabelText('End Time')).toHaveValue('2026-03-05T20:45')
+    expect(dateTimeValue('Start Time')).toBe('2026-03-05T20:00')
+    expect(dateTimeValue('End Time')).toBe('2026-03-05T20:45')
     expect(screen.getByText('45m 00s')).toBeInTheDocument()
   })
 
