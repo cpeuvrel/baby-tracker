@@ -120,9 +120,9 @@ export function GrowthDetailPage() {
             metric={metric}
             sex={sex}
             childPoints={childPoints}
+            unit={unit}
             selectedId={selectedPoint?.id}
-            formatValue={(value) => formatGrowthValue(metric, value, unit)}
-            onSelectPoint={(id) => setSelectedId(id)}
+            onSelectPoint={setSelectedId}
           />
           {selectedPoint && (
             <div className="growth-selection-card" role="region" aria-label="Selected measurement">

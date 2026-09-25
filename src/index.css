@@ -15,6 +15,8 @@
   --card-shadow: 0 4px 10px rgba(31, 58, 92, 0.08);
   --trend-row-bg: var(--surface);
   --card-bg: #ffffff;
+  --growth-tabs-bg: #ece4d2;
+  --growth-tabs-active: #ffffff;
 
   /* Category bands: fixed colors, don't change with the theme
      (confirmed on the real app — only the page background goes dark). */
@@ -55,6 +57,8 @@
     --card-shadow: none;
     --trend-row-bg: #282d40;
     --card-bg: #2a2f42;
+    --growth-tabs-bg: #161926;
+    --growth-tabs-active: #4b5670;
   }
 }
 
@@ -1777,7 +1781,9 @@ main {
   --baseline: #c3c2b7;
   --series-1: #2a78d6;
   --series-2: #eb6834;
-  --reference-curve: #c99a2e;
+  --reference-curve: #d9a521;
+  --growth-point: #4a6fa5;
+  --growth-point-selected: #2f4a73;
   margin-bottom: 24px;
 }
 
@@ -1791,7 +1797,9 @@ main {
     --baseline: #383835;
     --series-1: #3987e5;
     --series-2: #d95926;
-    --reference-curve: #e0b13f;
+    --reference-curve: #f5c242;
+    --growth-point: #5e7fa8;
+    --growth-point-selected: #3e5578;
   }
 }
 
@@ -1882,6 +1890,7 @@ main {
 
 .time-select select:disabled {
   opacity: 0.6;
+}
 
 /* Growth detail: bordered header toggle, full-width metric tabs, and the
    selected-measurement card floating over the bottom-right of the chart. */
@@ -1903,12 +1912,45 @@ main {
 [role='group'].segmented-control.growth-metric-tabs {
   display: flex;
   border-radius: 10px;
+  background: var(--growth-tabs-bg);
 }
 
 [role='group'].segmented-control.growth-metric-tabs button {
   flex: 1;
   border-radius: 8px;
   padding: 8px 4px;
+  color: var(--text);
+}
+
+[role='group'].segmented-control.growth-metric-tabs button[aria-pressed='true'] {
+  background: var(--growth-tabs-active);
+}
+
+/* Custom SVG chart: taps select points, so suppress the browser's own
+   tap highlight, text selection and long-press "save image" callout. */
+.growth-chart {
+  width: 100%;
+}
+
+.growth-chart svg {
+  display: block;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+.growth-chart-tick {
+  fill: var(--text);
+  font-size: 13px;
+}
+
+.growth-chart-percentile {
+  fill: var(--text);
+  font-size: 12px;
 }
 
 .growth-chart-area {
@@ -1919,11 +1961,10 @@ main {
   position: absolute;
   right: 0;
   bottom: 48px;
-  width: min(240px, 70%);
-  padding: 12px 14px;
+  width: min(250px, 72%);
+  padding: 14px 16px;
   border-radius: 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--card-bg);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
 }
 
@@ -1947,8 +1988,13 @@ main {
   padding: 0;
 }
 
+.growth-selection-card .growth-entry-line {
+  font-size: 15px;
+  color: var(--text);
+}
+
 .growth-selection-edit {
-  color: var(--accent);
+  color: var(--button-add);
   font-weight: 600;
 }
 
