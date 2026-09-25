@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { ChildPhotoEditor } from '../components/ChildPhotoEditor'
 import { ExportImportSection } from '../components/ExportImportSection'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
@@ -46,15 +47,18 @@ export function ChildPage() {
           </button>
         </div>
 
-        <div>
-          <label htmlFor="child-name">First Name</label>
-          <input
-            id="child-name"
-            type="text"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
+        <div className="child-name-row">
+          <div>
+            <label htmlFor="child-name">First Name</label>
+            <input
+              id="child-name"
+              type="text"
+              required
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          </div>
+          <ChildPhotoEditor householdId={household.id} baby={baby} />
         </div>
 
         <div role="group" aria-label="Sex" className="segmented-control">

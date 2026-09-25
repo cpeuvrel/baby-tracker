@@ -17,6 +17,8 @@ export interface Baby {
   birthDate: string
   sex: BabySex | null
   nighttimeHours?: NighttimeHours | null
+  /** Small square JPEG as a data URL, cropped in the app (kept on the doc: no Storage bucket needed). */
+  photoDataUrl?: string | null
 }
 
 export type FeedingType = 'bottle' | 'solid'

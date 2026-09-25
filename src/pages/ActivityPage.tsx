@@ -31,6 +31,7 @@ import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
   latestGrowthEntryWithField,
+  DIAPER_SHORT_LABELS,
   summarizeDiaperPrimary,
   summarizeDiaperRow,
   summarizeFeedingPrimary,
@@ -42,7 +43,9 @@ import {
   type EntryRow,
 } from '../lib/entrySummary'
 import { formatGrowthValue, GROWTH_METRIC_FIELD, GROWTH_METRIC_LABELS, type GrowthMetric } from '../lib/growthMetrics'
-import { isToday } from '../lib/timeline'
+import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
+import { formatDate } from '../lib/appTime'
+import { activityWindowStart } from '../lib/timeline'
 import type {
   DiaperEntry,
   FeedingEntry,
@@ -51,28 +54,22 @@ import type {
   SleepEntry,
 } from '../types/models'
 
-const RECENT_COUNT = 5
+// Enough to cover a full day of entries since last night's start.
+const RECENT_COUNT = 20
 const DEFAULT_MEDICATION_NAME = 'Vitamin D'
 
-function splitTodayLines<T>(
+/** Rows for the entries at or after `windowStart` (the card only lists recent ones). */
+function windowLines<T>(
   entries: T[],
-  now: Date,
+  windowStart: Date,
   getIso: (entry: T) => string,
   summarize: (entry: T) => EntryRow,
   onSelect: (entry: T) => void,
-  icon: ReactNode,
-): { today: CategoryCardEntryRow[]; older: CategoryCardEntryRow[] } {
-  const today: CategoryCardEntryRow[] = []
-  const older: CategoryCardEntryRow[] = []
-  for (const entry of entries) {
-    const row: CategoryCardEntryRow = { ...summarize(entry), icon, onClick: () => onSelect(entry) }
-    if (isToday(getIso(entry), now)) {
-      today.push(row)
-    } else {
-      older.push(row)
-    }
-  }
-  return { today, older }
+  icon?: ReactNode,
+): CategoryCardEntryRow[] {
+  return entries
+    .filter((entry) => new Date(getIso(entry)).getTime() >= windowStart.getTime())
+    .map((entry) => ({ ...summarize(entry), icon, onClick: () => onSelect(entry) }))
 }
 
 const GROWTH_METRIC_ICONS: Record<GrowthMetric, typeof ScaleIcon> = {
@@ -125,11 +122,16 @@ export function ActivityPage() {
   if (!household || !selectedBaby || !user) return null
 
   const now = new Date()
+  const nightStart = selectedBaby.nighttimeHours?.start ?? DEFAULT_NIGHTTIME_HOURS.start
+  const windowStart = activityWindowStart(now, nightStart)
+  const historyLabel = `Entries before ${nightStart}`
+
   const latestFeeding = recentFeeding[0]
   const feedingHighlight =
     latestFeeding?.type === 'bottle' && latestFeeding.volumeMl != null
       ? { value: String(latestFeeding.volumeMl), unit: 'mL' }
       : undefined
+  const latestDiaper = recentDiaper[0]
 
   const handleAddSleep = () => {
     setModal({ kind: 'sleep-active' })
@@ -147,13 +149,13 @@ export function ActivityPage() {
     0,
     ...recentSleep.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
   )
-  const { today: sleepTodayLines, older: sleepMoreLines } = splitTodayLines(
+  // A running sleep is always recent; a finished one counts when it ended in the window.
+  const sleepLines = windowLines(
     recentSleep,
-    now,
-    (entry) => entry.endedAt ?? entry.startedAt,
+    windowStart,
+    (entry) => entry.endedAt ?? now.toISOString(),
     (entry) => summarizeSleepRow(entry, now, maxSleepSeconds),
     handleSelectSleep,
-    <SleepIcon />,
   )
 
   const maxVolumeMl = Math.max(
@@ -162,29 +164,29 @@ export function ActivityPage() {
       .filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
       .map((entry) => entry.volumeMl as number),
   )
-  const { today: feedingTodayLines, older: feedingMoreLines } = splitTodayLines(
+  const feedingLines = windowLines(
     recentFeeding,
-    now,
+    windowStart,
     (entry) => entry.occurredAt,
-    (entry) => summarizeFeedingRow(entry, maxVolumeMl),
+    (entry) => summarizeFeedingRow(entry, maxVolumeMl, now),
     (entry) => setModal({ kind: 'feeding', entry }),
     <FeedIcon />,
   )
 
-  const { today: diaperTodayLines, older: diaperMoreLines } = splitTodayLines(
+  const diaperLines = windowLines(
     recentDiaper,
-    now,
+    windowStart,
     (entry) => entry.occurredAt,
-    (entry) => summarizeDiaperRow(entry),
+    (entry) => summarizeDiaperRow(entry, now),
     (entry) => setModal({ kind: 'diaper', entry }),
     <DiaperIcon />,
   )
 
-  const { today: medicationTodayLines, older: medicationMoreLines } = splitTodayLines(
+  const medicationLines = windowLines(
     recentMedication,
-    now,
+    windowStart,
     (entry) => entry.givenAt,
-    (entry) => summarizeMedicationRow(entry),
+    (entry) => summarizeMedicationRow(entry, now),
     (entry) => setModal({ kind: 'medication', entry }),
     <MedicationIcon />,
   )
@@ -198,6 +200,7 @@ export function ActivityPage() {
       return {
         icon: <RowIcon />,
         title: GROWTH_METRIC_LABELS[metric],
+        subtitle: entry ? formatDate(new Date(entry.measuredAt), { month: 'short', day: 'numeric', year: 'numeric' }) : '',
         value: value != null ? formatGrowthValue(metric, value, unit) : undefined,
         onClick: () => navigate(`/growth/${metric}`),
       }
@@ -205,7 +208,39 @@ export function ActivityPage() {
   )
 
   return (
-    <div>
+    <div className="activity-page">
+      {isVisible('feeding') && (
+        <CategoryCard
+          title="Feed"
+          colorVar="--category-feeding"
+          addLabel="Add a feeding entry"
+          onAdd={() => setModal({ kind: 'feeding' })}
+          icon={<FeedIcon />}
+          primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
+          onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
+          emptyLabel="No entries"
+          highlight={feedingHighlight}
+          lines={feedingLines}
+          onShowHistory={handleShowHistory}
+          historyLabel={historyLabel}
+        />
+      )}
+      {isVisible('diaper') && (
+        <CategoryCard
+          title="Diaper"
+          colorVar="--category-diaper"
+          addLabel="Add a diaper change"
+          onAdd={() => setModal({ kind: 'diaper' })}
+          icon={<DiaperIcon />}
+          primary={latestDiaper ? summarizeDiaperPrimary(latestDiaper, now) : null}
+          onSelectPrimary={latestDiaper ? () => setModal({ kind: 'diaper', entry: latestDiaper }) : undefined}
+          emptyLabel="No entries"
+          highlight={latestDiaper ? { value: DIAPER_SHORT_LABELS[latestDiaper.type] } : undefined}
+          lines={diaperLines}
+          onShowHistory={handleShowHistory}
+          historyLabel={historyLabel}
+        />
+      )}
       {isVisible('sleep') && (
         <CategoryCard
           title="Sleep"
@@ -218,40 +253,9 @@ export function ActivityPage() {
           primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
           onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
           emptyLabel="No entries"
-          todayLines={sleepTodayLines}
-          moreLines={sleepMoreLines}
+          lines={sleepLines}
           onShowHistory={handleShowHistory}
-        />
-      )}
-      {isVisible('feeding') && (
-        <CategoryCard
-          title="Feed"
-          colorVar="--category-feeding"
-          addLabel="Add a feeding entry"
-          onAdd={() => setModal({ kind: 'feeding' })}
-          icon={<FeedIcon />}
-          primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
-          onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
-          emptyLabel="No entries"
-          todayLines={feedingTodayLines}
-          moreLines={feedingMoreLines}
-          onShowHistory={handleShowHistory}
-          highlight={feedingHighlight}
-        />
-      )}
-      {isVisible('diaper') && (
-        <CategoryCard
-          title="Diaper"
-          colorVar="--category-diaper"
-          addLabel="Add a diaper change"
-          onAdd={() => setModal({ kind: 'diaper' })}
-          icon={<DiaperIcon />}
-          primary={recentDiaper[0] ? summarizeDiaperPrimary(recentDiaper[0], now) : null}
-          onSelectPrimary={recentDiaper[0] ? () => setModal({ kind: 'diaper', entry: recentDiaper[0] }) : undefined}
-          emptyLabel="No entries"
-          todayLines={diaperTodayLines}
-          moreLines={diaperMoreLines}
-          onShowHistory={handleShowHistory}
+          historyLabel={historyLabel}
         />
       )}
       {isVisible('medication') && (
@@ -266,9 +270,9 @@ export function ActivityPage() {
             recentMedication[0] ? () => setModal({ kind: 'medication', entry: recentMedication[0] }) : undefined
           }
           emptyLabel="No doses"
-          todayLines={medicationTodayLines}
-          moreLines={medicationMoreLines}
+          lines={medicationLines}
           onShowHistory={handleShowHistory}
+          historyLabel={historyLabel}
           secondaryAction={{ label: 'Set reminder', onClick: () => setModal({ kind: 'reminder' }) }}
         />
       )}
@@ -282,10 +286,18 @@ export function ActivityPage() {
           showPrimary={false}
           primary={null}
           emptyLabel="No measurements"
-          todayLines={growthRows}
-          moreLines={[]}
+          lines={growthRows}
+          collapsible={false}
         />
       )}
+
+      <button
+        type="button"
+        className="activity-edit-button"
+        onClick={() => navigate(`/account/family/${selectedBaby.id}/activities`)}
+      >
+        Edit Activities
+      </button>
 
       {modal?.kind === 'sleep-active' && <SleepTimerModal onClose={closeModal} />}
       {modal?.kind === 'sleep-edit' && <SleepEntryEditModal entry={modal.entry} onClose={closeModal} />}

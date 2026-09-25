@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { TrendMetricId } from '../lib/trendMetrics'
+import { BlobIcon } from './BlobIcon'
 import {
   BibIcon,
   BottleSizeIcon,
@@ -34,8 +35,8 @@ const METRIC_ICONS: Record<TrendMetricId, ReactNode> = {
 /** Illustration of a Trends metric: its line icon over a blob of the category color. */
 export function TrendMetricIcon({ id, colorVar }: { id: TrendMetricId; colorVar: string }) {
   return (
-    <span className="trend-metric-icon" style={{ ['--trend-color' as string]: `var(${colorVar})` }}>
+    <BlobIcon colorVar={colorVar}>
       {METRIC_ICONS[id]}
-    </span>
+    </BlobIcon>
   )
 }

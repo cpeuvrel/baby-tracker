@@ -1,7 +1,7 @@
 import { addDoc, onSnapshot, updateDoc } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fakeSnapshot } from '../test/fakeSnapshot'
-import { addBaby, subscribeToBabies, updateBaby, updateNighttimeHours } from './babies'
+import { addBaby, subscribeToBabies, updateBaby, updateBabyPhoto, updateNighttimeHours } from './babies'
 
 vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
@@ -31,7 +31,7 @@ describe('babies repository', () => {
     subscribeToBabies('h1', onChange)
 
     expect(onChange).toHaveBeenCalledWith([
-      { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null, nighttimeHours: null },
+      { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null, nighttimeHours: null, photoDataUrl: null },
     ])
   })
 
@@ -63,6 +63,7 @@ describe('babies repository', () => {
         birthDate: '2025-06-01',
         sex: null,
         nighttimeHours: { start: '21:00', end: '06:30' },
+        photoDataUrl: null,
       },
     ])
   })
@@ -97,5 +98,15 @@ describe('babies repository', () => {
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
     expect(payload).toEqual({ nighttimeHours: { start: '21:00', end: '06:30' } })
+  })
+
+  it('stores or clears the photo of a baby', async () => {
+    await updateBabyPhoto('h1', 'b1', 'data:image/jpeg;base64,AAA')
+    await updateBabyPhoto('h1', 'b1', null)
+
+    expect(updateDocMock.mock.calls.map(([, payload]) => payload)).toEqual([
+      { photoDataUrl: 'data:image/jpeg;base64,AAA' },
+      { photoDataUrl: null },
+    ])
   })
 })

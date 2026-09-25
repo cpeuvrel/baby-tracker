@@ -34,6 +34,16 @@ export function dayOfMonth(key: string): number {
   return Number(key.slice(8, 10))
 }
 
+/**
+ * Start of the Activity cards' window: yesterday at the start of the baby's
+ * night (e.g. 20:00), so last night's sleep and feeds still show today.
+ */
+export function activityWindowStart(now: Date, nightStart: string): Date {
+  const { year, month, day } = zonedParts(now)
+  const [hour, minute] = nightStart.split(':').map(Number)
+  return zonedTime(year, month, day - 1, hour, minute)
+}
+
 export function isToday(iso: string, now: Date): boolean {
   return dayKey(new Date(iso)) === dayKey(now)
 }

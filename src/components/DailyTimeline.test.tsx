@@ -92,7 +92,7 @@ describe('DailyTimeline', () => {
     render(<DailyTimeline />)
 
     // 18:00 UTC is 19:00 in Paris (UTC+1 in March), whatever the device's time zone
-    expect(screen.getByText(/07:00 PM Bottle/)).toBeInTheDocument()
+    expect(screen.getByText(/19:00 Bottle/)).toBeInTheDocument()
     expect(screen.getByText('120 mL')).toBeInTheDocument()
     expect(screen.getByText(/Wet \+ Dirty/)).toBeInTheDocument()
     expect(screen.getByText(/Vitamin D/)).toBeInTheDocument()
