@@ -1,4 +1,4 @@
-import { doc, writeBatch, type CollectionReference } from 'firebase/firestore'
+import { doc, getDocs, writeBatch, type CollectionReference } from 'firebase/firestore'
 import { db } from './firebase'
 
 const MAX_BATCH_SIZE = 450
@@ -16,4 +16,18 @@ export async function batchInsert<T>(
     }
     await batch.commit()
   }
+}
+
+/** Deletes every document in a collection, returning how many were removed. */
+export async function batchDeleteAll(collectionRef: CollectionReference): Promise<number> {
+  const snapshot = await getDocs(collectionRef)
+  for (let i = 0; i < snapshot.docs.length; i += MAX_BATCH_SIZE) {
+    const chunk = snapshot.docs.slice(i, i + MAX_BATCH_SIZE)
+    const batch = writeBatch(db)
+    for (const docSnap of chunk) {
+      batch.delete(docSnap.ref)
+    }
+    await batch.commit()
+  }
+  return snapshot.docs.length
 }

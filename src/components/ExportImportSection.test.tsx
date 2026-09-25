@@ -5,12 +5,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import { ExportImportSection } from './ExportImportSection'
 
+const deleteAllBabyData = vi.fn()
 const exportBabyData = vi.fn()
 const importBabyData = vi.fn()
 const parseImportFile = vi.fn()
 const serializeBabyExport = vi.fn()
 
 vi.mock('../lib/babyExport', () => ({
+  deleteAllBabyData: (...args: unknown[]) => deleteAllBabyData(...args),
   exportBabyData: (...args: unknown[]) => exportBabyData(...args),
   importBabyData: (...args: unknown[]) => importBabyData(...args),
   parseImportFile: (...args: unknown[]) => parseImportFile(...args),
@@ -30,6 +32,7 @@ const emptyExport = {
 
 describe('ExportImportSection', () => {
   beforeEach(() => {
+    deleteAllBabyData.mockReset()
     exportBabyData.mockReset()
     importBabyData.mockReset()
     parseImportFile.mockReset()
@@ -147,5 +150,39 @@ describe('ExportImportSection', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Unrecognized CSV file format')
     expect(importBabyData).not.toHaveBeenCalled()
+  })
+
+  it('deletes all data after confirmation and shows how many entries were removed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteAllBabyData.mockResolvedValue(12)
+    const user = userEvent.setup()
+
+    render(<ExportImportSection householdId="h1" baby={baby} />)
+    await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Léo'))
+    expect(deleteAllBabyData).toHaveBeenCalledWith('h1', 'b1')
+    expect(await screen.findByRole('status')).toHaveTextContent('12 entries deleted.')
+  })
+
+  it('deletes nothing when the confirmation is cancelled', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+
+    render(<ExportImportSection householdId="h1" baby={baby} />)
+    await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
+
+    expect(deleteAllBabyData).not.toHaveBeenCalled()
+  })
+
+  it('shows an error message when deleting fails', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteAllBabyData.mockRejectedValue(new Error('boom'))
+    const user = userEvent.setup()
+
+    render(<ExportImportSection householdId="h1" baby={baby} />)
+    await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Delete failed.')
   })
 })
