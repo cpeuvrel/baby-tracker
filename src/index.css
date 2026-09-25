@@ -877,6 +877,19 @@ main {
   border: 1px solid var(--border);
 }
 
+.metric-calendar-column {
+  display: block;
+  width: 100%;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.metric-calendar-column.is-selected {
+  background: color-mix(in srgb, var(--button-add) 15%, var(--surface));
+  border-color: var(--button-add);
+}
+
 .week-chart-gridline {
   position: absolute;
   left: 0;

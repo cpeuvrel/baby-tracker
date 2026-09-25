@@ -10,9 +10,28 @@ interface MetricCalendarProps {
   colorVar: string
   intervals?: Array<{ start: Date; end: Date }>
   instants?: Date[]
+  /** The selected day, or null when none is. */
+  selectedKey: string | null
+  /** Called with the tapped day's key, or null when the selected day is tapped again. */
+  onSelectDay: (dayKey: string | null) => void
 }
 
-export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: MetricCalendarProps) {
+function formatLongDay(key: string): string {
+  return formatDate(parseDayKey(key), { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+/**
+ * One 24-hour column per day with the metric's entries drawn at their time of day.
+ * Tapping a day (its date or its column) selects it; tapping it again clears the selection.
+ */
+export function MetricCalendar({
+  dayKeys,
+  colorVar,
+  intervals,
+  instants,
+  selectedKey,
+  onSelectDay,
+}: MetricCalendarProps) {
   const blocksByDay = useMemo(
     () => (intervals ? buildWeekBlocks(dayKeys, intervals) : {}),
     [dayKeys, intervals],
@@ -22,6 +41,7 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
     [dayKeys, instants],
   )
   const todayKey = dayKey(new Date())
+  const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
 
   return (
     <div className="week-chart-grid" aria-label="Metric calendar">
@@ -32,13 +52,26 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
       </div>
       {dayKeys.map((key) => {
         const date = parseDayKey(key)
+        const isSelected = key === selectedKey
         return (
           <div key={key} className="week-chart-day">
-            <div className={`week-chart-day-header${key === todayKey ? ' is-today' : ''}`}>
+            <button
+              type="button"
+              className={`week-chart-day-header${key === todayKey ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
+              aria-label={formatLongDay(key)}
+              aria-pressed={isSelected}
+              onClick={() => toggleDay(key)}
+            >
               <span>{formatDate(date, { weekday: 'short' }).slice(0, 2)}</span>
               <span>{dayOfMonth(key)}</span>
-            </div>
-            <div className="week-chart-column">
+            </button>
+            <button
+              type="button"
+              className={`week-chart-column metric-calendar-column${isSelected ? ' is-selected' : ''}`}
+              aria-label={`${formatLongDay(key)} timeline`}
+              aria-pressed={isSelected}
+              onClick={() => toggleDay(key)}
+            >
               {HOUR_LABELS.slice(1, -1).map((hour) => (
                 <span
                   key={hour}
@@ -64,7 +97,7 @@ export function MetricCalendar({ dayKeys, colorVar, intervals, instants }: Metri
                   style={{ top: `${mark.atFraction * 100}%`, background: `var(${colorVar})` }}
                 />
               ))}
-            </div>
+            </button>
           </div>
         )
       })}
