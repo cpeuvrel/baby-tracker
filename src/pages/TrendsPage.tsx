@@ -12,7 +12,6 @@ import {
   formatMetricValue,
   TREND_METRICS,
 } from '../lib/trendMetrics'
-import { GrowthPage } from './GrowthPage'
 
 const RANGE_OPTIONS = [
   { days: 1, label: '1d' },
@@ -84,8 +83,6 @@ export function TrendsPage() {
           })}
         </section>
       ))}
-
-      <GrowthPage />
     </div>
   )
 }
