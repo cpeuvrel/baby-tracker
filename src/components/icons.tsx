@@ -130,3 +130,70 @@ export function ListViewIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function BibIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M8 3.5a4 4 0 0 0 8 0" />
+      <path d="M8 3.5C5 4.5 4 7.5 4 11a8 8 0 0 0 16 0c0-3.5-1-6.5-4-7.5" />
+      <path d="M9.5 9a2.5 2.5 0 0 0 5 0" />
+    </Icon>
+  )
+}
+
+export function BottleSizeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M10 2.5h4v2.5h-4z" />
+      <path d="M9 5h6l1.5 3v11a2.5 2.5 0 0 1-2.5 2.5h-4A2.5 2.5 0 0 1 7.5 19V8L9 5Z" />
+      <path d="M10 12h3M10 15h4M10 18h3" />
+    </Icon>
+  )
+}
+
+export function ClockIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="8.5" />
+      <path d="M12 7.5V12l3 2" />
+    </Icon>
+  )
+}
+
+export function SunIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 17a6 6 0 0 1 12 0Z" />
+      <path d="M12 4v3M4.5 9.5l2 1.5M19.5 9.5l-2 1.5M2.5 17h2M19.5 17h2" />
+    </Icon>
+  )
+}
+
+export function StarsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m7 3 1.2 2.6 2.8.3-2.1 1.9.6 2.8L7 9.2 4.5 10.6l.6-2.8L3 5.9l2.8-.3L7 3Z" />
+      <path d="m17 7 1.2 2.6 2.8.3-2.1 1.9.6 2.8-2.5-1.4-2.5 1.4.6-2.8-2.1-1.9 2.8-.3L17 7Z" />
+      <path d="m9 13 1.2 2.6 2.8.3-2.1 1.9.6 2.8L9 19.2l-2.5 1.4.6-2.8L5 15.9l2.8-.3L9 13Z" />
+    </Icon>
+  )
+}
+
+export function ZzzIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M13 4h7l-7 8h7" />
+      <path d="M4 10h5l-5 5h5" />
+      <path d="M9 17h4l-4 4h4" />
+    </Icon>
+  )
+}
+
+export function HourglassIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 3h12M6 21h12" />
+      <path d="M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9" />
+    </Icon>
+  )
+}

@@ -64,8 +64,8 @@ describe('TrendDetailPage', () => {
   it('shows the metric title and headline', () => {
     renderPage('feedSessions')
 
-    expect(screen.getByRole('heading', { name: 'Bottles' })).toBeInTheDocument()
-    expect(screen.getByText(/bottles \/ day/)).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Feed Sessions' })).toBeInTheDocument()
+    expect(screen.getByText(/sessions per day/)).toBeInTheDocument()
   })
 
   it('navigates back to the trends list', async () => {
@@ -108,16 +108,16 @@ describe('TrendDetailPage', () => {
     const { container } = renderPage('feedSessions')
     await user.click(screen.getByRole('button', { name: 'Graph' }))
     const headline = container.querySelector('.detail-headline')
-    expect(headline).toHaveTextContent('bottles / day')
+    expect(headline).toHaveTextContent('sessions per day')
 
     const yesterday = addDays(now, -1)
     const columnLabel = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
-    const column = screen.getByRole('button', { name: `${columnLabel}: 0.0` })
+    const column = screen.getByRole('button', { name: `${columnLabel}: 0` })
     await user.click(column)
 
     expect(screen.getByRole('button', { name: 'Graph' })).toHaveAttribute('aria-pressed', 'true')
     expect(column).toHaveAttribute('aria-pressed', 'true')
-    expect(headline).toHaveTextContent(/^0 bottles$/)
+    expect(headline).toHaveTextContent(/^0 sessions$/)
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
     const heading = screen.getByRole('heading', {
@@ -134,12 +134,12 @@ describe('TrendDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Graph' }))
 
     const columnLabel = formatDate(addDays(now, -1), { weekday: 'short', month: 'short', day: 'numeric' })
-    const column = screen.getByRole('button', { name: `${columnLabel}: 0.0` })
+    const column = screen.getByRole('button', { name: `${columnLabel}: 0` })
     await user.click(column)
     await user.click(column)
 
     expect(column).toHaveAttribute('aria-pressed', 'false')
-    expect(container.querySelector('.detail-headline')).toHaveTextContent('bottles / day')
+    expect(container.querySelector('.detail-headline')).toHaveTextContent('sessions per day')
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
     expect(container.querySelector('.is-focused')).toBeNull()
@@ -154,10 +154,10 @@ describe('TrendDetailPage', () => {
     const label = formatDate(yesterday, { weekday: 'short', month: 'short', day: 'numeric' })
     await user.click(screen.getByRole('button', { name: `${label} timeline` }))
     expect(screen.getByRole('button', { name: label })).toHaveAttribute('aria-pressed', 'true')
-    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 bottles$/)
+    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 sessions$/)
 
     await user.click(screen.getByRole('button', { name: 'Graph' }))
-    expect(screen.getByRole('button', { name: `${label}: 0.0` })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('button', { name: `${label}: 0` })).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
     expect(
@@ -166,7 +166,7 @@ describe('TrendDetailPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Calendar' }))
     await user.click(screen.getByRole('button', { name: label }))
-    expect(container.querySelector('.detail-headline')).toHaveTextContent('bottles / day')
+    expect(container.querySelector('.detail-headline')).toHaveTextContent('sessions per day')
   })
 
   it('selects a day from the date header', async () => {
@@ -181,14 +181,14 @@ describe('TrendDetailPage', () => {
     await user.click(headerButton)
     expect(headerButton).toHaveAttribute('aria-pressed', 'true')
     expect(headerButton).toHaveClass('is-selected')
-    expect(screen.getByRole('button', { name: `${label}: 0.0` })).toHaveAttribute('aria-pressed', 'true')
-    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent(`${label}0.0`)
-    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 bottles$/)
+    expect(screen.getByRole('button', { name: `${label}: 0` })).toHaveAttribute('aria-pressed', 'true')
+    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent(`${label}0`)
+    expect(container.querySelector('.detail-headline')).toHaveTextContent(/^0 sessions$/)
 
     await user.click(headerButton)
     expect(headerButton).toHaveAttribute('aria-pressed', 'false')
-    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent('Bottle')
-    expect(container.querySelector('.detail-headline')).toHaveTextContent('bottles / day')
+    expect(container.querySelector('.metric-graph-legend')).toHaveTextContent('Feed')
+    expect(container.querySelector('.detail-headline')).toHaveTextContent('sessions per day')
   })
 
   it('pages to earlier periods but never past today', async () => {

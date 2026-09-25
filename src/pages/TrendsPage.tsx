@@ -1,16 +1,16 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
+import { TrendMetricIcon } from '../components/TrendMetricIcon'
 import { TrendRow } from '../components/TrendRow'
-import { DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
-import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
+import { computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
-  computeMetricSeries,
+  computeMetricBreakdown,
+  computeMetricSummary,
   formatMetricHeadline,
   formatMetricValue,
   TREND_METRICS,
-  type TrendKind,
 } from '../lib/trendMetrics'
 import { GrowthPage } from './GrowthPage'
 
@@ -19,12 +19,6 @@ const RANGE_OPTIONS = [
   { days: 7, label: '7d' },
   { days: 14, label: '14d' },
 ]
-
-const KIND_ICONS: Record<TrendKind, ReactNode> = {
-  feeding: <FeedIcon />,
-  sleep: <SleepIcon />,
-  diaper: <DiaperIcon />,
-}
 
 const SECTIONS = Array.from(new Set(TREND_METRICS.map((metric) => metric.section)))
 
@@ -45,8 +39,8 @@ export function TrendsPage() {
   const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
 
   return (
-    <div>
-      <div role="group" aria-label="Period">
+    <div className="trends">
+      <div role="group" aria-label="Period" className="trend-range">
         {RANGE_OPTIONS.map((option) => (
           <button
             key={option.days}
@@ -60,31 +54,35 @@ export function TrendsPage() {
       </div>
 
       {SECTIONS.map((section) => (
-        <div key={section}>
-          <h2 className="trend-section-title">{section}</h2>
+        <section key={section} className="trend-section" aria-labelledby={`trend-section-${section}`}>
+          <h2 id={`trend-section-${section}`} className="trend-section-title">
+            {section}
+          </h2>
           {TREND_METRICS.filter((metric) => metric.section === section).map((metric) => {
-            const currentAvg = averageOfPoints(
-              computeMetricSeries(metric.id, currentDayKeys, current, nightRange),
-            )
-            const previousAvg = averageOfPoints(
-              computeMetricSeries(metric.id, previousDayKeys, previous, nightRange),
-            )
-            const delta = computeDelta(currentAvg, previousAvg)
+            const currentValue = computeMetricSummary(metric.id, currentDayKeys, current, nightRange)
+            const previousValue = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange)
+            const delta = computeDelta(currentValue, previousValue)
+            const deltaLabel = formatMetricValue(metric.id, Math.abs(delta.value))
+            const shownDelta = deltaLabel === formatMetricValue(metric.id, 0) ? { ...delta, direction: 'flat' as const } : delta
 
             return (
               <TrendRow
                 key={metric.id}
                 to={`/trends/${metric.id}`}
-                icon={KIND_ICONS[metric.kind]}
+                icon={<TrendMetricIcon id={metric.id} colorVar={metric.colorVar} />}
                 title={metric.title}
-                subtitle={formatMetricHeadline(metric.id, currentAvg)}
-                delta={delta}
-                deltaLabel={formatMetricValue(metric.id, Math.abs(delta.value))}
+                subtitle={formatMetricHeadline(metric.id, currentValue)}
+                delta={shownDelta}
+                deltaLabel={deltaLabel}
                 colorVar={metric.colorVar}
+                breakdown={computeMetricBreakdown(metric.id, currentDayKeys, current).map((item) => ({
+                  ...item,
+                  value: formatMetricValue(metric.id, item.value),
+                }))}
               />
             )
           })}
-        </div>
+        </section>
       ))}
 
       <GrowthPage />

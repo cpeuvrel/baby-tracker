@@ -11,11 +11,13 @@ import { TrendEntriesList } from '../components/TrendEntriesList'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
 import { addDays } from '../lib/appTime'
-import { averageOfPoints, computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
+import { computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
+  chartStyleOf,
   computeAxisTicks,
   computeMetricSeries,
+  computeMetricSummary,
   formatMetricAxisValue,
   formatMetricDayHeadline,
   formatMetricHeadline,
@@ -71,10 +73,8 @@ export function TrendDetailPage() {
   const currentDayKeys = dayKeysInRange(currentRange)
   const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
   const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange)
-  const currentAvg = averageOfPoints(series)
-  const previousAvg = averageOfPoints(
-    computeMetricSeries(metric.id, dayKeysInRange(previousRange), previous, nightRange),
-  )
+  const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange)
+  const previousAvg = computeMetricSummary(metric.id, dayKeysInRange(previousRange), previous, nightRange)
   const delta = computeDelta(currentAvg, previousAvg)
   const selectedPoint = series.find((point) => point.dayKey === selectedDayKey)
 
@@ -150,7 +150,7 @@ export function TrendDetailPage() {
           data={series}
           average={currentAvg}
           ticks={computeAxisTicks(metric.id, Math.max(currentAvg, ...series.map((point) => point.value)))}
-          chartStyle={metric.chartStyle}
+          chartStyle={chartStyleOf(metric)}
           colorVar={metric.colorVar}
           icon={KIND_ICONS[metric.kind]}
           seriesLabel={metric.seriesLabel}
@@ -200,8 +200,7 @@ export function TrendDetailPage() {
             {formatMetricValue(metric.id, Math.abs(delta.value))}
           </p>
           <p className="detail-delta-caption">
-            {delta.direction === 'up' ? 'More' : metric.id === 'sleepTotal' ? 'Less' : 'Fewer'} {metric.unitWord}{' '}
-            than the previous {days === 1 ? 'day' : `${days} days`}
+            {metric.deltaWords[delta.direction === 'up' ? 0 : 1]} than the previous {days === 1 ? 'day' : `${days} days`}
           </p>
         </div>
       )}

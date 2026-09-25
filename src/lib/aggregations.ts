@@ -8,7 +8,8 @@ function parseHour(time: string): number {
   return Number(time.split(':')[0])
 }
 
-function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
+/** Whether `startedAt` falls in the nighttime hours (compared by hour, in Paris time). */
+export function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
   const { hour } = zonedParts(new Date(startedAt))
   const startHour = parseHour(nightRange.start)
   const endHour = parseHour(nightRange.end)

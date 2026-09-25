@@ -13,6 +13,7 @@
   --danger: #b3261e;
   --danger-bg: #fbeaea;
   --card-shadow: 0 4px 10px rgba(31, 58, 92, 0.08);
+  --trend-row-bg: var(--surface);
 
   /* Category bands: fixed colors, don't change with the theme
      (confirmed on the real app — only the page background goes dark). */
@@ -21,6 +22,8 @@
   --category-growth: #b7d98f;
   --category-medication: #c7c0e6;
   --category-diaper: #e8dfc8;
+  /* Text on a category-colored fill (Trends delta pills). */
+  --on-category: #1f3a5c;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --serif: Georgia, 'Times New Roman', serif;
@@ -48,6 +51,7 @@
     --danger: #f2b8b5;
     --danger-bg: #3a2222;
     --card-shadow: none;
+    --trend-row-bg: #282d40;
   }
 }
 
@@ -914,56 +918,146 @@ main {
   transform: translateY(-50%);
 }
 
-/* Trends screen: list of metrics per section */
+/* Trends screen: list of metrics per section, full-bleed bands like the reference app:
+   a section band on the page background, rows on a slightly raised surface. */
+.trend-range {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+[role='group'].trend-range button {
+  min-width: 56px;
+  padding: 6px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+}
+
+[role='group'].trend-range button[aria-pressed='true'] {
+  background: var(--trend-row-bg);
+  border-color: var(--text-muted);
+  color: var(--text);
+}
+
+.trend-section {
+  margin: 0 -16px 24px;
+  background: var(--bg);
+}
+
 .trend-section-title {
   font-family: var(--serif);
-  font-size: 16px;
-  margin: 20px 0 8px;
+  font-size: 30px;
+  font-weight: 400;
+  margin: 0;
+  padding: 20px 16px 12px;
+  border-bottom: 1px solid var(--border);
 }
 
 .trend-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto;
+  grid-template-areas:
+    'icon title chevron'
+    'icon subtitle delta'
+    'icon breakdown breakdown';
+  column-gap: 14px;
+  row-gap: 4px;
   align-items: center;
-  gap: 12px;
-  padding: 10px 4px;
+  padding: 16px;
+  background: var(--trend-row-bg);
   border-bottom: 1px solid var(--border);
   color: var(--text);
   text-decoration: none;
 }
 
-.trend-row:last-child {
-  border-bottom: none;
-}
-
 .trend-row-icon {
-  flex-shrink: 0;
+  grid-area: icon;
+  align-self: start;
   display: flex;
 }
 
-.trend-row-text {
+.trend-metric-icon {
+  position: relative;
   display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
+  width: 52px;
+  height: 52px;
+  color: var(--text);
+}
+
+/* Soft blob of the category color behind the line icon. */
+.trend-metric-icon::before {
+  content: '';
+  position: absolute;
+  inset: 20% 4% 4% 26%;
+  border-radius: 46% 54% 42% 58% / 55% 45% 55% 45%;
+  background: var(--trend-color);
+}
+
+.trend-metric-icon svg {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.4;
 }
 
 .trend-row-title {
+  grid-area: title;
   font-family: var(--serif);
-  font-size: 15px;
+  font-size: 21px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.trend-row-subtitle {
-  font-size: 13px;
+.trend-row-chevron {
+  grid-area: chevron;
+  justify-self: end;
+  font-size: 24px;
+  line-height: 1;
   color: var(--text-muted);
 }
 
+.trend-row-subtitle {
+  grid-area: subtitle;
+  font-size: 16px;
+}
+
 .trend-row-delta {
-  flex-shrink: 0;
-  font-size: 12px;
+  grid-area: delta;
+  justify-self: end;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--accent-contrast);
-  border-radius: 999px;
-  padding: 3px 8px;
+  white-space: nowrap;
+  color: var(--on-category);
+  border-radius: 8px;
+  padding: 3px 10px;
+}
+
+.trend-row-breakdown {
+  grid-area: breakdown;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.trend-row-breakdown-item {
+  display: grid;
+  grid-template-columns: 18px minmax(96px, auto) 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.trend-row-breakdown-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
 }
 
 /* Metric detail screen (Trends > sub-screen) */
