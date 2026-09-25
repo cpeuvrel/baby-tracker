@@ -155,8 +155,22 @@ const HEADLINE_SUFFIX: Record<TrendMetricId, string> = {
   diaperCount: 'diapers / day',
 }
 
+const DAY_HEADLINE_SUFFIX: Record<TrendMetricId, string> = {
+  feedSessions: 'bottles',
+  feedVolume: '',
+  feedAvgVolume: 'average',
+  sleepTotal: '',
+  nightWakings: 'wakings',
+  diaperCount: 'diapers',
+}
+
 export function formatMetricHeadline(id: TrendMetricId, average: number): string {
   return `${formatMetricValue(id, average)} ${HEADLINE_SUFFIX[id]}`
+}
+
+/** Headline for a single selected day, e.g. "5 bottles" or "620 mL". */
+export function formatMetricDayHeadline(id: TrendMetricId, value: number): string {
+  return `${formatMetricValue(id, value)} ${DAY_HEADLINE_SUFFIX[id]}`.trim()
 }
 
 /** Short tick label for the Graph view's y axis. */

@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useRef, type PointerEvent, type ReactNode } from 'react'
 import { formatDate } from '../lib/appTime'
 import type { DailyPoint } from '../lib/aggregations'
 import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
@@ -14,8 +14,10 @@ interface MetricGraphProps {
   seriesLabel: string
   formatValue: (value: number) => string
   formatTick: (value: number) => string
-  /** Called with the day key when a day's column is tapped. */
-  onSelectDay: (dayKey: string) => void
+  /** The selected day, or null to show the period's average. */
+  selectedKey: string | null
+  /** Called with the tapped day's key, or null when the selected day is tapped again. */
+  onSelectDay: (dayKey: string | null) => void
   /** Show the previous / next period (swipe or arrows); omitted when there is none. */
   onPrevious?: () => void
   onNext?: () => void
@@ -38,8 +40,8 @@ function formatLongDay(key: string): string {
 /**
  * Per-day graph of a trend metric: one column per day under a weekday/date header,
  * a plain bar for quantities or one block per unit for counts, and a dashed AVG line.
- * Tapping a date in the header selects that day (highlighted, value shown in the legend);
- * tapping a day's column calls `onSelectDay` (the page opens that day's entries).
+ * Tapping a day (its date in the header or its column) selects it (highlighted, value shown
+ * in the legend); tapping it again clears the selection.
  * Swiping right / left (or the arrows) moves to the previous / next period.
  */
 export function MetricGraph({
@@ -52,11 +54,11 @@ export function MetricGraph({
   seriesLabel,
   formatValue,
   formatTick,
+  selectedKey,
   onSelectDay,
   onPrevious,
   onNext,
 }: MetricGraphProps) {
-  const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const swipeStartX = useRef<number | null>(null)
   const swiped = useRef(false)
   const todayKey = dayKey(new Date())
@@ -80,6 +82,7 @@ export function MetricGraph({
     if (dx > 0) onPrevious?.()
     else onNext?.()
   }
+  const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
   /** Ignores the click that ends a swipe. */
   const unlessSwiped = (action: () => void) => () => {
     if (swiped.current) {
@@ -120,7 +123,7 @@ export function MetricGraph({
               }`}
               aria-label={formatLongDay(point.dayKey)}
               aria-pressed={point.dayKey === selectedKey}
-              onClick={unlessSwiped(() => setSelectedKey(point.dayKey === selectedKey ? null : point.dayKey))}
+              onClick={unlessSwiped(() => toggleDay(point.dayKey))}
             >
               <span>{formatWeekday(point.dayKey)}</span>
               <span className="metric-graph-day-number">{dayOfMonth(point.dayKey)}</span>
@@ -149,7 +152,8 @@ export function MetricGraph({
               type="button"
               className={`metric-graph-column${point.dayKey === selectedKey ? ' is-selected' : ''}`}
               aria-label={`${formatLongDay(point.dayKey)}: ${formatValue(point.value)}`}
-              onClick={unlessSwiped(() => onSelectDay(point.dayKey))}
+              aria-pressed={point.dayKey === selectedKey}
+              onClick={unlessSwiped(() => toggleDay(point.dayKey))}
             >
               {chartStyle === 'bar' ? (
                 point.value > 0 && (
