@@ -28,6 +28,7 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility } from '../hooks/useActivityVisibility'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useNow } from '../hooks/useNow'
 import { useRecentBathEntries } from '../hooks/useRecentBathEntries'
 import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
@@ -109,6 +110,8 @@ export function ActivityPage() {
   const [modal, setModal] = useState<ModalState>(null)
   const [unit] = useUnitPreference()
   const { isVisible } = useActivityVisibility()
+  // Keeps "… ago" labels and the recent-entries window current without a reload.
+  const now = useNow()
 
   const activeSleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const recentSleep = useRecentSleepEntries(
@@ -137,7 +140,6 @@ export function ActivityPage() {
 
   if (!household || !selectedBaby || !user) return null
 
-  const now = new Date()
   const nightStart = selectedBaby.nighttimeHours?.start ?? DEFAULT_NIGHTTIME_HOURS.start
   const windowStart = activityWindowStart(now, nightStart)
   const historyLabel = `Entries before ${nightStart}`
