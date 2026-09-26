@@ -69,4 +69,28 @@ describe('MetricCalendar', () => {
     await user.click(selected[1])
     expect(onSelectDay).toHaveBeenLastCalledWith(null)
   })
+
+  it('starts each column at dayStart the day before, for sleep days that start at night', () => {
+    render(
+      <MetricCalendar
+        dayKeys={dayKeys}
+        colorVar="--category-sleep"
+        selectedKey={null}
+        onSelectDay={() => {}}
+        dayStart="20:00"
+        intervals={[
+          // 21:00 on the 3rd → 07:00 on the 4th: one block at the top of the 4th's column.
+          { start: new Date('2026-03-03T21:00:00+01:00'), end: new Date('2026-03-04T07:00:00+01:00') },
+        ]}
+      />,
+    )
+
+    const columns = document.querySelectorAll('.week-chart-column')
+    expect(columns[0].querySelectorAll('.week-chart-block')).toHaveLength(0)
+    const block = columns[1].querySelector<HTMLElement>('.week-chart-block')
+    expect(parseFloat(block!.style.top)).toBeCloseTo((1 / 24) * 100)
+    expect(parseFloat(block!.style.height)).toBeCloseTo((10 / 24) * 100)
+    expect(screen.getAllByText('20')).toHaveLength(2)
+    expect(screen.getByText('02')).toBeInTheDocument()
+  })
 })

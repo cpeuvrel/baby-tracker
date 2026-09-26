@@ -11,6 +11,7 @@ import {
   formatMetricHeadline,
   formatMetricValue,
   TREND_METRICS,
+  trendFetchRange,
 } from '../lib/trendMetrics'
 
 const RANGE_OPTIONS = [
@@ -28,14 +29,24 @@ export function TrendsPage() {
   const currentRange = days === 1 ? dayRange(now) : lastNDaysRange(now, days)
   const previousRange = precedingRange(currentRange)
 
-  const current = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, currentRange)
-  const previous = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, previousRange)
+  const nightRange = selectedBaby?.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
+
+  // Loaded from the night before each period, as a period's first sleep day starts then.
+  const current = useEntriesInRange(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    trendFetchRange(currentRange, nightRange),
+  )
+  const previous = useEntriesInRange(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    trendFetchRange(previousRange, nightRange),
+  )
 
   if (!household || !selectedBaby) return null
 
   const currentDayKeys = dayKeysInRange(currentRange)
   const previousDayKeys = dayKeysInRange(previousRange)
-  const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
 
   return (
     <div className="trends">

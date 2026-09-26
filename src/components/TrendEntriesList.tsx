@@ -9,6 +9,8 @@ type TrendEntriesListProps = {
   colorVar: string
   /** Day (from the Graph view) to scroll to and highlight. */
   focusDayKey?: string | null
+  /** Day an entry is listed under (calendar day by default; sleep days start at night). */
+  dayKeyOf?: (iso: string) => string
 } & (
   | { kind: 'feeding'; entries: FeedingEntry[]; onSelect: (entry: FeedingEntry) => void }
   | { kind: 'sleep'; entries: SleepEntry[]; onSelect: (entry: SleepEntry) => void }
@@ -92,6 +94,7 @@ const ICONS: Record<TrendEntriesListProps['kind'], () => ReactNode> = {
 export function TrendEntriesList(props: TrendEntriesListProps) {
   const focusRef = useRef<HTMLElement>(null)
   const { focusDayKey } = props
+  const dayKeyOf = props.dayKeyOf ?? ((iso: string) => dayKey(new Date(iso)))
 
   useEffect(() => {
     focusRef.current?.scrollIntoView?.({ block: 'start' })
@@ -103,7 +106,7 @@ export function TrendEntriesList(props: TrendEntriesListProps) {
 
   const groups: { key: string; items: ListItem[] }[] = []
   for (const item of items) {
-    const key = dayKey(new Date(item.at))
+    const key = dayKeyOf(item.at)
     const last = groups[groups.length - 1]
     if (last?.key === key) last.items.push(item)
     else groups.push({ key, items: [item] })
