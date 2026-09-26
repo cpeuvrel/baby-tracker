@@ -470,17 +470,83 @@ export function parseImportFile(
   throw new Error('Unrecognized CSV file format.')
 }
 
+function timeKey(iso: string | null): string {
+  return iso ? String(new Date(iso).getTime()) : ''
+}
+
+// An imported entry is a duplicate when an entry of the same kind already exists at the same
+// time with the same values. Notes and authorship are ignored, so re-importing a file (or an
+// overlapping one) never creates copies, even if notes were edited in the app since.
+const feedingKey = (e: FeedingEntry) =>
+  [e.type, timeKey(e.occurredAt), e.volumeMl ?? '', e.foodType ?? ''].join('|')
+const sleepKey = (e: SleepEntry) => [timeKey(e.startedAt), timeKey(e.endedAt)].join('|')
+const diaperKey = (e: DiaperEntry) => [e.type, timeKey(e.occurredAt)].join('|')
+const growthKey = (e: GrowthEntry) =>
+  [timeKey(e.measuredAt), e.weightG ?? '', e.heightMm ?? '', e.headCircumferenceMm ?? ''].join('|')
+const medicationKey = (e: MedicationEntry) =>
+  [e.name.trim().toLowerCase(), timeKey(e.givenAt), e.dose.trim().toLowerCase()].join('|')
+const bathKey = (e: BathEntry) => timeKey(e.occurredAt)
+
+/** Keeps the incoming entries that match neither an existing entry nor an earlier incoming one. */
+function withoutDuplicates<T>(incoming: T[], existing: T[], keyOf: (entry: T) => string): T[] {
+  const seen = new Set(existing.map(keyOf))
+  return incoming.filter((entry) => {
+    const key = keyOf(entry)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
+export interface ImportResult {
+  imported: number
+  duplicates: number
+}
+
+/** Imports the entries into the baby, ignoring those already logged (see the keys above). */
 export async function importBabyData(
   householdId: string,
   babyId: string,
   data: BabyExport,
-): Promise<void> {
-  await Promise.all([
-    importFeedingEntries(householdId, babyId, data.feedingEntries),
-    importSleepEntries(householdId, babyId, data.sleepEntries),
-    importDiaperEntries(householdId, babyId, data.diaperEntries),
-    importGrowthEntries(householdId, babyId, data.growthEntries),
-    importMedicationEntries(householdId, babyId, data.medicationEntries),
-    importBathEntries(householdId, babyId, data.bathEntries),
+): Promise<ImportResult> {
+  const [feeding, sleep, diaper, growth, medication, bath] = await Promise.all([
+    getAllFeedingEntries(householdId, babyId),
+    getAllSleepEntries(householdId, babyId),
+    getAllDiaperEntries(householdId, babyId),
+    getAllGrowthEntries(householdId, babyId),
+    getAllMedicationEntries(householdId, babyId),
+    getAllBathEntries(householdId, babyId),
   ])
+
+  const fresh: BabyExport = {
+    feedingEntries: withoutDuplicates(data.feedingEntries, feeding, feedingKey),
+    sleepEntries: withoutDuplicates(data.sleepEntries, sleep, sleepKey),
+    diaperEntries: withoutDuplicates(data.diaperEntries, diaper, diaperKey),
+    growthEntries: withoutDuplicates(data.growthEntries, growth, growthKey),
+    medicationEntries: withoutDuplicates(data.medicationEntries, medication, medicationKey),
+    bathEntries: withoutDuplicates(data.bathEntries, bath, bathKey),
+  }
+
+  await Promise.all([
+    importFeedingEntries(householdId, babyId, fresh.feedingEntries),
+    importSleepEntries(householdId, babyId, fresh.sleepEntries),
+    importDiaperEntries(householdId, babyId, fresh.diaperEntries),
+    importGrowthEntries(householdId, babyId, fresh.growthEntries),
+    importMedicationEntries(householdId, babyId, fresh.medicationEntries),
+    importBathEntries(householdId, babyId, fresh.bathEntries),
+  ])
+
+  const imported = countEntries(fresh)
+  return { imported, duplicates: countEntries(data) - imported }
+}
+
+export function countEntries(data: BabyExport): number {
+  return (
+    data.feedingEntries.length +
+    data.sleepEntries.length +
+    data.diaperEntries.length +
+    data.growthEntries.length +
+    data.medicationEntries.length +
+    data.bathEntries.length
+  )
 }

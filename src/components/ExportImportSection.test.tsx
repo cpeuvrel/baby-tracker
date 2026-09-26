@@ -107,7 +107,7 @@ describe('ExportImportSection', () => {
       data: { ...emptyExport, feedingEntries: [{}, {}] },
       skipped: 0,
     })
-    importBabyData.mockResolvedValue(undefined)
+    importBabyData.mockResolvedValue({ imported: 2, duplicates: 0 })
     const user = userEvent.setup()
     const file = new File(['category,at\nfeeding,2026-01-01'], 'export.csv', { type: 'text/csv' })
 
@@ -124,7 +124,7 @@ describe('ExportImportSection', () => {
 
   it('mentions skipped rows in the success message', async () => {
     parseImportFile.mockReturnValue({ data: emptyExport, skipped: 3 })
-    importBabyData.mockResolvedValue(undefined)
+    importBabyData.mockResolvedValue({ imported: 0, duplicates: 0 })
     const user = userEvent.setup()
     const file = new File(['Type,...'], 'export.csv', { type: 'text/csv' })
 
@@ -134,6 +134,21 @@ describe('ExportImportSection', () => {
 
     expect(await screen.findByRole('status')).toHaveTextContent(
       'Import complete: 0 entries imported, 3 skipped',
+    )
+  })
+
+  it('mentions entries ignored because they already exist', async () => {
+    parseImportFile.mockReturnValue({ data: emptyExport, skipped: 1 })
+    importBabyData.mockResolvedValue({ imported: 2, duplicates: 5 })
+    const user = userEvent.setup()
+    const file = new File(['Type,...'], 'export.csv', { type: 'text/csv' })
+
+    render(<ExportImportSection householdId="h1" baby={baby} />)
+    await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
+    await user.click(screen.getByRole('button', { name: 'Import Data' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Import complete: 2 entries imported, 5 already present (ignored), 1 skipped (not supported).',
     )
   })
 
