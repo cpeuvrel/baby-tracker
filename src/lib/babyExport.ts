@@ -470,21 +470,22 @@ export function parseImportFile(
   throw new Error('Unrecognized CSV file format.')
 }
 
-function timeKey(iso: string | null): string {
-  return iso ? String(new Date(iso).getTime()) : ''
+const MINUTE_MS = 60_000
+
+/** The entry's time, to the minute (the app logs minutes; imported files may carry seconds). */
+function timeKey(iso: string): string {
+  return String(Math.floor(new Date(iso).getTime() / MINUTE_MS))
 }
 
-// An imported entry is a duplicate when an entry of the same kind already exists at the same
-// time with the same values. Notes and authorship are ignored, so re-importing a file (or an
-// overlapping one) never creates copies, even if notes were edited in the app since.
-const feedingKey = (e: FeedingEntry) =>
-  [e.type, timeKey(e.occurredAt), e.volumeMl ?? '', e.foodType ?? ''].join('|')
-const sleepKey = (e: SleepEntry) => [timeKey(e.startedAt), timeKey(e.endedAt)].join('|')
-const diaperKey = (e: DiaperEntry) => [e.type, timeKey(e.occurredAt)].join('|')
-const growthKey = (e: GrowthEntry) =>
-  [timeKey(e.measuredAt), e.weightG ?? '', e.heightMm ?? '', e.headCircumferenceMm ?? ''].join('|')
+// An imported entry conflicts with an entry of the same category already logged at the same
+// minute for this baby: the app's entry wins and the file's one is ignored, whatever their
+// values. Medications are told apart by name, since two can be given at the same time.
+const feedingKey = (e: FeedingEntry) => timeKey(e.occurredAt)
+const sleepKey = (e: SleepEntry) => timeKey(e.startedAt)
+const diaperKey = (e: DiaperEntry) => timeKey(e.occurredAt)
+const growthKey = (e: GrowthEntry) => timeKey(e.measuredAt)
 const medicationKey = (e: MedicationEntry) =>
-  [e.name.trim().toLowerCase(), timeKey(e.givenAt), e.dose.trim().toLowerCase()].join('|')
+  [e.name.trim().toLowerCase(), timeKey(e.givenAt)].join('|')
 const bathKey = (e: BathEntry) => timeKey(e.occurredAt)
 
 /** Keeps the incoming entries that match neither an existing entry nor an earlier incoming one. */
@@ -503,7 +504,7 @@ export interface ImportResult {
   duplicates: number
 }
 
-/** Imports the entries into the baby, ignoring those already logged (see the keys above). */
+/** Imports the entries into the baby, ignoring those that conflict with the app (see the keys above). */
 export async function importBabyData(
   householdId: string,
   babyId: string,
