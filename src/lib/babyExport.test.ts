@@ -383,6 +383,12 @@ describe('importBabyData', () => {
     importGrowthEntries.mockReset().mockResolvedValue(undefined)
     importMedicationEntries.mockReset().mockResolvedValue(undefined)
     importBathEntries.mockReset().mockResolvedValue(undefined)
+    getAllFeedingEntries.mockReset().mockResolvedValue([])
+    getAllSleepEntries.mockReset().mockResolvedValue([])
+    getAllDiaperEntries.mockReset().mockResolvedValue([])
+    getAllGrowthEntries.mockReset().mockResolvedValue([])
+    getAllMedicationEntries.mockReset().mockResolvedValue([])
+    getAllBathEntries.mockReset().mockResolvedValue([])
   })
 
   it('imports every collection into the target baby', async () => {
@@ -395,13 +401,74 @@ describe('importBabyData', () => {
       bathEntries: bath,
     }
 
-    await importBabyData('h1', 'b2', data)
+    const result = await importBabyData('h1', 'b2', data)
 
+    expect(result).toEqual({ imported: 6, duplicates: 0 })
+    expect(getAllFeedingEntries).toHaveBeenCalledWith('h1', 'b2')
     expect(importFeedingEntries).toHaveBeenCalledWith('h1', 'b2', feeding)
     expect(importSleepEntries).toHaveBeenCalledWith('h1', 'b2', sleep)
     expect(importDiaperEntries).toHaveBeenCalledWith('h1', 'b2', diaper)
     expect(importGrowthEntries).toHaveBeenCalledWith('h1', 'b2', growth)
     expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b2', medication)
     expect(importBathEntries).toHaveBeenCalledWith('h1', 'b2', bath)
+  })
+
+  it('keeps the app entry and ignores the file one when both are at the same time, whatever their values', async () => {
+    // Already in the database, with a different id, author and notes.
+    getAllFeedingEntries.mockResolvedValue([
+      { ...feeding[0], id: 'existing', volumeMl: 90, notes: 'edited', createdBy: 'uid2', occurredAt: '2026-01-01T09:00:00+01:00' },
+    ])
+    getAllSleepEntries.mockResolvedValue([{ ...sleep[0], endedAt: '2026-01-01T23:00:00.000Z' }])
+    getAllDiaperEntries.mockResolvedValue([{ ...diaper[0], type: 'both' }])
+    getAllBathEntries.mockResolvedValue(bath)
+    // Different minute: not a conflict. Same minute but seconds apart: a conflict.
+    const otherFeed: FeedingEntry = { ...feeding[0], id: 'f2', occurredAt: '2026-01-01T08:01:00.000Z' }
+    const otherDiaper: DiaperEntry = { ...diaper[0], id: 'd2', occurredAt: '2026-01-01T09:00:42.000Z' }
+
+    const result = await importBabyData('h1', 'b1', {
+      feedingEntries: [feeding[0], otherFeed],
+      sleepEntries: sleep,
+      diaperEntries: [diaper[0], otherDiaper],
+      growthEntries: [],
+      medicationEntries: [],
+      bathEntries: bath,
+    })
+
+    expect(result).toEqual({ imported: 1, duplicates: 5 })
+    expect(importFeedingEntries).toHaveBeenCalledWith('h1', 'b1', [otherFeed])
+    expect(importSleepEntries).toHaveBeenCalledWith('h1', 'b1', [])
+    expect(importDiaperEntries).toHaveBeenCalledWith('h1', 'b1', [])
+    expect(importBathEntries).toHaveBeenCalledWith('h1', 'b1', [])
+  })
+
+  it('keeps two different medications given at the same time', async () => {
+    getAllMedicationEntries.mockResolvedValue(medication)
+    const other: MedicationEntry = { ...medication[0], id: 'm2', name: 'Doliprane', dose: '2.5 ml' }
+
+    const result = await importBabyData('h1', 'b1', {
+      feedingEntries: [],
+      sleepEntries: [],
+      diaperEntries: [],
+      growthEntries: [],
+      medicationEntries: [{ ...medication[0], dose: '1 drop' }, other],
+      bathEntries: [],
+    })
+
+    expect(result).toEqual({ imported: 1, duplicates: 1 })
+    expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b1', [other])
+  })
+
+  it('ignores duplicates within the imported file itself', async () => {
+    const result = await importBabyData('h1', 'b1', {
+      feedingEntries: [],
+      sleepEntries: [],
+      diaperEntries: [],
+      growthEntries: [],
+      medicationEntries: [medication[0], { ...medication[0], id: 'm2', name: 'vitamin d ' }],
+      bathEntries: [],
+    })
+
+    expect(result).toEqual({ imported: 1, duplicates: 1 })
+    expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b1', [medication[0]])
   })
 })

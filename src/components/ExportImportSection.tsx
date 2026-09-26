@@ -1,6 +1,6 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { deleteAllBabyData, exportBabyData, importBabyData, parseImportFile, serializeBabyExport, type BabyExport } from '../lib/babyExport'
+import { deleteAllBabyData, exportBabyData, importBabyData, parseImportFile, serializeBabyExport } from '../lib/babyExport'
 import type { Baby } from '../types/models'
 
 type Status =
@@ -19,17 +19,6 @@ function downloadCsvFile(filename: string, contents: string) {
   link.download = filename
   link.click()
   URL.revokeObjectURL(url)
-}
-
-function countEntries(data: BabyExport) {
-  return (
-    data.feedingEntries.length +
-    data.sleepEntries.length +
-    data.diaperEntries.length +
-    data.growthEntries.length +
-    data.medicationEntries.length +
-    data.bathEntries.length
-  )
 }
 
 interface ExportImportSectionProps {
@@ -67,12 +56,12 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
     try {
       const text = await selectedFile.text()
       const { data, skipped } = parseImportFile(text, user.uid)
-      await importBabyData(householdId, baby.id, data)
-      const imported = countEntries(data)
-      const message =
-        skipped > 0
-          ? `Import complete: ${imported} entries imported, ${skipped} skipped (not supported).`
-          : `Import complete: ${imported} entries imported.`
+      const { imported, duplicates } = await importBabyData(householdId, baby.id, data)
+      const details = [
+        duplicates > 0 ? `${duplicates} already present (ignored)` : null,
+        skipped > 0 ? `${skipped} skipped (not supported)` : null,
+      ].filter(Boolean)
+      const message = `Import complete: ${imported} entries imported${details.map((d) => `, ${d}`).join('')}.`
       setStatus({ kind: 'success', message })
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Import failed.'
