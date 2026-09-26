@@ -10,10 +10,22 @@ interface MetricCalendarProps {
   colorVar: string
   intervals?: Array<{ start: Date; end: Date }>
   instants?: Date[]
+  /** Time ("HH:mm") each column starts at, the day before its date when after midnight (sleep days start at night). */
+  dayStart?: string
   /** The selected day, or null when none is. */
   selectedKey: string | null
   /** Called with the tapped day's key, or null when the selected day is tapped again. */
   onSelectDay: (dayKey: string | null) => void
+}
+
+function minutesOf(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return hour * 60 + minute
+}
+
+function formatAxisLabel(minutes: number): string {
+  const hour = String(Math.floor(minutes / 60) % 24).padStart(2, '0')
+  return minutes % 60 === 0 ? hour : `${hour}:${String(minutes % 60).padStart(2, '0')}`
 }
 
 function formatLongDay(key: string): string {
@@ -29,16 +41,24 @@ export function MetricCalendar({
   colorVar,
   intervals,
   instants,
+  dayStart = '00:00',
   selectedKey,
   onSelectDay,
 }: MetricCalendarProps) {
-  const blocksByDay = useMemo(
-    () => (intervals ? buildWeekBlocks(dayKeys, intervals) : {}),
-    [dayKeys, intervals],
-  )
+  const startMinutes = minutesOf(dayStart)
+  /** Moves times so each column's start lands on midnight of its date. */
+  const shiftMs = startMinutes > 0 ? (24 * 60 - startMinutes) * 60_000 : 0
+  const blocksByDay = useMemo(() => {
+    if (!intervals) return {}
+    const shift = (date: Date) => new Date(date.getTime() + shiftMs)
+    return buildWeekBlocks(
+      dayKeys,
+      intervals.map(({ start, end }) => ({ start: shift(start), end: shift(end) })),
+    )
+  }, [dayKeys, intervals, shiftMs])
   const marksByDay = useMemo(
-    () => (instants ? buildWeekMarks(dayKeys, instants) : {}),
-    [dayKeys, instants],
+    () => (instants ? buildWeekMarks(dayKeys, instants.map((date) => new Date(date.getTime() + shiftMs))) : {}),
+    [dayKeys, instants, shiftMs],
   )
   const todayKey = dayKey(new Date())
   const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
@@ -47,7 +67,7 @@ export function MetricCalendar({
     <div className="week-chart-grid" aria-label="Metric calendar">
       <div className="week-chart-axis">
         {HOUR_LABELS.map((hour) => (
-          <span key={hour}>{String(hour).padStart(2, '0')}</span>
+          <span key={hour}>{formatAxisLabel(startMinutes + hour * 60)}</span>
         ))}
       </div>
       {dayKeys.map((key) => {

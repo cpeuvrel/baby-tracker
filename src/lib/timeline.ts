@@ -44,6 +44,18 @@ export function activityWindowStart(now: Date, nightStart: string): Date {
   return zonedTime(year, month, day - 1, hour, minute)
 }
 
+/**
+ * Key of the "night day" containing `date`: a day that starts at the beginning of the
+ * previous night (e.g. 20:00 the day before) and ends when that day's night begins,
+ * so a night's sleep counts on the morning it ends, with the naps that follow.
+ */
+export function nightDayKey(date: Date, nightStart: string): string {
+  const { year, month, day, hour, minute } = zonedParts(date)
+  const [startHour, startMinute] = nightStart.split(':').map(Number)
+  const afterNightStart = hour * 60 + minute >= startHour * 60 + startMinute
+  return afterNightStart ? dayKey(zonedTime(year, month, day + 1, 12)) : dayKey(date)
+}
+
 export function isToday(iso: string, now: Date): boolean {
   return dayKey(new Date(iso)) === dayKey(now)
 }

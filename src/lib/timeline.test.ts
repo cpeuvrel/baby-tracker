@@ -10,6 +10,7 @@ import {
   isYesterday,
   lastNDayKeys,
   lastNDaysRange,
+  nightDayKey,
   parseDayKey,
   precedingRange,
 } from './timeline'
@@ -64,6 +65,15 @@ describe('parseDayKey', () => {
   it('parses a YYYY-MM-DD key as Paris midnight', () => {
     expect(parseDayKey('2026-03-05').toISOString()).toBe('2026-03-04T23:00:00.000Z')
     expect(parseDayKey('2026-07-05').toISOString()).toBe('2026-07-04T22:00:00.000Z')
+  })
+})
+
+describe('nightDayKey', () => {
+  it('counts times from the start of the night on the next day', () => {
+    expect(nightDayKey(new Date('2026-03-05T19:59:00+01:00'), '20:00')).toBe('2026-03-05')
+    expect(nightDayKey(new Date('2026-03-05T20:00:00+01:00'), '20:00')).toBe('2026-03-06')
+    expect(nightDayKey(new Date('2026-03-06T03:00:00+01:00'), '20:00')).toBe('2026-03-06')
+    expect(nightDayKey(new Date('2026-03-31T21:30:00+02:00'), '21:00')).toBe('2026-04-01')
   })
 })
 

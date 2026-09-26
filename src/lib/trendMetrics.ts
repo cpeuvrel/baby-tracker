@@ -1,6 +1,6 @@
 import { DEFAULT_NIGHTTIME_HOURS, startsDuringNight, type DailyPoint } from './aggregations'
 import { formatDuration } from './duration'
-import { dayKey } from './timeline'
+import { activityWindowStart, dayKey, nightDayKey, type DateRange } from './timeline'
 import type { DiaperEntry, FeedingEntry, FeedingType, NighttimeHours, SleepEntry } from '../types/models'
 
 export type TrendMetricId =
@@ -225,23 +225,65 @@ export interface TrendEntriesBundle {
   diaper: DiaperEntry[]
 }
 
+/**
+ * Day an entry of the metric counts on: sleep days start at the beginning of the night
+ * (the baby's nighttime hours), every other metric uses calendar days.
+ */
+export function metricDayKeyOf(
+  kind: TrendKind,
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
+): (date: string) => string {
+  return kind === 'sleep'
+    ? (date) => nightDayKey(new Date(date), nightRange.start)
+    : (date) => dayKey(new Date(date))
+}
+
+/** Range to load for a period of calendar days: from the start of the night before, so its first sleep day is complete. */
+export function trendFetchRange(range: DateRange, nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS): DateRange {
+  return { start: activityWindowStart(range.start, nightRange.start), end: range.end }
+}
+
+/** Keeps only the entries that make up the metric's daytime / nighttime split (the others are left as they are). */
+export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
+  id: TrendMetricId,
+  entries: T,
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
+): T {
+  const isNight = (date: string) => startsDuringNight(date, nightRange)
+  switch (id) {
+    case 'sleepDay':
+    case 'napCount':
+    case 'napLength':
+      return { ...entries, sleep: entries.sleep?.filter((entry) => !isNight(entry.startedAt)) }
+    case 'sleepNight':
+      return { ...entries, sleep: entries.sleep?.filter((entry) => isNight(entry.startedAt)) }
+    case 'diaperDay':
+      return { ...entries, diaper: entries.diaper?.filter((entry) => !isNight(entry.occurredAt)) }
+    case 'diaperNight':
+      return { ...entries, diaper: entries.diaper?.filter((entry) => isNight(entry.occurredAt)) }
+    default:
+      return entries
+  }
+}
+
 type Samples = Map<string, number[]>
+type DayKeyOf = (date: string) => string
 
 function emptySamples(dayKeys: string[]): Samples {
   return new Map(dayKeys.map((key) => [key, []]))
 }
 
-function addSample(samples: Samples, date: string, value: number) {
-  samples.get(dayKey(new Date(date)))?.push(value)
+function addSample(samples: Samples, key: string, value: number) {
+  samples.get(key)?.push(value)
 }
 
 /** Gaps between consecutive events, each counted on the day of the event that ends it. */
-function gapSamples(dayKeys: string[], events: { start: string; end: string }[]): Samples {
+function gapSamples(dayKeys: string[], keyOf: DayKeyOf, events: { start: string; end: string }[]): Samples {
   const samples = emptySamples(dayKeys)
   const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start))
   for (let index = 1; index < sorted.length; index += 1) {
     const gap = (new Date(sorted[index].start).getTime() - new Date(sorted[index - 1].end).getTime()) / 1000
-    if (gap > 0) addSample(samples, sorted[index].start, gap)
+    if (gap > 0) addSample(samples, keyOf(sorted[index].start), gap)
   }
   return samples
 }
@@ -261,6 +303,7 @@ function metricSamples(
   nightRange: NighttimeHours,
 ): Samples {
   const samples = emptySamples(dayKeys)
+  const keyOf = metricDayKeyOf(getTrendMetric(id)?.kind ?? 'feeding', nightRange)
   const isNight = (date: string) => startsDuringNight(date, nightRange)
   const bottlesWithVolume = entries.feeding.filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
   const sleeps = completedSleeps(entries.sleep)
@@ -268,15 +311,16 @@ function metricSamples(
 
   switch (id) {
     case 'feedSessions':
-      for (const entry of entries.feeding) addSample(samples, entry.occurredAt, 1)
+      for (const entry of entries.feeding) addSample(samples, keyOf(entry.occurredAt), 1)
       return samples
     case 'feedVolume':
     case 'feedAvgVolume':
-      for (const entry of bottlesWithVolume) addSample(samples, entry.occurredAt, entry.volumeMl ?? 0)
+      for (const entry of bottlesWithVolume) addSample(samples, keyOf(entry.occurredAt), entry.volumeMl ?? 0)
       return samples
     case 'feedInterval':
       return gapSamples(
         dayKeys,
+        keyOf,
         entries.feeding.map((entry) => ({ start: entry.occurredAt, end: entry.occurredAt })),
       )
     case 'diaperCount':
@@ -285,7 +329,7 @@ function metricSamples(
       for (const entry of entries.diaper) {
         if (id === 'diaperDay' && isNight(entry.occurredAt)) continue
         if (id === 'diaperNight' && !isNight(entry.occurredAt)) continue
-        addSample(samples, entry.occurredAt, 1)
+        addSample(samples, keyOf(entry.occurredAt), 1)
       }
       return samples
     case 'sleepTotal':
@@ -294,22 +338,23 @@ function metricSamples(
       for (const entry of sleeps) {
         if (id === 'sleepDay' && isNight(entry.startedAt)) continue
         if (id === 'sleepNight' && !isNight(entry.startedAt)) continue
-        addSample(samples, entry.startedAt, entry.durationSeconds)
+        addSample(samples, keyOf(entry.startedAt), entry.durationSeconds)
       }
       return samples
     case 'sleepLongest':
-      for (const entry of sleeps) addSample(samples, entry.startedAt, entry.durationSeconds)
+      for (const entry of sleeps) addSample(samples, keyOf(entry.startedAt), entry.durationSeconds)
       for (const [key, values] of samples) samples.set(key, values.length > 0 ? [Math.max(...values)] : [])
       return samples
     case 'napCount':
-      for (const entry of naps) addSample(samples, entry.startedAt, 1)
+      for (const entry of naps) addSample(samples, keyOf(entry.startedAt), 1)
       return samples
     case 'napLength':
-      for (const entry of naps) addSample(samples, entry.startedAt, entry.durationSeconds)
+      for (const entry of naps) addSample(samples, keyOf(entry.startedAt), entry.durationSeconds)
       return samples
     case 'wakeWindow':
       return gapSamples(
         dayKeys,
+        keyOf,
         sleeps.map((entry) => ({ start: entry.startedAt, end: entry.endedAt })),
       )
   }

@@ -22,7 +22,10 @@ import {
   formatMetricDayHeadline,
   formatMetricHeadline,
   formatMetricValue,
+  filterMetricEntries,
   getTrendMetric,
+  metricDayKeyOf,
+  trendFetchRange,
   type TrendKind,
 } from '../lib/trendMetrics'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
@@ -60,8 +63,19 @@ export function TrendDetailPage() {
   const currentRange = days === 1 ? dayRange(periodEnd) : lastNDaysRange(periodEnd, days)
   const previousRange = precedingRange(currentRange)
 
-  const current = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, currentRange)
-  const previous = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, previousRange)
+  const nightRange = selectedBaby?.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
+
+  // Loaded from the night before each period, as a period's first sleep day starts then.
+  const current = useEntriesInRange(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    trendFetchRange(currentRange, nightRange),
+  )
+  const previous = useEntriesInRange(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    trendFetchRange(previousRange, nightRange),
+  )
 
   if (!household || !selectedBaby || !metric) return null
 
@@ -71,7 +85,19 @@ export function TrendDetailPage() {
   }
 
   const currentDayKeys = dayKeysInRange(currentRange)
-  const nightRange = selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
+  const dayKeyOf = metricDayKeyOf(metric.kind, nightRange)
+  const inPeriod = new Set(currentDayKeys)
+  // What the Calendar and Entries views show: the period's entries that make up the metric
+  // (e.g. only daytime sleeps for Daytime Sleep).
+  const shown = filterMetricEntries(
+    metric.id,
+    {
+      feeding: current.feeding.filter((entry) => inPeriod.has(dayKeyOf(entry.occurredAt))),
+      sleep: current.sleep.filter((entry) => inPeriod.has(dayKeyOf(entry.startedAt))),
+      diaper: current.diaper.filter((entry) => inPeriod.has(dayKeyOf(entry.occurredAt))),
+    },
+    nightRange,
+  )
   const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange)
   const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange)
   const previousAvg = computeMetricSummary(metric.id, dayKeysInRange(previousRange), previous, nightRange)
@@ -126,9 +152,10 @@ export function TrendDetailPage() {
           colorVar={metric.colorVar}
           selectedKey={selectedDayKey}
           onSelectDay={setSelectedDayKey}
+          dayStart={metric.kind === 'sleep' ? nightRange.start : undefined}
           intervals={
             metric.kind === 'sleep'
-              ? current.sleep.map((entry) => ({
+              ? shown.sleep.map((entry) => ({
                   start: new Date(entry.startedAt),
                   end: entry.endedAt ? new Date(entry.endedAt) : new Date(),
                 }))
@@ -136,9 +163,9 @@ export function TrendDetailPage() {
           }
           instants={
             metric.kind === 'feeding'
-              ? current.feeding.map((entry) => new Date(entry.occurredAt))
+              ? shown.feeding.map((entry) => new Date(entry.occurredAt))
               : metric.kind === 'diaper'
-                ? current.diaper.map((entry) => new Date(entry.occurredAt))
+                ? shown.diaper.map((entry) => new Date(entry.occurredAt))
                 : undefined
           }
         />
@@ -168,7 +195,8 @@ export function TrendDetailPage() {
           kind="feeding"
           colorVar={metric.colorVar}
           focusDayKey={selectedDayKey}
-          entries={current.feeding}
+          dayKeyOf={dayKeyOf}
+          entries={shown.feeding}
           onSelect={(entry) => setEditing({ kind: 'feeding', entry })}
         />
       )}
@@ -177,7 +205,8 @@ export function TrendDetailPage() {
           kind="sleep"
           colorVar={metric.colorVar}
           focusDayKey={selectedDayKey}
-          entries={current.sleep}
+          dayKeyOf={dayKeyOf}
+          entries={shown.sleep}
           onSelect={(entry) => setEditing({ kind: 'sleep', entry })}
         />
       )}
@@ -186,7 +215,8 @@ export function TrendDetailPage() {
           kind="diaper"
           colorVar={metric.colorVar}
           focusDayKey={selectedDayKey}
-          entries={current.diaper}
+          dayKeyOf={dayKeyOf}
+          entries={shown.diaper}
           onSelect={(entry) => setEditing({ kind: 'diaper', entry })}
         />
       )}
