@@ -16,6 +16,10 @@ updates:
     # are caught and unpublished within that window.
     cooldown:
       default-days: 3
+    # @types/node must match the Node major we run on (24), not the latest.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
     groups:
       app-minor-patch:
         update-types: [minor, patch]
@@ -29,6 +33,10 @@ updates:
       timezone: Europe/Paris
     cooldown:
       default-days: 3
+    # @types/node must match the Node major we run on (24), not the latest.
+    ignore:
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
     groups:
       functions-minor-patch:
         update-types: [minor, patch]
