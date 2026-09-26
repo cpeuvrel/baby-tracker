@@ -388,4 +388,4 @@ Deliberate choice, not an oversight: no Nara screenshots copied into the repo. R
 **Git — lightweight (2-person project, not a company)**
 - One branch per plan phase/feature, branching from `main`, small commits.
 - No mandatory reviewer, but review your own diff like a stranger would before merging.
-- No CI pipeline to build: Vercel's automatic per-branch previews are already enough of a "does it build" safety net.
+- Minimal CI (`.github/workflows/ci.yml`: lint, tests, build for the app and for `functions/`). Dependabot (`.github/dependabot.yml`) opens weekly update PRs; minor/patch ones are auto-merged when CI passes (→ Vercel deploy), majors and failures @mention the repo owner (→ email). Cloud Functions are deployed by `.github/workflows/deploy-functions.yml` on every push to `main` touching `functions/` (service account key in the `FIREBASE_SERVICE_ACCOUNT` secret). Firestore rules are still deployed by hand.

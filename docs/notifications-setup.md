@@ -30,6 +30,10 @@ VITE_FCM_VAPID_KEY=<generated key>
 firebase deploy --only functions,firestore:rules
 ```
 
+Afterwards, functions are redeployed automatically by
+`.github/workflows/deploy-functions.yml` on every push to `main` that touches
+`functions/` (it can also be started by hand from the Actions tab).
+
 The `checkMedicationReminders` Cloud Function runs every 15 minutes and
 sends a notification if an active reminder's medication hasn't been logged
 that day.

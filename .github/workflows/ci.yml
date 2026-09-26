@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  functions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: functions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: functions/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+  # Dependabot PRs: merge minor/patch updates once both jobs above pass (the
+  # merge lands on main, which triggers the Vercel deploy); ping the owner on a
+  # major update or a failure so they get an email.
+  dependabot:
+    needs: [app, functions]
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+    env:
+      PR_URL: ${{ github.event.pull_request.html_url }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+
+      - name: Report failure
+        if: needs.app.result != 'success' || needs.functions.result != 'success'
+        run: >-
+          gh pr comment "$PR_URL" --body
+          "@${{ github.repository_owner }} CI fails on this update, not merged: $RUN_URL"
+
+      - name: Report major update
+        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: >-
+          gh pr comment "$PR_URL" --body
+          "@${{ github.repository_owner }} Major update: CI passes but it needs a manual review before merging."
+
+      - name: Merge
+        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --squash "$PR_URL"
+
+      # A merge made with GITHUB_TOKEN doesn't trigger push workflows, so start
+      # the functions deploy explicitly.
+      - name: Deploy functions
+        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type != 'version-update:semver-major' && steps.meta.outputs.directory == '/functions'
+        run: gh workflow run deploy-functions.yml --ref main
