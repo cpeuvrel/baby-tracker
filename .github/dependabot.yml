@@ -1,0 +1,42 @@
+# Weekly dependency updates. Minor/patch bumps are grouped into a single PR
+# per ecosystem; majors stay as separate PRs. CI (.github/workflows/ci.yml)
+# runs lint, tests and build on each of them.
+# Security updates (enable "Dependabot security updates" in the repo settings)
+# are opened as soon as an advisory is published, regardless of this schedule.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    # Skip versions published less than 3 days ago: most hijacked npm releases
+    # are caught and unpublished within that window.
+    cooldown:
+      default-days: 3
+    groups:
+      app-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /functions
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Paris
+    cooldown:
+      default-days: 3
+    groups:
+      functions-minor-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
