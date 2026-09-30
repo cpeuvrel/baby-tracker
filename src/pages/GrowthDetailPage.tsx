@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { GrowthPercentileChart, type GrowthChildPoint } from '../components/charts/GrowthPercentileChart'
+import {
+  GrowthPercentileChart,
+  PROJECTION_ID,
+  type GrowthChildPoint,
+} from '../components/charts/GrowthPercentileChart'
 import { GrowthForm } from '../components/GrowthForm'
 import { LineChartIcon, MenuIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
@@ -14,10 +18,13 @@ import {
   GROWTH_METRIC_LABELS,
   type GrowthMetric,
 } from '../lib/growthMetrics'
-import { percentileForValue } from '../lib/growthPercentiles'
+import { percentileForValue, projectOnSamePercentile } from '../lib/growthPercentiles'
 import type { GrowthEntry } from '../types/models'
 
 const METRICS: GrowthMetric[] = ['weight', 'height', 'headCircumference']
+
+/** Below about a week since the last measurement, a projection to today would sit on top of it. */
+const MIN_PROJECTION_GAP_MONTHS = 7 / 30
 
 type ViewMode = 'chart' | 'list'
 
@@ -67,6 +74,16 @@ export function GrowthDetailPage() {
     sex ? percentileForValue(metric, sex, point.ageMonths, point.value) : undefined
   const selectedPercentile = selectedPoint ? percentileOf(selectedPoint) : undefined
   const sexPercentileLabel = sex === 'female' ? 'Girls Percentile' : 'Boys Percentile'
+
+  // Where the child would be today if they stayed on the last measurement's percentile.
+  const lastPoint = points[points.length - 1]
+  const todayAgeMonths = ageInMonths(selectedBaby.birthDate, new Date())
+  const projectedValue =
+    sex && lastPoint && todayAgeMonths - lastPoint.ageMonths >= MIN_PROJECTION_GAP_MONTHS
+      ? projectOnSamePercentile(metric, sex, lastPoint, todayAgeMonths)
+      : undefined
+  const projection = projectedValue != null ? { ageMonths: todayAgeMonths, value: projectedValue } : undefined
+  const isProjectionSelected = projection != null && selectedId === PROJECTION_ID
 
   const childPoints: GrowthChildPoint[] = points.map((point) => ({
     id: point.id,
@@ -120,10 +137,37 @@ export function GrowthDetailPage() {
             metric={metric}
             sex={sex}
             childPoints={childPoints}
+            projection={projection}
             unit={unit}
-            selectedId={selectedPoint?.id}
+            selectedId={isProjectionSelected ? PROJECTION_ID : selectedPoint?.id}
             onSelectPoint={setSelectedId}
           />
+          {isProjectionSelected && lastPoint && (
+            <div className="growth-selection-card" role="region" aria-label="Projection">
+              <div className="growth-selection-header">
+                <span>Today · estimate</span>
+                <button
+                  type="button"
+                  className="growth-selection-close"
+                  aria-label="Close"
+                  onClick={() => setSelectedId(undefined)}
+                >
+                  ×
+                </button>
+              </div>
+              <p className="growth-entry-line">
+                {GROWTH_METRIC_LABELS[metric]} <strong>≈ {formatGrowthValue(metric, projection.value, unit)}</strong>
+              </p>
+              {percentileOf(lastPoint) != null && (
+                <p className="growth-entry-line">
+                  {sexPercentileLabel} <strong>{Math.round(percentileOf(lastPoint) as number)}%</strong>
+                </p>
+              )}
+              <p className="growth-selection-source">
+                Not a measurement: same percentile as on {formatMeasuredDate(lastPoint.entry.measuredAt)}.
+              </p>
+            </div>
+          )}
           {selectedPoint && (
             <div className="growth-selection-card" role="region" aria-label="Selected measurement">
               <div className="growth-selection-header">

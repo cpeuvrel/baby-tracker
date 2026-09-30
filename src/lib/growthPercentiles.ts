@@ -61,6 +61,29 @@ function normalCdf(z: number): number {
   return 0.5 * (1 + sign * y)
 }
 
+/** Inverse of zScore: the measurement sitting at `z` standard deviations for these LMS parameters. */
+function valueForZ(lms: LmsRow, z: number): number {
+  const { L, M, S } = lms
+  if (Math.abs(L) < 1e-9) return M * Math.exp(S * z)
+  return M * Math.pow(1 + L * S * z, 1 / L)
+}
+
+/**
+ * The value a measurement would have at `toAgeMonths` if the child stayed on the same
+ * percentile (same z-score), or undefined when either age is outside the WHO range.
+ */
+export function projectOnSamePercentile(
+  metric: GrowthMetric,
+  sex: Sex,
+  from: { ageMonths: number; value: number },
+  toAgeMonths: number,
+): number | undefined {
+  const fromLms = getLmsAt(metric, sex, from.ageMonths)
+  const toLms = getLmsAt(metric, sex, toAgeMonths)
+  if (!fromLms || !toLms) return undefined
+  return valueForZ(toLms, zScore(fromLms, from.value))
+}
+
 /** The child's percentile (0-100) for a measurement, or undefined outside the WHO 0-24 month range. */
 export function percentileForValue(
   metric: GrowthMetric,

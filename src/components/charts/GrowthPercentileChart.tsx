@@ -9,11 +9,16 @@ export interface GrowthChildPoint {
   value: number
 }
 
+/** Id reported by onSelectPoint when the projected (virtual) point is tapped. */
+export const PROJECTION_ID = 'projection'
+
 interface GrowthPercentileChartProps {
   metric: GrowthMetric
   sex: Sex
   unit: UnitSystem
   childPoints: GrowthChildPoint[]
+  /** Estimated value today on the last measurement's percentile: drawn hollow and dashed, never as a measurement. */
+  projection?: { ageMonths: number; value: number }
   selectedId?: string
   onSelectPoint: (id: string | undefined) => void
 }
@@ -106,19 +111,21 @@ export function GrowthPercentileChart({
   sex,
   unit,
   childPoints,
+  projection,
   selectedId,
   onSelectPoint,
 }: GrowthPercentileChartProps) {
   const [containerRef, width] = useWidth<HTMLDivElement>()
   const height = Math.round(Math.min(620, Math.max(380, width * 1.5)))
 
-  const axis = ageAxis(childPoints)
+  const axis = ageAxis(projection ? [...childPoints, { id: PROJECTION_ID, ...projection }] : childPoints)
   const { factor, suffix } = displayUnit(metric, unit)
   const curves = referenceCurves(metric, sex).filter((point) => point.ageMonths <= axis.max)
 
   const values = [
     ...curves.flatMap((point) => point.values),
     ...childPoints.filter((point) => point.ageMonths <= axis.max).map((point) => point.value),
+    ...(projection ? [projection.value] : []),
   ].map((value) => value / factor)
   const dataMin = Math.min(...values)
   const dataMax = Math.max(...values)
@@ -142,16 +149,21 @@ export function GrowthPercentileChart({
   const plotted = childPoints
     .filter((point) => point.ageMonths <= axis.max)
     .map((point) => ({ ...point, x: xOf(point.ageMonths), y: yOf(point.value / factor) }))
-  const selected = plotted.find((point) => point.id === selectedId)
+  const projected =
+    projection && projection.ageMonths <= axis.max
+      ? { id: PROJECTION_ID, x: xOf(projection.ageMonths), y: yOf(projection.value / factor) }
+      : undefined
+  const lastPlotted = plotted[plotted.length - 1]
+  const selected = [...plotted, ...(projected ? [projected] : [])].find((point) => point.id === selectedId)
 
   /** A tap selects the nearest measurement within reach; a tap on empty chart clears the selection. */
   const handlePointerUp = (event: PointerEvent<SVGSVGElement>) => {
     const rect = event.currentTarget.getBoundingClientRect()
     const x = event.clientX - rect.left
     const y = event.clientY - rect.top
-    let best: (typeof plotted)[number] | undefined
+    let best: { id: string } | undefined
     let bestDistance = HIT_RADIUS
-    for (const point of plotted) {
+    for (const point of [...plotted, ...(projected ? [projected] : [])]) {
       const distance = Math.hypot(point.x - x, point.y - y)
       if (distance <= bestDistance) {
         best = point
@@ -224,6 +236,32 @@ export function GrowthPercentileChart({
         {plotted.map((point) => (
           <circle key={point.id} cx={point.x} cy={point.y} r={7} fill="var(--growth-point)" />
         ))}
+        {projected && lastPlotted && (
+          <g className="growth-chart-projection" aria-label="Projection, not a measurement">
+            <line
+              x1={lastPlotted.x}
+              y1={lastPlotted.y}
+              x2={projected.x}
+              y2={projected.y}
+              stroke="var(--growth-point)"
+              strokeWidth={2}
+              strokeDasharray="4 5"
+              strokeLinecap="round"
+            />
+            <circle
+              cx={projected.x}
+              cy={projected.y}
+              r={7}
+              fill="var(--surface)"
+              stroke="var(--growth-point)"
+              strokeWidth={2}
+              strokeDasharray="3 3"
+            />
+            <text className="growth-chart-projection-label" x={projected.x} y={projected.y - 14} textAnchor="middle">
+              today?
+            </text>
+          </g>
+        )}
         {selected && (
           <circle
             cx={selected.x}

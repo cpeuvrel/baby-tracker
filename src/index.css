@@ -1957,6 +1957,12 @@ main {
   font-size: 12px;
 }
 
+.growth-chart-projection-label {
+  fill: var(--growth-point);
+  font-size: 12px;
+  font-style: italic;
+}
+
 .growth-chart-area {
   position: relative;
 }

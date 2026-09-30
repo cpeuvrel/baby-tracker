@@ -3,6 +3,7 @@ import {
   getLmsAt,
   isWithinWhoRange,
   percentileForValue,
+  projectOnSamePercentile,
   referenceCurves,
   REFERENCE_PERCENTILES,
 } from './growthPercentiles'
@@ -81,5 +82,29 @@ describe('referenceCurves', () => {
         expect(value).toBeGreaterThan(curve[i - 1].values[index])
       })
     }
+  })
+})
+
+describe('projectOnSamePercentile', () => {
+  it('keeps the child on the same percentile at a later age', () => {
+    const from = { ageMonths: 2, value: 5500 }
+    const projected = projectOnSamePercentile('weight', 'female', from, 5) as number
+
+    expect(projected).toBeGreaterThan(from.value)
+    expect(percentileForValue('weight', 'female', 5, projected)).toBeCloseTo(
+      percentileForValue('weight', 'female', 2, from.value) as number,
+      4,
+    )
+  })
+
+  it('projects the median onto the median', () => {
+    expect(projectOnSamePercentile('height', 'male', { ageMonths: 3, value: getLmsAt('height', 'male', 3)!.M }, 6)).toBeCloseTo(
+      getLmsAt('height', 'male', 6)!.M,
+      6,
+    )
+  })
+
+  it('returns undefined when the target age is outside the WHO range', () => {
+    expect(projectOnSamePercentile('weight', 'female', { ageMonths: 23, value: 11000 }, 25)).toBeUndefined()
   })
 })
