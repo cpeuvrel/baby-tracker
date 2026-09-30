@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { GrowthPercentileChart } from './GrowthPercentileChart'
+import { GrowthPercentileChart, PROJECTION_ID } from './GrowthPercentileChart'
 
 const points = [
   { id: 'a', ageMonths: 0, value: 3300 },
@@ -61,5 +61,43 @@ describe('GrowthPercentileChart', () => {
     const { container } = renderChart(vi.fn(), 'b')
 
     expect(container.querySelector('circle[r="17"]')).toBeInTheDocument()
+  })
+
+  describe('projection', () => {
+    function renderWithProjection(onSelectPoint = vi.fn()) {
+      const utils = render(
+        <GrowthPercentileChart
+          metric="weight"
+          sex="female"
+          unit="metric"
+          childPoints={points}
+          projection={{ ageMonths: 5, value: 7000 }}
+          onSelectPoint={onSelectPoint}
+        />,
+      )
+      const svg = screen.getByRole('img')
+      vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0 } as DOMRect)
+      return { ...utils, svg }
+    }
+
+    it('draws it hollow and dashed, linked to the last measurement, and labels it', () => {
+      const { container } = renderWithProjection()
+      const group = container.querySelector('.growth-chart-projection') as SVGGElement
+
+      expect(group.querySelector('line')).toHaveAttribute('stroke-dasharray')
+      expect(group.querySelector('circle')).toHaveAttribute('fill', 'var(--surface)')
+      expect(group.querySelector('circle')).toHaveAttribute('stroke-dasharray')
+      expect(screen.getByText('today?')).toBeInTheDocument()
+    })
+
+    it('reports the projection id when tapped', () => {
+      const onSelectPoint = vi.fn()
+      const { container, svg } = renderWithProjection(onSelectPoint)
+      const dot = container.querySelector('.growth-chart-projection circle') as SVGCircleElement
+
+      fireEvent.pointerUp(svg, { clientX: Number(dot.getAttribute('cx')), clientY: Number(dot.getAttribute('cy')) })
+
+      expect(onSelectPoint).toHaveBeenCalledWith(PROJECTION_ID)
+    })
   })
 })

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
@@ -17,11 +17,14 @@ vi.mock('../repositories/growthEntries', () => ({
 
 // Recharts draws nothing in jsdom (no layout), so stand in one button per plotted point.
 vi.mock('../components/charts/GrowthPercentileChart', () => ({
+  PROJECTION_ID: 'projection',
   GrowthPercentileChart: ({
     childPoints,
+    projection,
     onSelectPoint,
   }: {
     childPoints: { id: string; value: number }[]
+    projection?: { ageMonths: number; value: number }
     onSelectPoint: (id: string) => void
   }) => (
     <div>
@@ -30,6 +33,11 @@ vi.mock('../components/charts/GrowthPercentileChart', () => ({
           point {point.id}
         </button>
       ))}
+      {projection && (
+        <button type="button" onClick={() => onSelectPoint('projection')}>
+          projection
+        </button>
+      )}
     </div>
   ),
 }))
@@ -92,6 +100,36 @@ describe('GrowthDetailPage', () => {
       selectBaby: vi.fn(),
     })
     vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue(entries)
+  })
+
+  describe('projection to today', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('shows a projected point, clearly marked as an estimate on the last percentile', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-06-05T09:00:00.000Z'))
+      const user = userEvent.setup()
+      renderPage('weight')
+
+      await user.click(screen.getByRole('button', { name: 'projection' }))
+
+      const card = screen.getByRole('region', { name: 'Projection' })
+      expect(card).toHaveTextContent('Today · estimate')
+      expect(card).toHaveTextContent(/Weight ≈ \d+\.\d{2} kg/)
+      expect(card).toHaveTextContent(/Girls Percentile \d+%/)
+      expect(card).toHaveTextContent('Not a measurement: same percentile as on May 5, 2026.')
+      expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument()
+    })
+
+    it('has no projection when the last measurement is less than a week old', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-05-08T09:00:00.000Z'))
+      renderPage('weight')
+
+      expect(screen.queryByRole('button', { name: 'projection' })).not.toBeInTheDocument()
+    })
   })
 
   it('renders nothing for an unknown metric', () => {
