@@ -1,8 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
+import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
-import { deleteSleepEntry, updateSleepEntry } from '../repositories/sleepEntries'
+import { deleteSleepEntry, resumeSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -20,8 +22,14 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
     entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
   )
   const [notes, setNotes] = useState(entry.notes)
+  const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
+  const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
 
   if (!household || !selectedBaby) return null
+
+  // Only the latest sleep can be resumed (e.g. stopped by mistake, or the baby fell back asleep),
+  // and only while no other sleep is running.
+  const canResume = entry.endedAt != null && activeSleep == null && latestSleep?.id === entry.id
 
   const durationMinutes =
     endedAt !== ''
@@ -50,6 +58,11 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
     submit()
   }
 
+  const handleResume = () => {
+    void resumeSleep(household.id, selectedBaby.id, entry.id)
+    onClose()
+  }
+
   const handleDelete = () => {
     if (!window.confirm('Delete this entry?')) return
     void deleteSleepEntry(household.id, selectedBaby.id, entry.id)
@@ -68,6 +81,11 @@ export function SleepEntryEditModal({ entry, onClose }: SleepEntryEditModalProps
         <p className="modal-counter">
           {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
         </p>
+        {canResume && (
+          <button type="button" className="button-action button-resume" onClick={handleResume}>
+            Resume Timer
+          </button>
+        )}
         <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
         <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={setStartedAt} />
         <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={setEndedAt} />
