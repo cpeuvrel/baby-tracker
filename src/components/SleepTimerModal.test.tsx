@@ -13,8 +13,10 @@ const startSleep = vi.fn()
 const stopSleep = vi.fn()
 const logSleep = vi.fn()
 const updateSleepEntry = vi.fn()
+const resumeSleep = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
+  resumeSleep: (...args: unknown[]) => resumeSleep(...args),
   startSleep: (...args: unknown[]) => startSleep(...args),
   stopSleep: (...args: unknown[]) => stopSleep(...args),
   logSleep: (...args: unknown[]) => logSleep(...args),
@@ -30,6 +32,7 @@ describe('SleepTimerModal', () => {
     stopSleep.mockReset()
     logSleep.mockReset()
     updateSleepEntry.mockReset()
+    resumeSleep.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -159,7 +162,6 @@ describe('SleepTimerModal', () => {
     rerender(<SleepTimerModal onClose={onClose} />)
 
     expect(screen.queryByRole('button', { name: 'Stop Timer' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('Hours'))
     await user.type(screen.getByLabelText('Hours'), '0')
@@ -176,5 +178,35 @@ describe('SleepTimerModal', () => {
     })
     expect(logSleep).not.toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('continues the same sleep when Start is pressed again after a stop', async () => {
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    const spy = vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+    const user = userEvent.setup()
+
+    const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+    spy.mockReturnValue(null)
+    rerender(<SleepTimerModal onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Start Timer' }))
+
+    expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date(activeEntry.startedAt))
+    expect(startSleep).not.toHaveBeenCalled()
+    expect(screen.getByText('Starting…')).toBeInTheDocument()
+
+    spy.mockReturnValue(activeEntry)
+    rerender(<SleepTimerModal onClose={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Stop Timer' })).toBeInTheDocument()
   })
 })

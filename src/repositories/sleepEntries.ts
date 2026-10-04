@@ -158,6 +158,20 @@ export async function stopSleep(
   })
 }
 
+/** Puts a stopped sleep back in progress: the timer runs again from `startedAt`. */
+export async function resumeSleep(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  startedAt: Date,
+): Promise<void> {
+  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
+    startedAt: Timestamp.fromDate(startedAt),
+    endedAt: null,
+    durationSeconds: null,
+  })
+}
+
 export interface UpdateSleepInput {
   startedAt: Date
   endedAt: Date | null

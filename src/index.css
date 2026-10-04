@@ -841,7 +841,8 @@ main {
   margin-bottom: 16px;
 }
 
-.modal-body > .button-action {
+.modal-body > .button-action,
+.button-start-again {
   display: block;
   margin: 0 auto 24px;
 }

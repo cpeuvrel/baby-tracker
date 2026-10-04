@@ -17,6 +17,9 @@ vi.mock('../repositories/sleepEntries', () => ({
   startSleep: vi.fn(),
   stopSleep: vi.fn(),
   logSleep: vi.fn(),
+  resumeSleep: vi.fn(),
+  subscribeToActiveSleep: () => () => {},
+  subscribeToRecentSleepEntries: () => () => {},
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }

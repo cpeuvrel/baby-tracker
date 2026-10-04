@@ -1,17 +1,21 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
+import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
+import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import type { SleepEntry } from '../types/models'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
 import { dateTimeValue } from '../test/timeFields'
 
 const updateSleepEntry = vi.fn()
 const deleteSleepEntry = vi.fn()
+const resumeSleep = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
   deleteSleepEntry: (...args: unknown[]) => deleteSleepEntry(...args),
+  resumeSleep: (...args: unknown[]) => resumeSleep(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -31,6 +35,9 @@ describe('SleepEntryEditModal', () => {
   beforeEach(() => {
     updateSleepEntry.mockReset()
     deleteSleepEntry.mockReset()
+    resumeSleep.mockReset()
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
+    vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([entry])
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [baby],
@@ -60,7 +67,7 @@ describe('SleepEntryEditModal', () => {
 
     expect(dateTimeValue('Start Time')).toBe('2026-03-05T20:00')
     expect(dateTimeValue('End Time')).toBe('2026-03-05T20:45')
-    expect(screen.getByText('45m 00s')).toBeInTheDocument()
+    expect(screen.getByText('45m')).toBeInTheDocument()
   })
 
   it('saves the edited start/end times and notes', async () => {
@@ -102,5 +109,67 @@ describe('SleepEntryEditModal', () => {
     await user.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(deleteSleepEntry).not.toHaveBeenCalled()
+  })
+
+  describe('Start Timer', () => {
+    beforeEach(() => {
+      // 10 minutes after the entry ended (21:30 Paris).
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-03-05T21:40:00+01:00'))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('continues the latest stopped sleep from its start time and hands over to the running timer', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      const onResumed = vi.fn()
+      render(<SleepEntryEditModal entry={entry} onClose={onClose} onResumed={onResumed} />)
+
+      await user.click(screen.getByRole('button', { name: 'Start Timer' }))
+
+      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt))
+      expect(onResumed).toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('just closes when there is no running-timer view to hand over to', async () => {
+      const user = userEvent.setup()
+      const onClose = vi.fn()
+      render(<SleepEntryEditModal entry={entry} onClose={onClose} />)
+
+      await user.click(screen.getByRole('button', { name: 'Start Timer' }))
+
+      expect(resumeSleep).toHaveBeenCalled()
+      expect(onClose).toHaveBeenCalled()
+    })
+
+    it('is not offered once the sleep ended more than an hour ago', () => {
+      vi.setSystemTime(new Date('2026-03-05T22:31:00+01:00'))
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+      expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
+    })
+
+    it('is not offered for an older sleep', () => {
+      vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([{ ...entry, id: 'newer' }])
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+      expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
+    })
+
+    it('is not offered while another sleep is running', () => {
+      vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue({
+        ...entry,
+        id: 'running',
+        endedAt: null,
+        durationSeconds: null,
+      })
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+      expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
+    })
   })
 })

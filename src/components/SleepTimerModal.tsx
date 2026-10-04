@@ -4,8 +4,8 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
-import { formatDuration } from '../lib/duration'
-import { logSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
+import { formatDuration, formatElapsed } from '../lib/duration'
+import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
 import { DateTimeField } from './DateTimeField'
@@ -48,7 +48,13 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setTimerEntryId(activeEntry.id)
     } else if (!pendingStart) {
       setPendingStart(true)
-      void startSleep(household.id, selectedBaby.id, user.uid, fromDatetimeLocalValue(startedAt))
+      if (timerEntryId) {
+        // Start again after a stop: the same sleep goes on, not a new one.
+        void resumeSleep(household.id, selectedBaby.id, timerEntryId, fromDatetimeLocalValue(startedAt))
+        setDurationMinutes(null)
+      } else {
+        void startSleep(household.id, selectedBaby.id, user.uid, fromDatetimeLocalValue(startedAt))
+      }
     }
   }
 
@@ -81,7 +87,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
 
   const startTimeValue = activeEntry ? toDatetimeLocalValue(new Date(activeEntry.startedAt)) : startedAt
   const counter = isActive
-    ? formatDuration(elapsedSeconds)
+    ? formatElapsed(elapsedSeconds)
     : pendingStart
       ? 'Starting…'
       : durationMinutes != null
@@ -99,16 +105,14 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       <p className="modal-counter" aria-live="polite">
         {counter}
       </p>
-      {timerEntryId == null && (
-        <button
-          type="button"
-          className="button-action"
-          onClick={handleToggleTimer}
-          disabled={pendingStart && !isActive}
-        >
-          {isActive ? 'Stop Timer' : 'Start Timer'}
-        </button>
-      )}
+      <button
+        type="button"
+        className="button-action"
+        onClick={handleToggleTimer}
+        disabled={pendingStart && !isActive}
+      >
+        {isActive ? 'Stop Timer' : 'Start Timer'}
+      </button>
       <DateTimeField id="sleep-started-at" label="Start Time" value={startTimeValue} disabled={isActive} onChange={setStartedAt} />
       <DurationInput totalMinutes={durationMinutes} onChange={setDurationMinutes} disabled={isActive} />
       <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} disabled={isActive} onChange={handleEndedAtChange} />
