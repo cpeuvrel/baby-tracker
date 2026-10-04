@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
@@ -67,7 +67,7 @@ describe('SleepEntryEditModal', () => {
 
     expect(dateTimeValue('Start Time')).toBe('2026-03-05T20:00')
     expect(dateTimeValue('End Time')).toBe('2026-03-05T20:45')
-    expect(screen.getByText('45m 00s')).toBeInTheDocument()
+    expect(screen.getByText('45m')).toBeInTheDocument()
   })
 
   it('saves the edited start/end times and notes', async () => {
@@ -112,6 +112,16 @@ describe('SleepEntryEditModal', () => {
   })
 
   describe('Start Timer', () => {
+    beforeEach(() => {
+      // 10 minutes after the entry ended (21:30 Paris).
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-03-05T21:40:00+01:00'))
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
     it('continues the latest stopped sleep from its start time and hands over to the running timer', async () => {
       const user = userEvent.setup()
       const onClose = vi.fn()
@@ -134,6 +144,13 @@ describe('SleepEntryEditModal', () => {
 
       expect(resumeSleep).toHaveBeenCalled()
       expect(onClose).toHaveBeenCalled()
+    })
+
+    it('is not offered once the sleep ended more than an hour ago', () => {
+      vi.setSystemTime(new Date('2026-03-05T22:31:00+01:00'))
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+      expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
     })
 
     it('is not offered for an older sleep', () => {

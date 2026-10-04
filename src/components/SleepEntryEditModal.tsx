@@ -10,6 +10,9 @@ import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
 import { DateTimeField } from './DateTimeField'
 
+/** A stopped sleep can only be continued within this long after it ended. */
+const RESUME_WINDOW_MS = 60 * 60 * 1000
+
 interface SleepEntryEditModalProps {
   entry: SleepEntry
   onClose: () => void
@@ -29,9 +32,14 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
 
   if (!household || !selectedBaby) return null
 
-  // Start continues the latest sleep (stopped by mistake, or the baby fell back asleep), as long as
-  // no other sleep is running; an older one would become an overlapping, back-dated timer.
-  const canStart = entry.endedAt != null && activeSleep == null && latestSleep?.id === entry.id
+  // Start continues the latest sleep (stopped by mistake, or the baby fell back asleep) if it ended
+  // less than an hour ago and no other sleep is running; an older one would become an
+  // overlapping, back-dated timer.
+  const canStart =
+    entry.endedAt != null &&
+    Date.now() - new Date(entry.endedAt).getTime() < RESUME_WINDOW_MS &&
+    activeSleep == null &&
+    latestSleep?.id === entry.id
 
   const durationMinutes =
     endedAt !== ''

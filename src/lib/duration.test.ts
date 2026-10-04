@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDuration, formatRelativeTime, secondsBetween } from './duration'
+import { formatDuration, formatElapsed, formatRelativeTime, secondsBetween } from './duration'
 
 describe('secondsBetween', () => {
   it('computes whole seconds between two dates', () => {
@@ -18,12 +18,9 @@ describe('secondsBetween', () => {
 })
 
 describe('formatDuration', () => {
-  it('formats seconds only under a minute', () => {
-    expect(formatDuration(42)).toBe('42s')
-  })
-
-  it('formats minutes and seconds under an hour', () => {
-    expect(formatDuration(125)).toBe('2m 05s')
+  it('shows only minutes under an hour, never seconds', () => {
+    expect(formatDuration(125)).toBe('2m')
+    expect(formatDuration(42)).toBe('0m')
   })
 
   it('formats hours and minutes at or above an hour', () => {
@@ -36,6 +33,17 @@ describe('formatDuration', () => {
 
   it('treats exactly 24h as 1 day', () => {
     expect(formatDuration(86400)).toBe('1d 00h')
+  })
+})
+
+describe('formatElapsed', () => {
+  it('ticks in seconds under an hour', () => {
+    expect(formatElapsed(42)).toBe('42s')
+    expect(formatElapsed(125)).toBe('2m 05s')
+  })
+
+  it('reads like formatDuration from an hour on', () => {
+    expect(formatElapsed(3725)).toBe('1h 02m')
   })
 })
 

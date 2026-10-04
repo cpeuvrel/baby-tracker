@@ -4,7 +4,7 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
-import { formatDuration } from '../lib/duration'
+import { formatDuration, formatElapsed } from '../lib/duration'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -87,7 +87,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
 
   const startTimeValue = activeEntry ? toDatetimeLocalValue(new Date(activeEntry.startedAt)) : startedAt
   const counter = isActive
-    ? formatDuration(elapsedSeconds)
+    ? formatElapsed(elapsedSeconds)
     : pendingStart
       ? 'Starting…'
       : durationMinutes != null

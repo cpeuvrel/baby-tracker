@@ -1,7 +1,7 @@
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
-import { formatDuration } from '../lib/duration'
+import { formatElapsed } from '../lib/duration'
 import { stopSleep } from '../repositories/sleepEntries'
 
 export function ActiveTimersBanner() {
@@ -14,7 +14,7 @@ export function ActiveTimersBanner() {
   return (
     <div role="status" aria-live="polite">
       <p>
-        Sleep in progress for {formatDuration(sleepElapsed)}{' '}
+        Sleep in progress for {formatElapsed(sleepElapsed)}{' '}
         <button
           type="button"
           onClick={() =>
