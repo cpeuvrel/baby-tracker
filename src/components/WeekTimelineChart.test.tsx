@@ -5,6 +5,7 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import { dayKey } from '../lib/timeline'
 import type { SleepEntry } from '../types/models'
+import { nightFractions } from '../lib/weekTimeline'
 import { WeekTimelineChart } from './WeekTimelineChart'
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -123,22 +124,104 @@ describe('WeekTimelineChart', () => {
     expect(screen.getAllByRole('button', { name: /See details for/ })).toHaveLength(7)
   })
 
-  it('changes the displayed month label when navigating to the previous week', async () => {
+  it('shows a month tab on the first column and on the 1st of a new month', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-04T12:00:00.000Z')) // week of Mon Sep 28 – Sun Oct 4
+    mockNoEntries()
+    render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
+
+    expect(screen.getByText('Sep')).toBeInTheDocument()
+    expect(screen.getByText('Oct')).toBeInTheDocument()
+  })
+
+  it('changes the month tab when navigating to the previous week, and back with Next', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-02T12:00:00.000Z')) // Monday of the first week of March
-    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
-      feeding: [],
-      sleep: [],
-      diaper: [],
-      medication: [],
-      bath: [],
-    })
+    mockNoEntries()
     render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
-    expect(screen.getByText('March 2026')).toBeInTheDocument()
+    expect(screen.getByText('Mar')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Next week' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Previous week' }))
+    expect(screen.getByText('Feb')).toBeInTheDocument()
 
-    expect(screen.getByText('February 2026')).toBeInTheDocument()
-    vi.useRealTimers()
+    fireEvent.click(screen.getByRole('button', { name: 'Next week' }))
+    expect(screen.getByText('Mar')).toBeInTheDocument()
+  })
+
+  it('navigates weeks with horizontal swipes, ignoring vertical drags', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-02T12:00:00.000Z'))
+    mockNoEntries()
+    render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
+    const section = screen.getByRole('region', { name: 'Week calendar' })
+    const swipe = (fromX: number, toX: number, fromY = 100, toY = 100) => {
+      fireEvent.touchStart(section, { touches: [{ clientX: fromX, clientY: fromY }] })
+      fireEvent.touchEnd(section, { changedTouches: [{ clientX: toX, clientY: toY }] })
+    }
+
+    swipe(50, 250) // swipe right: previous week
+    expect(screen.getByText('Feb')).toBeInTheDocument()
+
+    swipe(100, 120, 0, 300) // mostly vertical: ignored
+    expect(screen.getByText('Feb')).toBeInTheDocument()
+
+    swipe(250, 50) // swipe left: next week
+    expect(screen.getByText('Mar')).toBeInTheDocument()
+
+    swipe(250, 50) // already on the current week: stays
+    expect(screen.getByText('Mar')).toBeInTheDocument()
+  })
+
+  it('shades the night hours of the baby, defaulting to 20:00–08:00', () => {
+    mockNoEntries()
+    const { container, rerender } = render(
+      <WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />,
+    )
+    const bands = () =>
+      Array.from(container.querySelectorAll<HTMLElement>('.week-chart-night')).map((el) => [
+        el.style.top,
+        el.style.height,
+      ])
+    expect(bands()).toEqual([
+      ['0%', `${(8 / 24) * 100}%`],
+      [`${(20 / 24) * 100}%`, `${(4 / 24) * 100}%`],
+    ])
+
+    const nightOwl = { ...baby, nighttimeHours: { start: '19:00', end: '07:00' } }
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household,
+      babies: [nightOwl],
+      loading: false,
+      error: null,
+      selectedBaby: nightOwl,
+      selectBaby: vi.fn(),
+    })
+    rerender(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
+    expect(bands()[1][0]).toBe(`${(19 / 24) * 100}%`)
   })
 })
+
+describe('nightFractions', () => {
+  it('splits a night that wraps past midnight into two bands', () => {
+    expect(nightFractions({ start: '18:00', end: '06:00' })).toEqual([
+      { start: 0, end: 0.25 },
+      { start: 0.75, end: 1 },
+    ])
+  })
+
+  it('keeps a single band for a night that does not wrap, and none when empty', () => {
+    expect(nightFractions({ start: '00:00', end: '06:00' })).toEqual([{ start: 0, end: 0.25 }])
+    expect(nightFractions({ start: '08:00', end: '08:00' })).toEqual([])
+  })
+})
+
+function mockNoEntries() {
+  vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+    feeding: [],
+    sleep: [],
+    diaper: [],
+    medication: [],
+    bath: [],
+  })
+}
