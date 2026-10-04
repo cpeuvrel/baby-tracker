@@ -342,7 +342,13 @@ export function ActivityPage() {
       </button>
 
       {modal?.kind === 'sleep-active' && <SleepTimerModal onClose={closeModal} />}
-      {modal?.kind === 'sleep-edit' && <SleepEntryEditModal entry={modal.entry} onClose={closeModal} />}
+      {modal?.kind === 'sleep-edit' && (
+        <SleepEntryEditModal
+          entry={modal.entry}
+          onClose={closeModal}
+          onResumed={() => setModal({ kind: 'sleep-active' })}
+        />
+      )}
       {modal?.kind === 'feeding' && <FeedingForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'diaper' && <DiaperForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'medication' && (
