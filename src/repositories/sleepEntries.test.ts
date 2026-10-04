@@ -93,12 +93,13 @@ describe('sleepEntries repository', () => {
     expect(payload).toMatchObject({ durationSeconds: 90 * 60 })
   })
 
-  it('resumes a finished sleep by clearing its end and duration', async () => {
-    await resumeSleep('h1', 'b1', 'entry1')
+  it('resumes a stopped sleep by clearing its end and duration', async () => {
+    const startedAt = new Date('2026-03-05T20:00:00.000Z')
+    await resumeSleep('h1', 'b1', 'entry1', startedAt)
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
     const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toEqual({ endedAt: null, durationSeconds: null })
+    expect(payload).toEqual({ startedAt: Timestamp.fromDate(startedAt), endedAt: null, durationSeconds: null })
   })
 
   it('updates a sleep entry, recomputing the duration from start/end', async () => {
