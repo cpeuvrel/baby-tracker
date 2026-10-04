@@ -22,7 +22,6 @@ export function HistoryPage() {
   return (
     <div>
       <div className="history-header">
-        <h2>History</h2>
         <div className="history-header-actions">
           <button type="button" aria-label="Filters" onClick={() => setFiltersOpen(true)}>
             <SlidersIcon />

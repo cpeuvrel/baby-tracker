@@ -1,7 +1,9 @@
 import { useMemo } from 'react'
 import { formatDate } from '../lib/appTime'
-import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
-import { buildWeekBlocks, buildWeekMarks } from '../lib/weekTimeline'
+import { dayKey, parseDayKey } from '../lib/timeline'
+import { buildWeekBlocks, buildWeekMarks, nightFractions } from '../lib/weekTimeline'
+import type { NighttimeHours } from '../types/models'
+import { TimelineGrid } from './TimelineGrid'
 
 const HOUR_LABELS = [0, 3, 6, 9, 12, 15, 18, 21, 24]
 
@@ -16,6 +18,10 @@ interface MetricCalendarProps {
   selectedKey: string | null
   /** Called with the tapped day's key, or null when the selected day is tapped again. */
   onSelectDay: (dayKey: string | null) => void
+  /** The baby's night, shaded as paler bands. */
+  nightRange?: NighttimeHours
+  onPrevious?: () => void
+  onNext?: () => void
 }
 
 function minutesOf(time: string): number {
@@ -23,9 +29,11 @@ function minutesOf(time: string): number {
   return hour * 60 + minute
 }
 
-function formatAxisLabel(minutes: number): string {
+/** "HH" on the hour ("HH:mm" otherwise, or always with `withMinutes`), wrapping past midnight. */
+function formatAxisLabel(minutes: number, withMinutes = false): string {
   const hour = String(Math.floor(minutes / 60) % 24).padStart(2, '0')
-  return minutes % 60 === 0 ? hour : `${hour}:${String(minutes % 60).padStart(2, '0')}`
+  const minute = String(minutes % 60).padStart(2, '0')
+  return minutes % 60 === 0 && !withMinutes ? hour : `${hour}:${minute}`
 }
 
 function formatLongDay(key: string): string {
@@ -42,8 +50,11 @@ export function MetricCalendar({
   intervals,
   instants,
   dayStart = '00:00',
+  nightRange,
   selectedKey,
   onSelectDay,
+  onPrevious,
+  onNext,
 }: MetricCalendarProps) {
   const startMinutes = minutesOf(dayStart)
   /** Moves times so each column's start lands on midnight of its date. */
@@ -60,67 +71,56 @@ export function MetricCalendar({
     () => (instants ? buildWeekMarks(dayKeys, instants.map((date) => new Date(date.getTime() + shiftMs))) : {}),
     [dayKeys, instants, shiftMs],
   )
-  const todayKey = dayKey(new Date())
   const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
+  // Night hours relative to the column start (a column may start in the evening).
+  const nightBands = nightRange
+    ? nightFractions({
+        start: formatAxisLabel(minutesOf(nightRange.start) - startMinutes + 24 * 60, true),
+        end: formatAxisLabel(minutesOf(nightRange.end) - startMinutes + 24 * 60, true),
+      })
+    : []
 
   return (
-    <div className="week-chart-grid" aria-label="Metric calendar">
-      <div className="week-chart-axis">
-        {HOUR_LABELS.map((hour) => (
-          <span key={hour}>{formatAxisLabel(startMinutes + hour * 60)}</span>
-        ))}
-      </div>
-      {dayKeys.map((key) => {
-        const date = parseDayKey(key)
-        const isSelected = key === selectedKey
-        return (
-          <div key={key} className="week-chart-day">
-            <button
-              type="button"
-              className={`week-chart-day-header${key === todayKey ? ' is-today' : ''}${isSelected ? ' is-selected' : ''}`}
-              aria-label={formatLongDay(key)}
-              aria-pressed={isSelected}
-              onClick={() => toggleDay(key)}
-            >
-              <span>{formatDate(date, { weekday: 'short' }).slice(0, 2)}</span>
-              <span>{dayOfMonth(key)}</span>
-            </button>
-            <button
-              type="button"
-              className={`week-chart-column metric-calendar-column${isSelected ? ' is-selected' : ''}`}
-              aria-label={`${formatLongDay(key)} timeline`}
-              aria-pressed={isSelected}
-              onClick={() => toggleDay(key)}
-            >
-              {HOUR_LABELS.slice(1, -1).map((hour) => (
-                <span
-                  key={hour}
-                  className="week-chart-gridline"
-                  style={{ top: `${(hour / 24) * 100}%` }}
-                />
-              ))}
-              {blocksByDay[key]?.map((block, index) => (
-                <span
-                  key={index}
-                  className="week-chart-block"
-                  style={{
-                    top: `${block.startFraction * 100}%`,
-                    height: `${(block.endFraction - block.startFraction) * 100}%`,
-                    background: `var(${colorVar})`,
-                  }}
-                />
-              ))}
-              {marksByDay[key]?.map((mark, index) => (
-                <span
-                  key={index}
-                  className="week-chart-mark"
-                  style={{ top: `${mark.atFraction * 100}%`, background: `var(${colorVar})` }}
-                />
-              ))}
-            </button>
-          </div>
-        )
-      })}
+    <div className="metric-calendar" aria-label="Metric calendar">
+      <TimelineGrid
+        dayKeys={dayKeys}
+        visibleDays={dayKeys.length}
+        axisLabels={HOUR_LABELS.map((hour) => formatAxisLabel(startMinutes + hour * 60))}
+        nightBands={nightBands}
+        selectedKey={selectedKey}
+        todayKey={dayKey(new Date())}
+        onSelectDay={toggleDay}
+        dayLabel={formatLongDay}
+        weekdayLabel={(key) => formatDate(parseDayKey(key), { weekday: 'short' }).slice(0, 2)}
+        pressable
+        columnLabel={(key) => `${formatLongDay(key)} timeline`}
+        onPrevious={onPrevious}
+        onNext={onNext}
+        previousLabel="Previous period"
+        nextLabel="Next period"
+        renderColumn={(key) => (
+          <>
+            {blocksByDay[key]?.map((block, index) => (
+              <span
+                key={`block-${index}`}
+                className="timeline-grid-block"
+                style={{
+                  top: `${block.startFraction * 100}%`,
+                  height: `${(block.endFraction - block.startFraction) * 100}%`,
+                  background: `var(${colorVar})`,
+                }}
+              />
+            ))}
+            {marksByDay[key]?.map((mark, index) => (
+              <span
+                key={`mark-${index}`}
+                className="timeline-grid-mark"
+                style={{ top: `${mark.atFraction * 100}%`, background: `var(${colorVar})` }}
+              />
+            ))}
+          </>
+        )}
+      />
     </div>
   )
 }

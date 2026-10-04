@@ -153,6 +153,9 @@ export function TrendDetailPage() {
           selectedKey={selectedDayKey}
           onSelectDay={setSelectedDayKey}
           dayStart={metric.kind === 'sleep' ? nightRange.start : undefined}
+          nightRange={nightRange}
+          onPrevious={() => changePeriod((back) => back + 1)}
+          onNext={periodsBack > 0 ? () => changePeriod((back) => back - 1) : undefined}
           intervals={
             metric.kind === 'sleep'
               ? shown.sleep.map((entry) => ({

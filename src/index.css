@@ -1009,6 +1009,7 @@ main {
 .history-header {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   margin-bottom: 12px;
 }
@@ -1075,27 +1076,70 @@ main {
   margin: 2px 0 0;
 }
 
-/* Weekly calendar (History screen) */
-.week-chart {
-  /* Swipes are handled in JS; keep vertical page scrolling. */
-  touch-action: pan-y;
-}
-
-.week-chart-row {
-  display: grid;
-  grid-template-columns: 24px repeat(7, minmax(0, 1fr));
-  column-gap: 3px;
-}
-
-/* Month tabs sit above the first column of each month, like folder tabs. */
-.week-chart-months {
+/* Day columns under an hour axis (History week chart, Trends calendar) */
+.timeline-grid {
+  --timeline-months-height: 26px;
+  --timeline-days-height: 52px;
+  --timeline-body-height: 480px;
   position: relative;
-  min-height: 26px;
+  display: flex;
 }
 
-.week-chart-month-tab {
-  align-self: end;
-  justify-self: start;
+.metric-calendar .timeline-grid {
+  --timeline-body-height: 400px;
+}
+
+/* Up to 14 narrow columns on a phone. */
+.metric-calendar .timeline-grid-day-number {
+  font-size: 12px;
+}
+
+.timeline-grid-axis-side {
+  width: 26px;
+  flex-shrink: 0;
+}
+
+.timeline-grid-scroller {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Native scroll follows the finger while it is held; on release it settles on a week,
+   never skipping more than one per swipe. */
+.timeline-grid-scroller.is-scrollable {
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.timeline-grid-scroller.is-scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.timeline-grid-day-header.is-snap {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.timeline-grid-months {
+  display: flex;
+  height: var(--timeline-months-height);
+}
+
+/* A month's tab stays at the left edge while its days scroll by, like folder tabs. */
+.timeline-grid-month {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  /* clip, not hidden: hidden would make it the sticky tab's scroll container. */
+  overflow: clip;
+}
+
+.timeline-grid-month-tab {
+  position: sticky;
+  left: 0;
   white-space: nowrap;
   background: var(--week-chart-tab-bg);
   color: var(--text);
@@ -1106,60 +1150,70 @@ main {
   text-transform: capitalize;
 }
 
-.week-chart-days {
+.timeline-grid-days {
+  display: flex;
+  height: var(--timeline-days-height);
   background: var(--week-chart-tab-bg);
   border-bottom: 1px solid var(--border);
 }
 
-.week-chart-nav-button {
+.timeline-grid-axis-side .timeline-grid-days {
+  justify-content: center;
+}
+
+.timeline-grid-nav {
   background: none;
   color: var(--text);
   font-size: 22px;
   line-height: 1;
-  padding: 0;
+  padding: 0 4px;
 }
 
-.week-chart-nav-next {
+.timeline-grid-nav-next {
   position: absolute;
   right: 0;
-  bottom: 2px;
+  top: 0;
+  height: var(--timeline-months-height);
   padding: 0 6px;
 }
 
-.week-chart-day-header {
+.timeline-grid-day-header {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   background: none;
   color: var(--text-muted);
   border-radius: 0;
-  padding: 6px 2px;
+  padding: 4px 0;
   font-size: 11px;
   font-weight: 600;
-  width: 100%;
 }
 
-.week-chart-day-number {
+.timeline-grid-day-number {
   font-size: 15px;
 }
 
-.week-chart-day-header.is-today {
+.timeline-grid-day-header.is-today {
   color: var(--text);
 }
 
-.week-chart-day-header.is-selected {
+.timeline-grid-day-header.is-selected {
   background: var(--accent);
   color: var(--accent-contrast);
 }
 
-.week-chart-body {
+.timeline-grid-body {
   position: relative;
-  height: 480px;
+  display: flex;
+  height: var(--timeline-body-height);
   background: var(--surface);
 }
 
-.week-chart-night {
+.timeline-grid-night {
   position: absolute;
   left: 0;
   right: 0;
@@ -1167,7 +1221,15 @@ main {
   pointer-events: none;
 }
 
-.week-chart-axis {
+.timeline-grid-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--border);
+  pointer-events: none;
+}
+
+.timeline-grid-axis {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1178,32 +1240,31 @@ main {
   color: var(--text-muted);
 }
 
-.week-chart-column {
+.timeline-grid-axis-side .timeline-grid-gridline {
+  display: none;
+}
+
+.timeline-grid-column {
   position: relative;
+  flex: 1 1 0;
+  min-width: 0;
   height: 100%;
 }
 
-.metric-calendar-column {
+.timeline-grid-column.is-button {
   display: block;
-  width: 100%;
   padding: 0;
+  background: none;
+  border-radius: 0;
   font: inherit;
   cursor: pointer;
 }
 
-.metric-calendar-column.is-selected {
-  background: color-mix(in srgb, var(--button-add) 15%, var(--surface));
-  border-color: var(--button-add);
+.timeline-grid-column.is-button.is-selected {
+  background: color-mix(in srgb, var(--button-add) 15%, transparent);
 }
 
-.week-chart-gridline {
-  position: absolute;
-  left: 27px;
-  right: 0;
-  border-top: 1px dashed var(--border);
-}
-
-.week-chart-block {
+.timeline-grid-block {
   position: absolute;
   left: 2px;
   right: 2px;
@@ -1211,7 +1272,7 @@ main {
   min-height: 2px;
 }
 
-.week-chart-mark {
+.timeline-grid-mark {
   position: absolute;
   left: 2px;
   right: 2px;
