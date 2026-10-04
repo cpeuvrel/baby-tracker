@@ -11,11 +11,22 @@ interface ModalProps {
   bandColorVar: string
   onClose: () => void
   headerAction?: ModalHeaderAction
+  /** Close when tapping the dimmed area around the dialog (off by default: forms would lose their input). */
+  closeOnOverlayClick?: boolean
   children: ReactNode
 }
 
-export function Modal({ title, bandColorVar, onClose, headerAction, children }: ModalProps) {
+export function Modal({
+  title,
+  bandColorVar,
+  onClose,
+  headerAction,
+  closeOnOverlayClick = false,
+  children,
+}: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  // Only a press that both starts and ends on the overlay closes it (not a drag out of the dialog).
+  const pressStartedOnOverlay = useRef(false)
 
   useEffect(() => {
     dialogRef.current?.focus()
@@ -27,7 +38,16 @@ export function Modal({ title, bandColorVar, onClose, headerAction, children }: 
   }, [onClose])
 
   return (
-    <div className="modal-overlay">
+    <div
+      className="modal-overlay"
+      onPointerDown={(event) => {
+        pressStartedOnOverlay.current = event.target === event.currentTarget
+      }}
+      onClick={(event) => {
+        if (closeOnOverlayClick && pressStartedOnOverlay.current && event.target === event.currentTarget) onClose()
+        pressStartedOnOverlay.current = false
+      }}
+    >
       <div
         className="modal-dialog"
         role="dialog"

@@ -1,5 +1,6 @@
 import { addDays, secondsIntoDay, startOfDay } from './appTime'
 import { dayKey } from './timeline'
+import type { NighttimeHours } from '../types/models'
 
 export interface DayBlock {
   dayKey: string
@@ -67,4 +68,21 @@ export function buildWeekMarks(
     if (mark.dayKey in result) result[mark.dayKey].push(mark)
   }
   return result
+}
+
+function minutesFraction(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return (hour * 60 + minute) / 1440
+}
+
+/** Night parts of a day as [start, end) fractions: two bands when the night wraps past midnight. */
+export function nightFractions(night: NighttimeHours): { start: number; end: number }[] {
+  const start = minutesFraction(night.start)
+  const end = minutesFraction(night.end)
+  if (start === end) return []
+  if (start < end) return [{ start, end }]
+  return [
+    { start: 0, end },
+    { start, end: 1 },
+  ].filter((band) => band.end > band.start)
 }
