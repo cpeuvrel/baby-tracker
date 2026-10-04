@@ -10,7 +10,7 @@ describe('MetricCalendar', () => {
     render(<MetricCalendar dayKeys={dayKeys} colorVar="--category-sleep" selectedKey={null} onSelectDay={() => {}} />)
 
     expect(screen.getAllByText('3')).toHaveLength(1)
-    expect(document.querySelectorAll('.week-chart-day')).toHaveLength(3)
+    expect(document.querySelectorAll('.timeline-grid-day-header')).toHaveLength(3)
   })
 
   it('renders a block for each interval within a day', () => {
@@ -26,7 +26,7 @@ describe('MetricCalendar', () => {
       />,
     )
 
-    expect(document.querySelectorAll('.week-chart-block')).toHaveLength(1)
+    expect(document.querySelectorAll('.timeline-grid-block')).toHaveLength(1)
   })
 
   it('renders a mark for each instant', () => {
@@ -40,7 +40,7 @@ describe('MetricCalendar', () => {
       />,
     )
 
-    expect(document.querySelectorAll('.week-chart-mark')).toHaveLength(1)
+    expect(document.querySelectorAll('.timeline-grid-mark')).toHaveLength(1)
   })
 
   it('selects a day from its date or its column, and clears it on a second tap', async () => {
@@ -85,12 +85,48 @@ describe('MetricCalendar', () => {
       />,
     )
 
-    const columns = document.querySelectorAll('.week-chart-column')
-    expect(columns[0].querySelectorAll('.week-chart-block')).toHaveLength(0)
-    const block = columns[1].querySelector<HTMLElement>('.week-chart-block')
+    const columns = document.querySelectorAll('.timeline-grid-column')
+    expect(columns[0].querySelectorAll('.timeline-grid-block')).toHaveLength(0)
+    const block = columns[1].querySelector<HTMLElement>('.timeline-grid-block')
     expect(parseFloat(block!.style.top)).toBeCloseTo((1 / 24) * 100)
     expect(parseFloat(block!.style.height)).toBeCloseTo((10 / 24) * 100)
     expect(screen.getAllByText('20')).toHaveLength(2)
     expect(screen.getByText('02')).toBeInTheDocument()
+  })
+
+  it('changes period with the arrows, Next only when given', async () => {
+    const user = userEvent.setup()
+    const onPrevious = vi.fn()
+    render(
+      <MetricCalendar
+        dayKeys={dayKeys}
+        colorVar="--category-feeding"
+        selectedKey={null}
+        onSelectDay={() => {}}
+        onPrevious={onPrevious}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Previous period' }))
+    expect(onPrevious).toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Next period' })).not.toBeInTheDocument()
+  })
+
+  it('shades the night relative to the column start', () => {
+    render(
+      <MetricCalendar
+        dayKeys={dayKeys}
+        colorVar="--category-sleep"
+        selectedKey={null}
+        onSelectDay={() => {}}
+        dayStart="20:00"
+        nightRange={{ start: '20:00', end: '08:00' }}
+      />,
+    )
+
+    const bands = document.querySelectorAll<HTMLElement>('.timeline-grid-scroller .timeline-grid-night')
+    expect(bands).toHaveLength(1)
+    expect(bands[0].style.top).toBe('0%')
+    expect(parseFloat(bands[0].style.height)).toBeCloseTo(50)
   })
 })
