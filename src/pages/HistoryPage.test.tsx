@@ -59,4 +59,14 @@ describe('HistoryPage', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+
+  it('closes the filters modal when clicking outside it', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<HistoryPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Filters' }))
+    await user.click(container.querySelector('.modal-overlay') as HTMLElement)
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
 })

@@ -61,4 +61,29 @@ describe('Modal', () => {
 
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('closes on a click outside the dialog only when closeOnOverlayClick is set', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    const { container, rerender } = render(
+      <Modal title="Filters" bandColorVar="--category-sleep" onClose={onClose}>
+        <p>Contenu</p>
+      </Modal>,
+    )
+    const overlay = container.querySelector('.modal-overlay') as HTMLElement
+    await user.click(overlay)
+    expect(onClose).not.toHaveBeenCalled()
+
+    rerender(
+      <Modal title="Filters" bandColorVar="--category-sleep" onClose={onClose} closeOnOverlayClick>
+        <p>Contenu</p>
+      </Modal>,
+    )
+    await user.click(screen.getByText('Contenu'))
+    expect(onClose).not.toHaveBeenCalled()
+
+    await user.click(overlay)
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
 })

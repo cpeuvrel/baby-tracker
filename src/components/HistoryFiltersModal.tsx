@@ -30,6 +30,7 @@ export function HistoryFiltersModal({ visibleKinds, onApply, onClose }: HistoryF
       title="Filters"
       bandColorVar="--category-sleep"
       onClose={onClose}
+      closeOnOverlayClick
       headerAction={{ label: 'Apply', onClick: handleApply }}
     >
       <ul className="list-group">
