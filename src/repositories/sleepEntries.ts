@@ -172,6 +172,18 @@ export async function resumeSleep(
   })
 }
 
+/** Moves the start of a sleep in progress: its live timer follows. */
+export async function updateSleepStart(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  startedAt: Date,
+): Promise<void> {
+  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
+    startedAt: Timestamp.fromDate(startedAt),
+  })
+}
+
 export interface UpdateSleepInput {
   startedAt: Date
   endedAt: Date | null
