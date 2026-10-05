@@ -8,10 +8,12 @@ interface DateTimeFieldProps {
   value: string
   onChange: (value: string) => void
   disabled?: boolean
+  /** Latest pickable `YYYY-MM-DDTHH:mm`; only the date picker enforces it. */
+  max?: string
 }
 
 /** A date input plus a 24-hour time picker, in place of `input[type=datetime-local]`. */
-export function DateTimeField({ id, label, value, onChange, disabled }: DateTimeFieldProps) {
+export function DateTimeField({ id, label, value, onChange, disabled, max }: DateTimeFieldProps) {
   const [date = '', time = ''] = value ? value.split('T') : []
 
   const change = (nextDate: string, nextTime: string) => {
@@ -32,6 +34,7 @@ export function DateTimeField({ id, label, value, onChange, disabled }: DateTime
           id={id}
           type="date"
           value={date}
+          max={max?.slice(0, 10)}
           disabled={disabled}
           onChange={(event) => change(event.target.value, time)}
         />

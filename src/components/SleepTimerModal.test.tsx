@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -7,13 +7,14 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import type { SleepEntry } from '../types/models'
 import { SleepTimerModal } from './SleepTimerModal'
-import { setDateTime } from '../test/timeFields'
+import { dateTimeValue, setDateTime } from '../test/timeFields'
 
 const startSleep = vi.fn()
 const stopSleep = vi.fn()
 const logSleep = vi.fn()
 const updateSleepEntry = vi.fn()
 const resumeSleep = vi.fn()
+const updateSleepStart = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
   resumeSleep: (...args: unknown[]) => resumeSleep(...args),
@@ -21,6 +22,7 @@ vi.mock('../repositories/sleepEntries', () => ({
   stopSleep: (...args: unknown[]) => stopSleep(...args),
   logSleep: (...args: unknown[]) => logSleep(...args),
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
+  updateSleepStart: (...args: unknown[]) => updateSleepStart(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -33,6 +35,7 @@ describe('SleepTimerModal', () => {
     logSleep.mockReset()
     updateSleepEntry.mockReset()
     resumeSleep.mockReset()
+    updateSleepStart.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -208,5 +211,64 @@ describe('SleepTimerModal', () => {
     rerender(<SleepTimerModal onClose={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'Stop Timer' })).toBeInTheDocument()
+  })
+
+  it('moves the start of the running sleep when Start Time is changed', () => {
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+
+    render(<SleepTimerModal onClose={vi.fn()} />)
+    expect(screen.getByLabelText('Start Time')).toBeEnabled()
+    fireEvent.change(screen.getByLabelText('Start Time hour'), { target: { value: '20' } })
+
+    expect(updateSleepStart).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00+01:00'))
+  })
+
+  it('never moves the start of the running sleep into the future', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-05T22:00:00+01:00'))
+    try {
+      const activeEntry: SleepEntry = {
+        id: 'sleep1',
+        startedAt: '2026-03-05T20:00:00.000Z',
+        endedAt: null,
+        durationSeconds: null,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: '2026-03-05T20:00:00.000Z',
+      }
+      vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+
+      render(<SleepTimerModal onClose={vi.fn()} />)
+      fireEvent.change(screen.getByLabelText('Start Time hour'), { target: { value: '23' } })
+
+      expect(updateSleepStart).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T22:00:00+01:00'))
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('clamps a future start time to now before the timer starts', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-05T22:00:00+01:00'))
+    try {
+      vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
+
+      render(<SleepTimerModal onClose={vi.fn()} />)
+      fireEvent.change(screen.getByLabelText('Start Time hour'), { target: { value: '23' } })
+
+      expect(dateTimeValue('Start Time')).toBe('2026-03-05T22:00')
+      expect(screen.getByLabelText('Start Time')).toHaveAttribute('max', '2026-03-05')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

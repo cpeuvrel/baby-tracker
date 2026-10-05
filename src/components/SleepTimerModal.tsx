@@ -5,7 +5,7 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
-import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry } from '../repositories/sleepEntries'
+import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
 import { DateTimeField } from './DateTimeField'
@@ -21,6 +21,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const elapsedSeconds = useElapsedSeconds(activeEntry?.startedAt ?? null)
   const [pendingStart, setPendingStart] = useState(false)
   const [startedAt, setStartedAt] = useState(() => toDatetimeLocalValue(new Date()))
+  // Date picker bound only; handleStartedAtChange still refuses any future time.
+  const [maxStart] = useState(() => toDatetimeLocalValue(new Date()))
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
@@ -77,6 +79,23 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     onClose()
   }
 
+  const handleStartedAtChange = (value: string) => {
+    if (value === '') {
+      if (!activeEntry) setStartedAt('')
+      return
+    }
+    // A sleep cannot start in the future.
+    const now = new Date()
+    const picked = fromDatetimeLocalValue(value)
+    const start = picked > now ? now : picked
+    if (activeEntry) {
+      // The live counter follows the active entry's new start.
+      void updateSleepStart(household.id, selectedBaby.id, activeEntry.id, start)
+    } else {
+      setStartedAt(start === now ? toDatetimeLocalValue(now) : value)
+    }
+  }
+
   const handleEndedAtChange = (value: string) => {
     if (value === '') {
       setDurationMinutes(null)
@@ -113,7 +132,13 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       >
         {isActive ? 'Stop Timer' : 'Start Timer'}
       </button>
-      <DateTimeField id="sleep-started-at" label="Start Time" value={startTimeValue} disabled={isActive} onChange={setStartedAt} />
+      <DateTimeField
+        id="sleep-started-at"
+        label="Start Time"
+        value={startTimeValue}
+        max={maxStart}
+        onChange={handleStartedAtChange}
+      />
       <DurationInput totalMinutes={durationMinutes} onChange={setDurationMinutes} disabled={isActive} />
       <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} disabled={isActive} onChange={handleEndedAtChange} />
       <div>
