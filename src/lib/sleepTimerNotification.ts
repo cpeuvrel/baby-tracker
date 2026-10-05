@@ -1,4 +1,3 @@
-import { formatTime } from './appTime'
 import { formatDuration, secondsBetween } from './duration'
 
 /** One notification per device, replaced in place while the timer runs. */
@@ -8,8 +7,7 @@ export const SLEEP_TIMER_NOTIFICATION_TAG = 'sleep-timer'
 export const SLEEP_TIMER_URL = '/?timer=sleep'
 
 export function sleepTimerNotificationBody(babyName: string, startedAt: Date, now: Date): string {
-  const since = formatTime(startedAt, { hour: '2-digit', minute: '2-digit', hour12: false })
-  return `${babyName} — asleep for ${formatDuration(secondsBetween(startedAt, now))} (since ${since})`
+  return `${babyName} — ${formatDuration(secondsBetween(startedAt, now))}`
 }
 
 function notificationsAllowed(): boolean {

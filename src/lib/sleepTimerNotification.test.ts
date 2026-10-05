@@ -27,10 +27,10 @@ afterEach(() => {
 })
 
 describe('sleepTimerNotificationBody', () => {
-  it('gives the baby, the elapsed time and the start (Paris time)', () => {
+  it('gives the baby and the elapsed time', () => {
     expect(
       sleepTimerNotificationBody('Léo', new Date('2026-03-05T20:00:00Z'), new Date('2026-03-05T21:05:00Z')),
-    ).toBe('Léo — asleep for 1h 05m (since 21:00)')
+    ).toBe('Léo — 1h 05m')
   })
 })
 
