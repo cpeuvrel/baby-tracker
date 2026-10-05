@@ -8,6 +8,13 @@ import { initializeApp } from 'firebase/app'
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
+import {
+  SLEEP_TIMER_NOTIFICATION_TAG,
+  SLEEP_TIMER_PUSH,
+  SLEEP_TIMER_STOP_PUSH,
+  SLEEP_TIMER_TITLE,
+  sleepTimerNotificationOptions,
+} from './lib/sleepTimerNotification'
 
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
 
@@ -26,10 +33,27 @@ const app = initializeApp({
 
 const messaging = getMessaging(app)
 
-onBackgroundMessage(messaging, (payload) => {
+onBackgroundMessage(messaging, async (payload) => {
+  // Sleep timer pushes (functions/src/sleepTimer.ts): the server sends one a
+  // minute while a sleep runs, so the elapsed time stays current with the app
+  // in the background. The text is computed here, so a late push is still right.
+  const data = payload.data ?? {}
+  if (data.type === SLEEP_TIMER_PUSH && data.babyName && data.startedAt) {
+    await self.registration.showNotification(
+      SLEEP_TIMER_TITLE,
+      sleepTimerNotificationOptions(data.babyName, new Date(data.startedAt), new Date()),
+    )
+    return
+  }
+  if (data.type === SLEEP_TIMER_STOP_PUSH) {
+    const notifications = await self.registration.getNotifications({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
+    notifications.forEach((notification) => notification.close())
+    return
+  }
+
   const title = payload.notification?.title ?? 'Baby Tracker'
   const body = payload.notification?.body ?? ''
-  self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/badge-96.png' })
+  await self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/badge-96.png' })
 })
 
 // A tap on a notification (the running sleep timer) opens its screen in the
@@ -37,7 +61,7 @@ onBackgroundMessage(messaging, (payload) => {
 // app launches on it. The timer notification stays until the timer stops.
 self.addEventListener('notificationclick', (event) => {
   const url = (event.notification.data as { url?: string } | null)?.url ?? '/'
-  if (event.notification.tag !== 'sleep-timer') event.notification.close()
+  if (event.notification.tag !== SLEEP_TIMER_NOTIFICATION_TAG) event.notification.close()
   event.waitUntil(
     (async () => {
       const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

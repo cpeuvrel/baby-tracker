@@ -7,6 +7,8 @@ import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { Baby } from '../types/models'
 import { Layout } from './Layout'
 
+vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: { uid: 'uid1' } }) }))
+
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby: Baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 

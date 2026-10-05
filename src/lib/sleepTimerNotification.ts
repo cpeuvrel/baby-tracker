@@ -10,6 +10,27 @@ export function sleepTimerNotificationBody(babyName: string, startedAt: Date, no
   return `${babyName} — ${formatDuration(secondsBetween(startedAt, now))}`
 }
 
+export const SLEEP_TIMER_TITLE = 'Sleep Timer'
+
+/** `data.type` of the server's pushes (functions/src/sleepTimer.ts). */
+export const SLEEP_TIMER_PUSH = 'sleep-timer'
+export const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
+
+/** Shared by the app and the service worker (server pushes while the app is in the background). */
+export function sleepTimerNotificationOptions(babyName: string, startedAt: Date, now: Date): NotificationOptions {
+  return {
+    body: sleepTimerNotificationBody(babyName, startedAt, now),
+    icon: '/icon-192.png',
+    // Status bar glyph on Android: white on transparent, else it shows Chrome's.
+    badge: '/badge-96.png',
+    tag: SLEEP_TIMER_NOTIFICATION_TAG,
+    silent: true,
+    requireInteraction: true,
+    timestamp: startedAt.getTime(),
+    data: { url: SLEEP_TIMER_URL },
+  } as NotificationOptions
+}
+
 function notificationsAllowed(): boolean {
   return typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator
 }
@@ -28,17 +49,7 @@ export async function requestSleepTimerNotificationPermission(): Promise<void> {
 export async function showSleepTimerNotification(babyName: string, startedAt: Date, now: Date): Promise<void> {
   if (!notificationsAllowed()) return
   const registration = await navigator.serviceWorker.ready
-  await registration.showNotification('Sleep Timer', {
-    body: sleepTimerNotificationBody(babyName, startedAt, now),
-    icon: '/icon-192.png',
-    // Status bar glyph on Android: white on transparent, else it shows Chrome's.
-    badge: '/badge-96.png',
-    tag: SLEEP_TIMER_NOTIFICATION_TAG,
-    silent: true,
-    requireInteraction: true,
-    timestamp: startedAt.getTime(),
-    data: { url: SLEEP_TIMER_URL },
-  } as NotificationOptions)
+  await registration.showNotification(SLEEP_TIMER_TITLE, sleepTimerNotificationOptions(babyName, startedAt, now))
 }
 
 export async function closeSleepTimerNotification(): Promise<void> {
