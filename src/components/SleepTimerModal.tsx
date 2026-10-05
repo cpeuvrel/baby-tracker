@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
+import { useNow } from '../hooks/useNow'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
 import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
@@ -22,8 +23,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const elapsedSeconds = useElapsedSeconds(activeEntry?.startedAt ?? null)
   const [pendingStart, setPendingStart] = useState(false)
   const [startedAt, setStartedAt] = useState(() => toDatetimeLocalValue(new Date()))
-  // Date picker bound only; handleStartedAtChange still refuses any future time.
-  const [maxStart] = useState(() => toDatetimeLocalValue(new Date()))
+  // Date picker bound, kept current past midnight; handleStartedAtChange still refuses any future time.
+  const maxStart = toDatetimeLocalValue(useNow())
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
