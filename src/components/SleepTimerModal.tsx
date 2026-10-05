@@ -5,6 +5,7 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
+import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -50,6 +51,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setTimerEntryId(activeEntry.id)
     } else if (!pendingStart) {
       setPendingStart(true)
+      // The running timer shows as a notification; this tap is the gesture asking needs.
+      void requestSleepTimerNotificationPermission()
       if (timerEntryId) {
         // Start again after a stop: the same sleep goes on, not a new one.
         void resumeSleep(household.id, selectedBaby.id, timerEntryId, fromDatetimeLocalValue(startedAt))

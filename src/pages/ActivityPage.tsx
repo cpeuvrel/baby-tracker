@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { BathForm } from '../components/BathForm'
 import { CategoryCard, type CategoryCardEntryRow } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
@@ -108,6 +108,9 @@ export function ActivityPage() {
   const { household, selectedBaby } = useHousehold()
   const navigate = useNavigate()
   const [modal, setModal] = useState<ModalState>(null)
+  // "?timer=sleep" (the sleep timer notification, the timer banner) opens the running timer.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sleepTimerRequested = searchParams.get('timer') === 'sleep'
   const [unit] = useUnitPreference()
   const { isVisible } = useActivityVisibility()
   // Keeps "… ago" labels and the recent-entries window current without a reload.
@@ -159,7 +162,10 @@ export function ActivityPage() {
     setModal(entry.endedAt === null ? { kind: 'sleep-active' } : { kind: 'sleep-edit', entry })
   }
 
-  const closeModal = () => setModal(null)
+  const closeModal = () => {
+    setModal(null)
+    if (sleepTimerRequested) setSearchParams({}, { replace: true })
+  }
 
   const handleShowHistory = () => navigate('/history')
 
@@ -341,7 +347,7 @@ export function ActivityPage() {
         Edit Activities
       </button>
 
-      {modal?.kind === 'sleep-active' && <SleepTimerModal onClose={closeModal} />}
+      {(modal?.kind === 'sleep-active' || sleepTimerRequested) && <SleepTimerModal onClose={closeModal} />}
       {modal?.kind === 'sleep-edit' && (
         <SleepEntryEditModal
           entry={modal.entry}

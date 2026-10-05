@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Outlet, useMatch } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Outlet, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatDate } from '../lib/appTime'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
@@ -16,6 +16,18 @@ export function Layout() {
   const { selectedBaby } = useHousehold()
   const onActivityScreen = useMatch({ path: '/', end: true }) != null
   const [summaryOpen, setSummaryOpen] = useState(false)
+  const navigate = useNavigate()
+
+  // The service worker forwards notification taps here (see sw.ts).
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: string; url?: string } | null
+      if (data?.type === 'navigate' && typeof data.url === 'string' && data.url.startsWith('/')) navigate(data.url)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+  }, [navigate])
 
   return (
     <div className="app-shell">
