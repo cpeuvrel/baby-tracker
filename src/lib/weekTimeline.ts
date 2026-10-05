@@ -1,5 +1,5 @@
-import { addDays, secondsIntoDay, startOfDay } from './appTime'
-import { dayKey } from './timeline'
+import { secondsIntoDay } from './appTime'
+import { CALENDAR_DAYS, nextDayKey, type DayFrame } from './timeline'
 import type { NighttimeHours } from '../types/models'
 
 export interface DayBlock {
@@ -13,26 +13,28 @@ export interface DayMark {
   atFraction: number
 }
 
-function fractionOfDay(date: Date): number {
-  return secondsIntoDay(date) / 86400
+/** Part of its day of `frame` (0 at the day's start → 1 at its end) at which `date` falls, by wall-clock time. */
+function fractionOfDay(date: Date, frame: DayFrame): number {
+  return (((secondsIntoDay(date) - frame.startSeconds) % 86400) + 86400) % 86400 / 86400
 }
 
-/** Splits a [start, end) interval into one block per calendar day it touches. */
-export function splitIntervalByDay(start: Date, end: Date): DayBlock[] {
+/** Splits a [start, end) interval into one block per day of `frame` (calendar days by default) it touches. */
+export function splitIntervalByDay(start: Date, end: Date, frame: DayFrame = CALENDAR_DAYS): DayBlock[] {
   if (end.getTime() <= start.getTime()) return []
 
   const blocks: DayBlock[] = []
   let segmentStart = start
 
   while (segmentStart.getTime() < end.getTime()) {
-    const nextMidnight = addDays(startOfDay(segmentStart), 1)
-    const segmentEnd = end.getTime() < nextMidnight.getTime() ? end : nextMidnight
+    const key = frame.keyOf(segmentStart)
+    const nextDayStart = frame.startOf(nextDayKey(key))
+    const segmentEnd = end.getTime() < nextDayStart.getTime() ? end : nextDayStart
 
     blocks.push({
-      dayKey: dayKey(segmentStart),
-      startFraction: fractionOfDay(segmentStart),
+      dayKey: key,
+      startFraction: fractionOfDay(segmentStart, frame),
       endFraction:
-        segmentEnd.getTime() === nextMidnight.getTime() ? 1 : fractionOfDay(segmentEnd),
+        segmentEnd.getTime() === nextDayStart.getTime() ? 1 : fractionOfDay(segmentEnd, frame),
     })
 
     segmentStart = segmentEnd
@@ -41,8 +43,8 @@ export function splitIntervalByDay(start: Date, end: Date): DayBlock[] {
   return blocks
 }
 
-export function markForInstant(at: Date): DayMark {
-  return { dayKey: dayKey(at), atFraction: fractionOfDay(at) }
+export function markForInstant(at: Date, frame: DayFrame = CALENDAR_DAYS): DayMark {
+  return { dayKey: frame.keyOf(at), atFraction: fractionOfDay(at, frame) }
 }
 
 export function buildWeekBlocks(
@@ -70,15 +72,19 @@ export function buildWeekMarks(
   return result
 }
 
-function minutesFraction(time: string): number {
+/** Part of a day at which a `HH:MM` time falls, for a day starting `startSeconds` after midnight. */
+function minutesFraction(time: string, startSeconds = 0): number {
   const [hour, minute] = time.split(':').map(Number)
-  return (hour * 60 + minute) / 1440
+  return ((((hour * 3600 + minute * 60 - startSeconds) % 86400) + 86400) % 86400) / 86400
 }
 
-/** Night parts of a day as [start, end) fractions: two bands when the night wraps past midnight. */
-export function nightFractions(night: NighttimeHours): { start: number; end: number }[] {
-  const start = minutesFraction(night.start)
-  const end = minutesFraction(night.end)
+/**
+ * Night parts of a day as [start, end) fractions: two bands when the night wraps past the
+ * day's start (midnight, or `startSeconds` after it for rolling days).
+ */
+export function nightFractions(night: NighttimeHours, startSeconds = 0): { start: number; end: number }[] {
+  const start = minutesFraction(night.start, startSeconds)
+  const end = minutesFraction(night.end, startSeconds)
   if (start === end) return []
   if (start < end) return [{ start, end }]
   return [

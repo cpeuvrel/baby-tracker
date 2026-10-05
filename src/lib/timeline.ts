@@ -34,6 +34,64 @@ export function dayOfMonth(key: string): number {
   return Number(key.slice(8, 10))
 }
 
+/** Key of the calendar day after `key`. */
+export function nextDayKey(key: string): string {
+  const [year, month, day] = key.split('-').map(Number)
+  return dayKey(zonedTime(year, month, day + 1, 12))
+}
+
+/**
+ * How a trend period's instants are grouped into days: Paris calendar days (00:00 → 24:00),
+ * or rolling 24-hour windows ending at a given time of day, each keyed by the day it ends on.
+ */
+export interface DayFrame {
+  kind: 'calendar' | 'rolling'
+  /** Seconds after Paris midnight at which each day of the frame starts (0 for calendar days). */
+  startSeconds: number
+  /** Key of the day of the frame containing `date`. */
+  keyOf: (date: Date) => string
+  /** Instant at which the day `key` of the frame starts. */
+  startOf: (key: string) => Date
+}
+
+export const CALENDAR_DAYS: DayFrame = {
+  kind: 'calendar',
+  startSeconds: 0,
+  keyOf: dayKey,
+  startOf: parseDayKey,
+}
+
+/**
+ * Rolling 24-hour windows ending at `end`'s time of day: the window keyed by today is the last
+ * 24 hours up to `end`, the one keyed by yesterday the 24 hours before, and so on.
+ */
+export function rollingDayFrame(end: Date): DayFrame {
+  const { hour, minute, second } = zonedParts(end)
+  const startOf = (key: string) => {
+    const [year, month, day] = key.split('-').map(Number)
+    return zonedTime(year, month, day - 1, hour, minute, second)
+  }
+  return {
+    kind: 'rolling',
+    startSeconds: hour * 3600 + minute * 60 + second,
+    keyOf: (date) => {
+      const key = dayKey(date)
+      const next = nextDayKey(key)
+      return date.getTime() >= startOf(next).getTime() ? next : key
+    },
+    startOf,
+  }
+}
+
+/** The `days` days of `frame` ending with the day `endKey`, and the time they cover. */
+export function framePeriod(frame: DayFrame, endKey: string, days: number): { range: DateRange; dayKeys: string[] } {
+  const dayKeys = [endKey]
+  for (let index = 1; index < days; index += 1) {
+    dayKeys.unshift(dayKey(addDays(parseDayKey(dayKeys[0]), -1)))
+  }
+  return { range: { start: frame.startOf(dayKeys[0]), end: frame.startOf(nextDayKey(endKey)) }, dayKeys }
+}
+
 /**
  * Start of the Activity cards' window: yesterday at the start of the baby's
  * night (e.g. 20:00), so last night's sleep and feeds still show today.

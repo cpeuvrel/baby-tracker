@@ -6,6 +6,8 @@ import {
   dayKey,
   dayKeysInRange,
   dayRange,
+  framePeriod,
+  CALENDAR_DAYS,
   isToday,
   isYesterday,
   lastNDayKeys,
@@ -13,6 +15,7 @@ import {
   nightDayKey,
   parseDayKey,
   precedingRange,
+  rollingDayFrame,
 } from './timeline'
 
 describe('dayRange', () => {
@@ -179,5 +182,39 @@ describe('buildTimeline', () => {
 
   it('returns an empty list when there are no entries', () => {
     expect(buildTimeline([], [], [])).toEqual([])
+  })
+})
+
+describe('rollingDayFrame', () => {
+  // 15:30 in Paris (UTC+1 in March).
+  const frame = rollingDayFrame(new Date('2026-03-06T14:30:00.000Z'))
+
+  it('keys each 24-hour window by the day it ends on', () => {
+    expect(frame.keyOf(new Date('2026-03-06T14:29:59.000Z'))).toBe('2026-03-06')
+    expect(frame.keyOf(new Date('2026-03-05T14:30:00.000Z'))).toBe('2026-03-06')
+    expect(frame.keyOf(new Date('2026-03-05T14:29:59.000Z'))).toBe('2026-03-05')
+    expect(frame.keyOf(new Date('2026-03-06T14:30:00.000Z'))).toBe('2026-03-07')
+  })
+
+  it('starts each window at the same time of day the day before', () => {
+    expect(frame.startOf('2026-03-06')).toEqual(new Date('2026-03-05T14:30:00.000Z'))
+    expect(frame.startSeconds).toBe(15.5 * 3600)
+  })
+})
+
+describe('framePeriod', () => {
+  it('covers the calendar days ending with a day', () => {
+    expect(framePeriod(CALENDAR_DAYS, '2026-03-06', 2)).toEqual({
+      range: { start: parseDayKey('2026-03-05'), end: parseDayKey('2026-03-07') },
+      dayKeys: ['2026-03-05', '2026-03-06'],
+    })
+  })
+
+  it('covers the last 24 hours with a single rolling day', () => {
+    const now = new Date('2026-03-06T14:30:00.000Z')
+    expect(framePeriod(rollingDayFrame(now), '2026-03-06', 1)).toEqual({
+      range: { start: new Date('2026-03-05T14:30:00.000Z'), end: now },
+      dayKeys: ['2026-03-06'],
+    })
   })
 })

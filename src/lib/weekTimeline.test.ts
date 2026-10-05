@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildWeekBlocks, buildWeekMarks, markForInstant, splitIntervalByDay } from './weekTimeline'
+import { rollingDayFrame } from './timeline'
+import { buildWeekBlocks, buildWeekMarks, markForInstant, nightFractions, splitIntervalByDay } from './weekTimeline'
 
 describe('splitIntervalByDay', () => {
   it('returns a single block for an interval within one day', () => {
@@ -76,5 +77,30 @@ describe('buildWeekMarks', () => {
     )
 
     expect(result['2026-03-05']).toHaveLength(1)
+  })
+})
+
+describe('rolling days', () => {
+  // Windows from 12:00 to 12:00 (Paris).
+  const frame = rollingDayFrame(new Date('2026-03-06T12:00:00+01:00'))
+
+  it('splits an interval at the start of each window', () => {
+    expect(
+      splitIntervalByDay(new Date('2026-03-05T10:00:00+01:00'), new Date('2026-03-05T18:00:00+01:00'), frame),
+    ).toEqual([
+      { dayKey: '2026-03-05', startFraction: 22 / 24, endFraction: 1 },
+      { dayKey: '2026-03-06', startFraction: 0, endFraction: 6 / 24 },
+    ])
+  })
+
+  it('places an instant within its window', () => {
+    expect(markForInstant(new Date('2026-03-06T06:00:00+01:00'), frame)).toEqual({
+      dayKey: '2026-03-06',
+      atFraction: 18 / 24,
+    })
+  })
+
+  it('shifts the night bands to the start of the window', () => {
+    expect(nightFractions({ start: '20:00', end: '08:00' }, 12 * 3600)).toEqual([{ start: 8 / 24, end: 20 / 24 }])
   })
 })

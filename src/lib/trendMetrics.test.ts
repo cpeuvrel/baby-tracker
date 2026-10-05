@@ -13,6 +13,7 @@ import {
   getTrendMetric,
   TREND_METRICS,
 } from './trendMetrics'
+import { rollingDayFrame } from './timeline'
 
 const feeding: FeedingEntry = {
   id: 'f1',
@@ -200,6 +201,33 @@ describe('sleep metrics', () => {
     // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h), both on the 5th.
     expect(values('wakeWindow')).toEqual([4.5 * 3600, 0])
     expect(computeMetricSummary('wakeWindow', DAYS, bundle)).toBe(4.5 * 3600)
+  })
+})
+
+describe('rolling days', () => {
+  // 24-hour windows ending at noon (Paris): the 6th's is from noon on the 5th to noon on the 6th.
+  const frame = rollingDayFrame(NOW)
+  const rolling = (id: Parameters<typeof computeMetricSeries>[0]) =>
+    computeMetricSeries(id, DAYS, bundle, undefined, NOW, frame).map((point) => point.value)
+
+  it('clips sleep to the rolling windows', () => {
+    // 5th's window: the morning nap. 6th's: the afternoon nap, the night and the running sleep.
+    expect(rolling('sleepTotal')).toEqual([3600, 13.5 * 3600])
+    expect(rolling('sleepDay')).toEqual([3600, 3.5 * 3600])
+    expect(rolling('sleepNight')).toEqual([0, 10 * 3600])
+  })
+
+  it('counts events in the window they fall in, a window ending just before its end', () => {
+    // The noon solid on the 6th starts the next window.
+    expect(rolling('feedSessions')).toEqual([1, 1])
+  })
+
+  it('counts the longest sleep in the window it ends in', () => {
+    expect(rolling('sleepLongest')).toEqual([3600, 10 * 3600])
+  })
+
+  it('averages a per-day total over whole windows, all of them elapsed', () => {
+    expect(computeMetricSummary('sleepTotal', DAYS, bundle, undefined, NOW, frame)).toBe((14.5 * 3600) / 2)
   })
 })
 
