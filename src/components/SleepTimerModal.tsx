@@ -3,8 +3,10 @@ import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
+import { useNow } from '../hooks/useNow'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
+import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -21,8 +23,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const elapsedSeconds = useElapsedSeconds(activeEntry?.startedAt ?? null)
   const [pendingStart, setPendingStart] = useState(false)
   const [startedAt, setStartedAt] = useState(() => toDatetimeLocalValue(new Date()))
-  // Date picker bound only; handleStartedAtChange still refuses any future time.
-  const [maxStart] = useState(() => toDatetimeLocalValue(new Date()))
+  // Date picker bound, kept current past midnight; handleStartedAtChange still refuses any future time.
+  const maxStart = toDatetimeLocalValue(useNow())
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
   const [notes, setNotes] = useState('')
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
@@ -50,6 +52,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setTimerEntryId(activeEntry.id)
     } else if (!pendingStart) {
       setPendingStart(true)
+      // The running timer shows as a notification; this tap is the gesture asking needs.
+      void requestSleepTimerNotificationPermission()
       if (timerEntryId) {
         // Start again after a stop: the same sleep goes on, not a new one.
         void resumeSleep(household.id, selectedBaby.id, timerEntryId, fromDatetimeLocalValue(startedAt))

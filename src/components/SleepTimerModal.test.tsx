@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -267,6 +267,25 @@ describe('SleepTimerModal', () => {
 
       expect(dateTimeValue('Start Time')).toBe('2026-03-05T22:00')
       expect(screen.getByLabelText('Start Time')).toHaveAttribute('max', '2026-03-05')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('offers the new day in the date picker once midnight passes with the modal open', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-03-05T23:59:50+01:00'))
+    try {
+      vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
+
+      render(<SleepTimerModal onClose={vi.fn()} />)
+      expect(screen.getByLabelText('Start Time')).toHaveAttribute('max', '2026-03-05')
+
+      act(() => {
+        vi.advanceTimersByTime(30_000)
+      })
+
+      expect(screen.getByLabelText('Start Time')).toHaveAttribute('max', '2026-03-06')
     } finally {
       vi.useRealTimers()
     }

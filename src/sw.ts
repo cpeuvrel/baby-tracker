@@ -29,5 +29,25 @@ const messaging = getMessaging(app)
 onBackgroundMessage(messaging, (payload) => {
   const title = payload.notification?.title ?? 'Baby Tracker'
   const body = payload.notification?.body ?? ''
-  self.registration.showNotification(title, { body, icon: '/icon.svg' })
+  self.registration.showNotification(title, { body, icon: '/icon-192.png', badge: '/badge-96.png' })
+})
+
+// A tap on a notification (the running sleep timer) opens its screen in the
+// app: an open window is focused and routes there itself (no reload), else the
+// app launches on it. The timer notification stays until the timer stops.
+self.addEventListener('notificationclick', (event) => {
+  const url = (event.notification.data as { url?: string } | null)?.url ?? '/'
+  if (event.notification.tag !== 'sleep-timer') event.notification.close()
+  event.waitUntil(
+    (async () => {
+      const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      const client = windows.find((candidate) => new URL(candidate.url).origin === self.location.origin)
+      if (client) {
+        await client.focus()
+        client.postMessage({ type: 'navigate', url })
+        return
+      }
+      await self.clients.openWindow(url)
+    })(),
+  )
 })

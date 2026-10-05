@@ -17,9 +17,9 @@ import * as useReminderModule from '../hooks/useReminder'
 import type { BathEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
-function renderPage() {
+function renderPage(initialEntry = '/') {
   return render(
-    <MemoryRouter initialEntries={['/']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/" element={<ActivityPage />} />
         <Route path="/history" element={<p>History screen</p>} />
@@ -163,6 +163,27 @@ describe('ActivityPage', () => {
     expect(startSleep).not.toHaveBeenCalled()
     expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Start Timer' })).not.toBeInTheDocument()
+  })
+
+  it('opens the running sleep timer from ?timer=sleep (notification tap) and closes it', async () => {
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }
+    setupHooks(activeEntry)
+    const user = userEvent.setup()
+
+    renderPage('/?timer=sleep')
+
+    expect(screen.getByRole('dialog', { name: 'Sleep' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Stop Timer' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(screen.queryByRole('dialog', { name: 'Sleep' })).not.toBeInTheDocument()
   })
 
   it('opens the feeding modal and closes it once saved', async () => {
