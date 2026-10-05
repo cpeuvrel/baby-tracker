@@ -4,16 +4,23 @@ import type { DiaperEntry, DiaperType, FeedingEntry, NighttimeHours, SleepEntry 
 
 export const DEFAULT_NIGHTTIME_HOURS: NighttimeHours = { start: '20:00', end: '08:00' }
 
-function parseHour(time: string): number {
-  return Number(time.split(':')[0])
+function minutesOf(time: string): number {
+  const [hour, minute] = time.split(':').map(Number)
+  return hour * 60 + minute
 }
 
-/** Whether `startedAt` falls in the nighttime hours (compared by hour, in Paris time). */
+/** Whether `date` falls in the nighttime hours (Paris wall-clock time, to the minute). */
+export function isDuringNight(date: Date, nightRange: NighttimeHours): boolean {
+  const { hour, minute } = zonedParts(date)
+  const at = hour * 60 + minute
+  const start = minutesOf(nightRange.start)
+  const end = minutesOf(nightRange.end)
+  return start <= end ? at >= start && at < end : at >= start || at < end
+}
+
+/** Whether `startedAt` falls in the nighttime hours. */
 export function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
-  const { hour } = zonedParts(new Date(startedAt))
-  const startHour = parseHour(nightRange.start)
-  const endHour = parseHour(nightRange.end)
-  return hour >= startHour || hour < endHour
+  return isDuringNight(new Date(startedAt), nightRange)
 }
 
 export interface SleepStats {

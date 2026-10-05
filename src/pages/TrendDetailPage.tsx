@@ -11,7 +11,7 @@ import { TrendEntriesList } from '../components/TrendEntriesList'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
 import { addDays } from '../lib/appTime'
-import { computeDelta, DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
+import { computeDelta, DEFAULT_NIGHTTIME_HOURS, startsDuringNight } from '../lib/aggregations'
 import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib/timeline'
 import {
   chartStyleOf,
@@ -25,6 +25,7 @@ import {
   filterMetricEntries,
   getTrendMetric,
   metricDayKeyOf,
+  metricSleepSegments,
   trendFetchRange,
   type TrendKind,
 } from '../lib/trendMetrics'
@@ -85,22 +86,34 @@ export function TrendDetailPage() {
   }
 
   const currentDayKeys = dayKeysInRange(currentRange)
-  const dayKeyOf = metricDayKeyOf(metric.kind, nightRange)
+  const dayKeyOf = metricDayKeyOf()
   const inPeriod = new Set(currentDayKeys)
-  // What the Calendar and Entries views show: the period's entries that make up the metric
-  // (e.g. only daytime sleeps for Daytime Sleep).
+  const sleepSegments =
+    metric.kind === 'sleep' ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now) : []
+  // What the Entries view lists: the period's entries that make up the metric (e.g. only the
+  // sleeps with a daytime part for Daytime Sleep, each day's longest for Longest Sleep).
   const shown = filterMetricEntries(
     metric.id,
     {
       feeding: current.feeding.filter((entry) => inPeriod.has(dayKeyOf(entry.occurredAt))),
-      sleep: current.sleep.filter((entry) => inPeriod.has(dayKeyOf(entry.startedAt))),
+      sleep: current.sleep.filter((entry) =>
+        sleepSegments.some((segment) => segment.inMetric && segment.entry.id === entry.id),
+      ),
       diaper: current.diaper.filter((entry) => inPeriod.has(dayKeyOf(entry.occurredAt))),
     },
     nightRange,
+    currentDayKeys,
+    now,
   )
-  const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange)
-  const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange)
-  const previousAvg = computeMetricSummary(metric.id, dayKeysInRange(previousRange), previous, nightRange)
+  const isMetricDiaper = (iso: string) =>
+    metric.id === 'diaperDay'
+      ? !startsDuringNight(iso, nightRange)
+      : metric.id === 'diaperNight'
+        ? startsDuringNight(iso, nightRange)
+        : true
+  const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange, now)
+  const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange, now)
+  const previousAvg = computeMetricSummary(metric.id, dayKeysInRange(previousRange), previous, nightRange, now)
   const delta = computeDelta(currentAvg, previousAvg)
   const selectedPoint = series.find((point) => point.dayKey === selectedDayKey)
 
@@ -152,23 +165,22 @@ export function TrendDetailPage() {
           colorVar={metric.colorVar}
           selectedKey={selectedDayKey}
           onSelectDay={setSelectedDayKey}
-          dayStart={metric.kind === 'sleep' ? nightRange.start : undefined}
           nightRange={nightRange}
+          now={now}
           onPrevious={() => changePeriod((back) => back + 1)}
           onNext={periodsBack > 0 ? () => changePeriod((back) => back - 1) : undefined}
-          intervals={
-            metric.kind === 'sleep'
-              ? shown.sleep.map((entry) => ({
-                  start: new Date(entry.startedAt),
-                  end: entry.endedAt ? new Date(entry.endedAt) : new Date(),
-                }))
-              : undefined
-          }
-          instants={
+          blocks={sleepSegments.map((segment) => ({
+            start: segment.start,
+            end: segment.end,
+            faded: !segment.inMetric,
+          }))}
+          marks={
             metric.kind === 'feeding'
-              ? shown.feeding.map((entry) => new Date(entry.occurredAt))
+              ? shown.feeding.map((entry) => ({ at: new Date(entry.occurredAt) }))
               : metric.kind === 'diaper'
-                ? shown.diaper.map((entry) => new Date(entry.occurredAt))
+                ? current.diaper
+                    .filter((entry) => inPeriod.has(dayKeyOf(entry.occurredAt)))
+                    .map((entry) => ({ at: new Date(entry.occurredAt), faded: !isMetricDiaper(entry.occurredAt) }))
                 : undefined
           }
         />

@@ -69,8 +69,8 @@ export function TrendsPage() {
             {section}
           </h2>
           {TREND_METRICS.filter((metric) => metric.section === section).map((metric) => {
-            const currentValue = computeMetricSummary(metric.id, currentDayKeys, current, nightRange)
-            const previousValue = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange)
+            const currentValue = computeMetricSummary(metric.id, currentDayKeys, current, nightRange, now)
+            const previousValue = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange, now)
             const delta = computeDelta(currentValue, previousValue)
             const deltaLabel = formatMetricValue(metric.id, Math.abs(delta.value))
             const shownDelta = deltaLabel === formatMetricValue(metric.id, 0) ? { ...delta, direction: 'flat' as const } : delta
@@ -85,7 +85,7 @@ export function TrendsPage() {
                 delta={shownDelta}
                 deltaLabel={deltaLabel}
                 colorVar={metric.colorVar}
-                breakdown={computeMetricBreakdown(metric.id, currentDayKeys, current).map((item) => ({
+                breakdown={computeMetricBreakdown(metric.id, currentDayKeys, current, now).map((item) => ({
                   ...item,
                   value: formatMetricValue(metric.id, item.value),
                 }))}
