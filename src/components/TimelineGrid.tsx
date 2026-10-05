@@ -11,6 +11,8 @@ interface TimelineGridProps {
   /** Night parts of a column as [start, end) fractions, drawn as paler full-width bands. */
   nightBands?: Array<{ start: number; end: number }>
   selectedKey: string | null
+  /** Day whose header stands out (e.g. the selected day, else today); defaults to the selected day. */
+  highlightKey?: string | null
   onSelectDay: (key: string) => void
   /** Accessible name of a day's header button. */
   dayLabel: (key: string) => string
@@ -71,6 +73,7 @@ export function TimelineGrid({
   axisLabels,
   nightBands = [],
   selectedKey,
+  highlightKey = selectedKey,
   onSelectDay,
   dayLabel,
   weekdayLabel,
@@ -185,7 +188,7 @@ export function TimelineGrid({
               <button
                 key={key}
                 type="button"
-                className={`timeline-grid-day-header${key === selectedKey ? ' is-selected' : ''}${key === todayKey ? ' is-today' : ''}${scrollable && (dayKeys.length - index) % visibleDays === 0 ? ' is-snap' : ''}`}
+                className={`timeline-grid-day-header${key === highlightKey ? ' is-selected' : ''}${key === todayKey ? ' is-today' : ''}${scrollable && (dayKeys.length - index) % visibleDays === 0 ? ' is-snap' : ''}`}
                 aria-label={dayLabel(key)}
                 aria-pressed={pressed(key)}
                 onClick={() => onSelectDay(key)}

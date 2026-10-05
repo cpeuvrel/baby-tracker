@@ -1281,6 +1281,33 @@ main {
   transform: translateY(-50%);
 }
 
+/* Not part of the metric (e.g. night sleep on Daytime Sleep): kept for context, paler. */
+.timeline-grid-block.is-faded,
+.timeline-grid-mark.is-faded {
+  opacity: 0.3;
+}
+
+/* Current time on today's column: a line ending in a dot. */
+.timeline-grid-now {
+  position: absolute;
+  left: 15%;
+  right: 4px;
+  border-top: 2px solid var(--text);
+  transform: translateY(-1px);
+  pointer-events: none;
+}
+
+.timeline-grid-now::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text);
+}
+
 /* Trends screen: list of metrics per section, full-bleed bands like the reference app:
    a section band on the page background, rows on a slightly raised surface. */
 .trend-range {

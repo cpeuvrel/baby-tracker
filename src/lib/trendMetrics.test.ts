@@ -153,20 +153,36 @@ const bundle = {
   sleep: sleeps,
   diaper: [diaperEntry('d1', '2026-03-05T10:00:00.000Z'), diaperEntry('d2', '2026-03-05T21:00:00.000Z')],
 }
+/** Noon (Paris) on the 6th: the running sleep has lasted 3 hours. */
+const NOW = new Date('2026-03-06T11:00:00.000Z')
 const values = (id: Parameters<typeof computeMetricSeries>[0]) =>
-  computeMetricSeries(id, DAYS, bundle).map((point) => point.value)
+  computeMetricSeries(id, DAYS, bundle, undefined, NOW).map((point) => point.value)
 
 describe('sleep metrics', () => {
-  it('splits completed sleep into daytime and nighttime by start time', () => {
-    // The night starting at 20:30 on the 5th counts on the 6th: sleep days start at night.
-    expect(values('sleepTotal')).toEqual([1.5 * 3600, 10 * 3600])
-    expect(values('sleepDay')).toEqual([1.5 * 3600, 0])
-    expect(values('sleepNight')).toEqual([0, 10 * 3600])
+  it('clips sleep to calendar days and splits it at the night boundaries', () => {
+    // 5th: naps 10:00–11:00 and 14:00–14:30, night from 20:30 to midnight.
+    // 6th: night until 06:30, then a sleep running since 09:00 (3h until noon).
+    expect(values('sleepTotal')).toEqual([5 * 3600, 9.5 * 3600])
+    expect(values('sleepDay')).toEqual([1.5 * 3600, 3 * 3600])
+    expect(values('sleepNight')).toEqual([3.5 * 3600, 6.5 * 3600])
   })
 
-  it('starts sleep days at the baby\'s own night start', () => {
-    const series = computeMetricSeries('sleepTotal', DAYS, bundle, { start: '21:00', end: '07:00' })
-    expect(series.map((point) => point.value)).toEqual([11.5 * 3600, 0])
+  it('splits sleep at the baby\'s own nighttime hours', () => {
+    const night = { start: '21:00', end: '07:00' }
+    const series = (id: 'sleepDay' | 'sleepNight') =>
+      computeMetricSeries(id, DAYS, bundle, night, NOW).map((point) => point.value)
+    // 20:30–21:00 is still daytime; 06:30 is already past the night.
+    expect(series('sleepDay')).toEqual([2 * 3600, 3 * 3600])
+    expect(series('sleepNight')).toEqual([3 * 3600, 6.5 * 3600])
+  })
+
+  it('averages a per-day total over the elapsed part of the period', () => {
+    // 14.5h over the 1.5 days elapsed at noon on the 6th.
+    expect(computeMetricSummary('sleepTotal', DAYS, bundle, undefined, NOW)).toBeCloseTo((14.5 * 3600) / 1.5)
+    // Once the period is over, over all of its days.
+    expect(computeMetricSummary('sleepTotal', DAYS, bundle, undefined, new Date('2026-03-06T23:00:00.000Z'))).toBe(
+      (5 * 3600 + 6.5 * 3600 + 15 * 3600) / 2,
+    )
   })
 
   it('counts and measures daytime naps', () => {
@@ -175,22 +191,25 @@ describe('sleep metrics', () => {
     expect(computeMetricSummary('napCount', DAYS, bundle)).toBe(1)
   })
 
-  it('averages the longest sleep over days that have one', () => {
+  it('counts the longest sleep on the morning it ends, averaged over days that have one', () => {
     expect(values('sleepLongest')).toEqual([3600, 10 * 3600])
     expect(computeMetricSummary('sleepLongest', DAYS, bundle)).toBe(5.5 * 3600)
   })
 
-  it('measures wake windows between completed sleeps', () => {
-    // 10:00 → 13:00 (3h) on the 5th, and 13:30 → 20:30 (6h) ending with the night that counts on the 6th.
-    expect(values('wakeWindow')).toEqual([3 * 3600, 6 * 3600])
+  it('measures wake windows between completed sleeps, on the day each one ends', () => {
+    // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h), both on the 5th.
+    expect(values('wakeWindow')).toEqual([4.5 * 3600, 0])
     expect(computeMetricSummary('wakeWindow', DAYS, bundle)).toBe(4.5 * 3600)
   })
 })
 
 describe('filterMetricEntries', () => {
   it('keeps only the sleeps and diapers of the metric\'s daytime / nighttime split', () => {
-    expect(filterMetricEntries('sleepDay', bundle).sleep.map((entry) => entry.id)).toEqual(['nap1', 'nap2', 'running'])
-    expect(filterMetricEntries('sleepNight', bundle).sleep.map((entry) => entry.id)).toEqual(['night'])
+    const ids = (id: Parameters<typeof filterMetricEntries>[0]) =>
+      filterMetricEntries(id, bundle, undefined, DAYS, NOW).sleep.map((entry) => entry.id)
+    expect(ids('sleepDay')).toEqual(['nap1', 'nap2', 'running'])
+    expect(ids('sleepNight')).toEqual(['night'])
+    expect(ids('sleepLongest')).toEqual(['nap1', 'night'])
     expect(filterMetricEntries('diaperNight', bundle).diaper.map((entry) => entry.id)).toEqual(['d2'])
     expect(filterMetricEntries('sleepTotal', bundle)).toBe(bundle)
   })
