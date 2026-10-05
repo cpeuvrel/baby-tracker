@@ -232,4 +232,22 @@ describe('TrendDetailPage', () => {
 
     expect(screen.getByLabelText('Period')).toHaveValue('7')
   })
+
+  it('switches the Calendar and Graph between calendar days and rolling 24 hours', async () => {
+    const user = userEvent.setup()
+    renderPage('feedSessions')
+
+    await user.click(screen.getByRole('button', { name: 'Show rolling 24 hours' }))
+    expect(screen.getByText(/Rolling 24 h, ending at/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Graph' }))
+    expect(screen.getByText(/Rolling 24 h, ending at/)).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Entries' }))
+    expect(screen.queryByRole('button', { name: 'Show calendar days' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Calendar' }))
+    await user.click(screen.getByRole('button', { name: 'Show calendar days' }))
+    expect(screen.queryByText(/Rolling 24 h/)).toBeNull()
+  })
 })

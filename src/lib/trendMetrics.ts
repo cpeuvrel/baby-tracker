@@ -1,7 +1,15 @@
 import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
 import { DEFAULT_NIGHTTIME_HOURS, isDuringNight, startsDuringNight, type DailyPoint } from './aggregations'
 import { formatDuration } from './duration'
-import { activityWindowStart, dayKey, nightDayKey, parseDayKey, type DateRange } from './timeline'
+import {
+  activityWindowStart,
+  CALENDAR_DAYS,
+  dayKey,
+  nextDayKey,
+  nightDayKey,
+  type DateRange,
+  type DayFrame,
+} from './timeline'
 import type { DiaperEntry, FeedingEntry, FeedingType, NighttimeHours, SleepEntry } from '../types/models'
 
 export type TrendMetricId =
@@ -227,44 +235,50 @@ export interface TrendEntriesBundle {
 }
 
 /**
- * Day an entry is listed under: its calendar day (sleeps by their start, as Nara lists them).
- * Per-day values clip sleeps to calendar days instead (see `sleepSegments`).
+ * Day an entry counts on: its day of `frame`, calendar days by default (sleeps by their start,
+ * as Nara lists them). Per-day values clip sleeps to the frame's days instead (see `sleepSegments`).
  */
-export function metricDayKeyOf(): (date: string) => string {
-  return (date) => dayKey(new Date(date))
+export function metricDayKeyOf(frame: DayFrame = CALENDAR_DAYS): (date: string) => string {
+  return (date) => frame.keyOf(new Date(date))
 }
 
 /**
  * Number of days a `sum` metric's period total is spread over ("per day"): its elapsed part,
  * so the unfinished current day only counts for the hours already gone (at least one day).
  */
-export function elapsedPeriodDays(dayKeys: string[], now: Date = new Date()): number {
+export function elapsedPeriodDays(
+  dayKeys: string[],
+  now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
+): number {
   if (dayKeys.length === 0) return 1
-  const start = parseDayKey(dayKeys[0]).getTime()
-  const end = addDays(parseDayKey(dayKeys[dayKeys.length - 1]), 1).getTime()
+  const start = frame.startOf(dayKeys[0]).getTime()
+  const end = frame.startOf(nextDayKey(dayKeys[dayKeys.length - 1])).getTime()
   const elapsed = (Math.min(now.getTime(), end) - start) / (end - start)
   return Math.max(1, elapsed * dayKeys.length)
 }
 
-/** Part of a sleep inside one calendar day and one side of the night boundary. */
+/** Part of a sleep inside one day (of the period's frame) and one side of the night boundary. */
 export interface SleepSegment {
   entry: SleepEntry
   start: Date
   end: Date
-  /** Calendar day the segment is on. */
+  /** Day the segment is on. */
   dayKey: string
   /** Whether the segment is inside the baby's nighttime hours. */
   night: boolean
 }
 
 /**
- * Cuts sleeps (a running one up to `now`) at every midnight and at the start / end of the
- * night, so each piece belongs to one calendar day and is entirely daytime or nighttime.
+ * Cuts sleeps (a running one up to `now`) at the start of every day of `frame` (midnight for
+ * calendar days) and at the start / end of the night, so each piece belongs to one day and is
+ * entirely daytime or nighttime.
  */
 export function sleepSegments(
   entries: SleepEntry[],
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): SleepSegment[] {
   const [nightStartHour, nightStartMinute] = nightRange.start.split(':').map(Number)
   const [nightEndHour, nightEndMinute] = nightRange.end.split(':').map(Number)
@@ -277,7 +291,7 @@ export function sleepSegments(
     for (let day = startOfDay(start); day.getTime() < end.getTime(); day = addDays(day, 1)) {
       const { year, month, day: date } = zonedParts(day)
       for (const cut of [
-        zonedTime(year, month, date + 1),
+        frame.startOf(nextDayKey(dayKey(day))),
         zonedTime(year, month, date, nightStartHour, nightStartMinute),
         zonedTime(year, month, date, nightEndHour, nightEndMinute),
       ]) {
@@ -292,7 +306,7 @@ export function sleepSegments(
         entry,
         start: segmentStart,
         end: segmentEnd,
-        dayKey: dayKey(segmentStart),
+        dayKey: frame.keyOf(segmentStart),
         night: isDuringNight(segmentStart, nightRange),
       })
     }
@@ -300,18 +314,30 @@ export function sleepSegments(
   return segments
 }
 
-/** Day a sleep counts on for Longest Sleep: the morning a night ends (sleep days start at night). */
-function longestSleepDayKey(nightRange: NighttimeHours): (date: string) => string {
-  return (date) => nightDayKey(new Date(date), nightRange.start)
+/**
+ * Day a completed sleep counts on for Longest Sleep: with calendar days, the morning a night
+ * ends (sleep days start at night); with rolling days, the window in which it ends.
+ */
+function longestSleepDayKey(
+  nightRange: NighttimeHours,
+  frame: DayFrame,
+): (entry: { startedAt: string; endedAt: string }) => string {
+  if (frame.kind === 'rolling') return (entry) => frame.keyOf(new Date(entry.endedAt))
+  return (entry) => nightDayKey(new Date(entry.startedAt), nightRange.start)
 }
 
-/** The longest completed sleep of each day of `dayKeys` (by the morning it ends). */
-function longestSleeps(dayKeys: string[], entries: SleepEntry[], nightRange: NighttimeHours): Map<string, SleepEntry> {
-  const keyOf = longestSleepDayKey(nightRange)
+/** The longest completed sleep of each day of `dayKeys` (see `longestSleepDayKey`). */
+function longestSleeps(
+  dayKeys: string[],
+  entries: SleepEntry[],
+  nightRange: NighttimeHours,
+  frame: DayFrame = CALENDAR_DAYS,
+): Map<string, SleepEntry> {
+  const keyOf = longestSleepDayKey(nightRange, frame)
   const inPeriod = new Set(dayKeys)
   const longest = new Map<string, SleepEntry>()
   for (const entry of completedSleeps(entries)) {
-    const key = keyOf(entry.startedAt)
+    const key = keyOf(entry)
     if (!inPeriod.has(key)) continue
     const current = longest.get(key)
     if (!current || (current.durationSeconds ?? 0) < entry.durationSeconds) longest.set(key, entry)
@@ -351,10 +377,13 @@ export function metricSleepSegments(
   entries: SleepEntry[],
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): Array<SleepSegment & { inMetric: boolean }> {
   const inPeriod = new Set(dayKeys)
-  const longestIds = new Set([...longestSleeps(dayKeys, entries, nightRange).values()].map((entry) => entry.id))
-  return sleepSegments(entries, nightRange, now)
+  const longestIds = new Set(
+    [...longestSleeps(dayKeys, entries, nightRange, frame).values()].map((entry) => entry.id),
+  )
+  return sleepSegments(entries, nightRange, now, frame)
     .filter((segment) => inPeriod.has(segment.dayKey))
     .map((segment) => ({ ...segment, inMetric: sleepSegmentInMetric(id, segment, nightRange, longestIds) }))
 }
@@ -374,12 +403,13 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   dayKeys?: string[],
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): T {
   const isNight = (date: string) => startsDuringNight(date, nightRange)
   switch (id) {
     case 'sleepDay':
     case 'sleepNight': {
-      const segments = sleepSegments(entries.sleep ?? [], nightRange, now)
+      const segments = sleepSegments(entries.sleep ?? [], nightRange, now, frame)
       const inPeriod = dayKeys ? new Set(dayKeys) : null
       const kept = new Set(
         segments
@@ -394,7 +424,9 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
       return { ...entries, sleep: entries.sleep?.filter((entry) => !isNight(entry.startedAt)) }
     case 'sleepLongest': {
       if (!dayKeys) return entries
-      const kept = new Set([...longestSleeps(dayKeys, entries.sleep ?? [], nightRange).values()].map((entry) => entry.id))
+      const kept = new Set(
+        [...longestSleeps(dayKeys, entries.sleep ?? [], nightRange, frame).values()].map((entry) => entry.id),
+      )
       return { ...entries, sleep: entries.sleep?.filter((entry) => kept.has(entry.id)) }
     }
     case 'diaperDay':
@@ -442,9 +474,10 @@ function metricSamples(
   entries: TrendEntriesBundle,
   nightRange: NighttimeHours,
   now: Date,
+  frame: DayFrame,
 ): Samples {
   const samples = emptySamples(dayKeys)
-  const keyOf = metricDayKeyOf()
+  const keyOf = metricDayKeyOf(frame)
   const isNight = (date: string) => startsDuringNight(date, nightRange)
   const bottlesWithVolume = entries.feeding.filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
   const sleeps = completedSleeps(entries.sleep)
@@ -476,15 +509,15 @@ function metricSamples(
     case 'sleepTotal':
     case 'sleepDay':
     case 'sleepNight':
-      // Time asleep within each calendar day, split at the night's start and end.
-      for (const segment of sleepSegments(entries.sleep, nightRange, now)) {
+      // Time asleep within each day, split at the night's start and end.
+      for (const segment of sleepSegments(entries.sleep, nightRange, now, frame)) {
         if (id === 'sleepDay' && segment.night) continue
         if (id === 'sleepNight' && !segment.night) continue
         addSample(samples, segment.dayKey, (segment.end.getTime() - segment.start.getTime()) / 1000)
       }
       return samples
     case 'sleepLongest':
-      for (const [key, entry] of longestSleeps(dayKeys, entries.sleep, nightRange)) {
+      for (const [key, entry] of longestSleeps(dayKeys, entries.sleep, nightRange, frame)) {
         addSample(samples, key, entry.durationSeconds ?? 0)
       }
       return samples
@@ -518,9 +551,10 @@ export function computeMetricSeries(
   entries: TrendEntriesBundle,
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): DailyPoint[] {
   const reduce = getTrendMetric(id)?.reducer === 'mean' ? mean : sum
-  const samples = metricSamples(id, dayKeys, entries, nightRange, now)
+  const samples = metricSamples(id, dayKeys, entries, nightRange, now, frame)
   return dayKeys.map((key) => ({ dayKey: key, value: reduce(samples.get(key) ?? []) }))
 }
 
@@ -535,12 +569,13 @@ export function computeMetricSummary(
   entries: TrendEntriesBundle,
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): number {
   if (getTrendMetric(id)?.reducer === 'mean') {
-    return mean([...metricSamples(id, dayKeys, entries, nightRange, now).values()].flat())
+    return mean([...metricSamples(id, dayKeys, entries, nightRange, now, frame).values()].flat())
   }
-  return sum(computeMetricSeries(id, dayKeys, entries, nightRange, now).map((point) => point.value)) /
-    elapsedPeriodDays(dayKeys, now)
+  return sum(computeMetricSeries(id, dayKeys, entries, nightRange, now, frame).map((point) => point.value)) /
+    elapsedPeriodDays(dayKeys, now, frame)
 }
 
 export interface TrendBreakdownItem {
@@ -560,20 +595,21 @@ export function computeMetricBreakdown(
   dayKeys: string[],
   entries: TrendEntriesBundle,
   now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
 ): TrendBreakdownItem[] {
   if (dayKeys.length === 0) return []
   switch (id) {
     case 'feedSessions': {
       const inPeriod = new Set(dayKeys)
-      const feedings = entries.feeding.filter((entry) => inPeriod.has(dayKey(new Date(entry.occurredAt))))
+      const feedings = entries.feeding.filter((entry) => inPeriod.has(frame.keyOf(new Date(entry.occurredAt))))
       return FEEDING_TYPES.map(({ type, label, colorVar }) => ({
         label,
         colorVar,
-        value: feedings.filter((entry) => entry.type === type).length / elapsedPeriodDays(dayKeys, now),
+        value: feedings.filter((entry) => entry.type === type).length / elapsedPeriodDays(dayKeys, now, frame),
       })).filter((item) => item.value > 0)
     }
     case 'feedVolume': {
-      const value = computeMetricSummary(id, dayKeys, entries, undefined, now)
+      const value = computeMetricSummary(id, dayKeys, entries, undefined, now, frame)
       return value > 0 ? [{ label: 'Bottle', colorVar: '--action', value }] : []
     }
     default:

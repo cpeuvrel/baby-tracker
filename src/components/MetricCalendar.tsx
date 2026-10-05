@@ -1,11 +1,18 @@
 import { useMemo } from 'react'
 import { formatDate } from '../lib/appTime'
-import { dayKey, parseDayKey } from '../lib/timeline'
+import { CALENDAR_DAYS, dayKey, parseDayKey, type DayFrame } from '../lib/timeline'
 import { markForInstant, nightFractions, splitIntervalByDay, type DayBlock, type DayMark } from '../lib/weekTimeline'
 import type { NighttimeHours } from '../types/models'
 import { TimelineGrid } from './TimelineGrid'
 
-const AXIS_LABELS = ['00', '03', '06', '09', '12', '15', '18', '21', '24']
+/** Hour labels down the side, every 3 hours from the start of the frame's days (00 for calendar days). */
+function axisLabels(startSeconds: number): string[] {
+  const startHour = Math.floor(startSeconds / 3600)
+  return Array.from({ length: 9 }, (_, index) => {
+    const hour = startHour + index * 3
+    return String(startSeconds === 0 && index === 8 ? 24 : hour % 24).padStart(2, '0')
+  })
+}
 
 export interface CalendarBlock {
   start: Date
@@ -32,6 +39,8 @@ interface MetricCalendarProps {
   nightRange?: NighttimeHours
   /** Current time, marked on today's column. */
   now?: Date
+  /** How the columns cut time: calendar days (00 → 24, the default) or rolling 24-hour windows. */
+  frame?: DayFrame
   onPrevious?: () => void
   onNext?: () => void
 }
@@ -47,7 +56,7 @@ function groupByDay<T extends { dayKey: string }>(dayKeys: string[], items: T[])
 }
 
 /**
- * One calendar-day column (00 → 24) per day of the period, with the baby's sleeps or events
+ * One column per day of the period (a calendar day, 00 → 24, or a rolling 24-hour window), with the baby's sleeps or events
  * drawn at their time of day: the parts that make up the metric in full colour, the others
  * faded, the night shaded behind. Tapping a day (its date or its column) selects it;
  * tapping it again clears the selection.
@@ -59,6 +68,7 @@ export function MetricCalendar({
   marks = [],
   nightRange,
   now = new Date(),
+  frame = CALENDAR_DAYS,
   selectedKey,
   onSelectDay,
   onPrevious,
@@ -69,21 +79,21 @@ export function MetricCalendar({
       groupByDay<DayBlock & { faded: boolean }>(
         dayKeys,
         blocks.flatMap(({ start, end, faded = false }) =>
-          splitIntervalByDay(start, end).map((block) => ({ ...block, faded })),
+          splitIntervalByDay(start, end, frame).map((block) => ({ ...block, faded })),
         ),
       ),
-    [dayKeys, blocks],
+    [dayKeys, blocks, frame],
   )
   const marksByDay = useMemo(
     () =>
       groupByDay<DayMark & { faded: boolean }>(
         dayKeys,
-        marks.map(({ at, faded = false }) => ({ ...markForInstant(at), faded })),
+        marks.map(({ at, faded = false }) => ({ ...markForInstant(at, frame), faded })),
       ),
-    [dayKeys, marks],
+    [dayKeys, marks, frame],
   )
   const todayKey = dayKey(now)
-  const nowMark = markForInstant(now)
+  const nowMark = markForInstant(now, frame)
   const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
 
   return (
@@ -91,8 +101,8 @@ export function MetricCalendar({
       <TimelineGrid
         dayKeys={dayKeys}
         visibleDays={dayKeys.length}
-        axisLabels={AXIS_LABELS}
-        nightBands={nightRange ? nightFractions(nightRange) : []}
+        axisLabels={axisLabels(frame.startSeconds)}
+        nightBands={nightRange ? nightFractions(nightRange, frame.startSeconds) : []}
         selectedKey={selectedKey}
         highlightKey={selectedKey ?? todayKey}
         todayKey={todayKey}
@@ -125,7 +135,7 @@ export function MetricCalendar({
                 style={{ top: `${mark.atFraction * 100}%`, background: `var(${colorVar})` }}
               />
             ))}
-            {key === todayKey && (
+            {key === nowMark.dayKey && (
               <span className="timeline-grid-now" aria-hidden="true" style={{ top: `${nowMark.atFraction * 100}%` }} />
             )}
           </>
