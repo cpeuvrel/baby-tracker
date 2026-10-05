@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
@@ -8,11 +9,12 @@ import { SLEEP_TIMER_URL } from '../lib/sleepTimerNotification'
 import { stopSleep } from '../repositories/sleepEntries'
 
 export function ActiveTimersBanner() {
+  const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const navigate = useNavigate()
   const sleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const sleepElapsed = useElapsedSeconds(sleepEntry?.startedAt ?? null)
-  useSleepTimerNotification(selectedBaby?.name ?? null, sleepEntry)
+  useSleepTimerNotification(user?.uid ?? null, selectedBaby?.name ?? null, sleepEntry)
 
   if (!household || !selectedBaby || !sleepEntry) return null
 

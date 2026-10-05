@@ -16,6 +16,12 @@ const updateSleepEntry = vi.fn()
 const resumeSleep = vi.fn()
 const updateSleepStart = vi.fn()
 
+const registerSleepTimerPush = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('../lib/sleepTimerPush', () => ({
+  registerSleepTimerPush: (...args: unknown[]) => registerSleepTimerPush(...args),
+}))
+
 vi.mock('../repositories/sleepEntries', () => ({
   resumeSleep: (...args: unknown[]) => resumeSleep(...args),
   startSleep: (...args: unknown[]) => startSleep(...args),
@@ -75,6 +81,7 @@ describe('SleepTimerModal', () => {
 
     expect(startSleep).toHaveBeenCalledTimes(1)
     expect(screen.getByText('Starting…')).toBeInTheDocument()
+    await vi.waitFor(() => expect(registerSleepTimerPush).toHaveBeenCalledWith('uid1'))
     expect(screen.getByRole('button', { name: 'Start Timer' })).toBeDisabled()
   })
 

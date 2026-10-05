@@ -4,6 +4,7 @@ import { getMessaging } from 'firebase-admin/messaging'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { logger } from 'firebase-functions'
 import { startOfParisDay, zonedParts } from './parisTime'
+import { collectHouseholdTokens } from './tokens'
 
 initializeApp()
 
@@ -39,24 +40,6 @@ async function hasMedicationToday(
   return !snapshot.empty
 }
 
-async function collectHouseholdTokens(
-  householdRef: DocumentReference,
-): Promise<string[]> {
-  const householdSnap = await householdRef.get()
-  const memberUids = (householdSnap.data()?.memberUids as string[] | undefined) ?? []
-
-  const tokens: string[] = []
-  for (const uid of memberUids) {
-    const tokensSnap = await householdRef.firestore
-      .collection('users')
-      .doc(uid)
-      .collection('fcmTokens')
-      .get()
-    tokens.push(...tokensSnap.docs.map((doc) => doc.id))
-  }
-  return tokens
-}
-
 async function sendMedicationReminder(
   householdRef: DocumentReference,
   medicationName: string,
@@ -65,7 +48,7 @@ async function sendMedicationReminder(
   if (tokens.length === 0) return
 
   await getMessaging().sendEachForMulticast({
-    tokens,
+    tokens: tokens.map(({ token }) => token),
     notification: {
       title: `Reminder: ${medicationName}`,
       body: `${medicationName} hasn't been given yet today.`,
@@ -107,3 +90,5 @@ export const checkMedicationReminders = onSchedule(
     }
   },
 )
+
+export { onSleepEntryWritten, tickSleepTimerNotifications } from './sleepTimer'
