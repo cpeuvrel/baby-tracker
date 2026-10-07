@@ -72,8 +72,8 @@ describe('NighttimeHoursPage', () => {
     const user = userEvent.setup()
     renderPage()
 
-    await user.selectOptions(screen.getByLabelText('From hour'), '21')
-    await user.selectOptions(screen.getByLabelText('From minute'), '30')
+    await user.type(screen.getByLabelText('From hour'), '21')
+    await user.type(screen.getByLabelText('From minute'), '30')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateNighttimeHours).toHaveBeenCalledWith('h1', 'b1', { start: '21:30', end: '08:00' })

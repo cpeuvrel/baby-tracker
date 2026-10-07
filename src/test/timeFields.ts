@@ -2,8 +2,8 @@ import { fireEvent, screen } from '@testing-library/react'
 
 /** Current `HH:mm` of a 24-hour `TimeSelect` labelled `label`. */
 export function timeValue(label: string): string {
-  const hour = (screen.getByLabelText(`${label} hour`) as HTMLSelectElement).value
-  const minute = (screen.getByLabelText(`${label} minute`) as HTMLSelectElement).value
+  const hour = (screen.getByLabelText(`${label} hour`) as HTMLInputElement).value
+  const minute = (screen.getByLabelText(`${label} minute`) as HTMLInputElement).value
   return `${hour}:${minute}`
 }
 

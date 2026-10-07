@@ -1998,11 +1998,11 @@ main {
   flex-shrink: 0;
 }
 
-.time-select select {
-  appearance: none;
+.time-select input {
+  width: 3.4em;
   font: inherit;
   font-variant-numeric: tabular-nums;
-  padding: 10px 12px;
+  padding: 10px 8px;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--surface);
@@ -2010,7 +2010,7 @@ main {
   text-align: center;
 }
 
-.time-select select:disabled {
+.time-select input:disabled {
   opacity: 0.6;
 }
 
