@@ -40,6 +40,13 @@ export function remindersCollection(householdId: string, babyId: string): Collec
   return collection(db, 'households', householdId, 'babies', babyId, 'reminders')
 }
 
+export function pediatricianVisitsCollection(
+  householdId: string,
+  babyId: string,
+): CollectionReference {
+  return collection(db, 'households', householdId, 'babies', babyId, 'pediatricianVisits')
+}
+
 export function fcmTokensCollection(uid: string): CollectionReference {
   return collection(db, 'users', uid, 'fcmTokens')
 }

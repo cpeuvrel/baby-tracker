@@ -134,6 +134,22 @@ input {
   color: var(--text);
 }
 
+textarea {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  resize: vertical;
+}
+
+textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 input[type='checkbox'] {
   width: auto;
   padding: 0;
@@ -896,6 +912,43 @@ main {
   width: 100%;
   color: inherit;
   text-decoration: none;
+}
+
+.list-group li .list-row-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* Pediatrician remarks / discussion rows */
+.list-group li .visit-item {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.visit-item-question {
+  font-weight: 600;
+}
+
+.visit-item-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.visit-item-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .list-group-meta {

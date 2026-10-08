@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { AccountPage } from './AccountPage'
 
 describe('AccountPage', () => {
-  it('links to the Family and Settings screens', () => {
+  it('links to the Family, Pediatrician and Settings screens', () => {
     render(
       <MemoryRouter>
         <AccountPage />
@@ -12,6 +12,7 @@ describe('AccountPage', () => {
     )
 
     expect(screen.getByRole('link', { name: /Family/ })).toHaveAttribute('href', '/account/family')
+    expect(screen.getByRole('link', { name: /Pediatrician/ })).toHaveAttribute('href', '/account/pediatrician')
     expect(screen.getByRole('link', { name: /Settings/ })).toHaveAttribute('href', '/account/settings')
   })
 })

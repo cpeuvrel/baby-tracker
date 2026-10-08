@@ -96,3 +96,26 @@ export interface FcmToken {
   token: string
   createdAt: string
 }
+
+export interface VisitRemark {
+  id: string
+  text: string
+}
+
+export interface VisitDiscussion {
+  id: string
+  question: string
+  answer: string
+}
+
+/** A pediatrician appointment for one child, with its remarks and question/answer pairs. */
+export interface PediatricianVisit {
+  id: string
+  /** Calendar day of the appointment, "YYYY-MM-DD" (like `Baby.birthDate`). */
+  date: string
+  vaccinated: boolean
+  remarks: VisitRemark[]
+  discussions: VisitDiscussion[]
+  createdBy: string
+  createdAt: string
+}

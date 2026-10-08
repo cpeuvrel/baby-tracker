@@ -14,6 +14,14 @@ export function AccountPage() {
           </Link>
         </li>
         <li>
+          <Link to="/account/pediatrician">
+            <span>Pediatrician</span>
+            <span className="list-row-chevron" aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
+        <li>
           <Link to="/account/settings">
             <span>Settings</span>
             <span className="list-row-chevron" aria-hidden="true">
