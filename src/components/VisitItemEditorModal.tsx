@@ -16,7 +16,10 @@ interface VisitItemEditorModalProps {
   onClose: () => void
 }
 
-/** Text editor for a remark or a question/answer pair: Save, or Discard (confirmed when edited). */
+/**
+ * Text editor for a remark or a question/answer pair: Save, or Discard (confirmed when edited).
+ * Leaving the screen with it open (e.g. the phone's back gesture) saves the edits.
+ */
 export function VisitItemEditorModal({
   title,
   fields,
@@ -36,19 +39,36 @@ export function VisitItemEditorModal({
   useEffect(() => {
     dirtyRef.current = dirty
   }, [dirty])
+  // Set once the user saves, discards or deletes: only an unplanned unmount saves on its own.
+  const settledRef = useRef(false)
   const discard = useCallback(() => {
     if (dirtyRef.current && !window.confirm('Discard your changes?')) return
+    settledRef.current = true
     onClose()
   }, [onClose])
+
+  const trimmedValues = () =>
+    Object.fromEntries(fields.map((field) => [field.name, (values[field.name] ?? '').trim()]))
+  const autosaveRef = useRef<(() => void) | null>(null)
+  useEffect(() => {
+    autosaveRef.current = dirty && !empty ? () => void onSave(trimmedValues()) : null
+  })
+  useEffect(
+    () => () => {
+      if (!settledRef.current) autosaveRef.current?.()
+    },
+    [],
+  )
 
   const submit = () => {
     if (empty || saving) return
     setSaving(true)
-    const trimmed = Object.fromEntries(fields.map((field) => [field.name, (values[field.name] ?? '').trim()]))
-    void onSave(trimmed)
+    settledRef.current = true
+    void onSave(trimmedValues())
       .then(onClose)
       .catch((error: unknown) => {
         console.error('[pediatrician] save failed', error)
+        settledRef.current = false
         setSaving(false)
       })
   }
@@ -60,6 +80,7 @@ export function VisitItemEditorModal({
 
   const handleDelete = () => {
     if (!onDelete || !window.confirm('Delete this entry?')) return
+    settledRef.current = true
     void onDelete().then(onClose)
   }
 

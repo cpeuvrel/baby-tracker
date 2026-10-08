@@ -2218,3 +2218,32 @@ main {
   color: var(--text-muted);
   text-align: center;
 }
+
+/* Floating action button, bottom right above the tab bar. */
+.fab {
+  position: fixed;
+  z-index: 6;
+  right: max(16px, calc((100vw - 480px) / 2 + 16px));
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 26px;
+  background: var(--action);
+  color: var(--action-contrast);
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(15, 23, 34, 0.3);
+}
+
+.fab span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Keep the last rows scrollable out from under the floating button. */
+.app-content:has(.fab) {
+  padding-bottom: 96px;
+}

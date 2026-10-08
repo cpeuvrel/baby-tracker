@@ -1,4 +1,5 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { NewVisitButton } from '../components/NewVisitButton'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
 import { formatVisitDate } from '../lib/visitDate'
 import { deletePediatricianVisit, updatePediatricianVisit } from '../repositories/pediatricianVisits'
@@ -86,6 +87,7 @@ export function PediatricianVisitPage() {
       <button type="button" className="button-delete" onClick={handleDelete}>
         Delete visit
       </button>
+      <NewVisitButton />
     </div>
   )
 }
