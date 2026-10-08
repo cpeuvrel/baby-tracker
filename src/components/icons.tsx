@@ -303,3 +303,15 @@ export function UserIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+const HEART_PATH = 'M12 21s-8-4.8-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.2-8 11-8 11Z'
+
+/** Two hearts: the Family tab. */
+export function HeartsIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d={HEART_PATH} transform="translate(-1.5 3.2) scale(0.8)" vectorEffect="non-scaling-stroke" />
+      <path d={HEART_PATH} transform="translate(10.2 1.6) scale(0.55)" vectorEffect="non-scaling-stroke" />
+    </Icon>
+  )
+}

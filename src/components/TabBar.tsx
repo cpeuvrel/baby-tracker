@@ -1,11 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { HomeIcon, LineChartIcon, ListViewIcon, UserIcon } from './icons'
+import { HeartsIcon, HomeIcon, LineChartIcon, ListViewIcon } from './icons'
 
 const TABS = [
   { to: '/', label: 'Activity', end: true, Icon: HomeIcon },
   { to: '/history', label: 'History', end: false, Icon: ListViewIcon },
   { to: '/trends', label: 'Trends', end: false, Icon: LineChartIcon },
-  { to: '/account', label: 'Family', end: false, Icon: UserIcon },
+  { to: '/account', label: 'Family', end: false, Icon: HeartsIcon },
 ]
 
 export function TabBar() {
