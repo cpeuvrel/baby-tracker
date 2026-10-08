@@ -1,4 +1,4 @@
-import { addDoc, doc, onSnapshot, orderBy, query, updateDoc, type Unsubscribe } from 'firebase/firestore'
+import { addDoc, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc, type Unsubscribe } from 'firebase/firestore'
 import { babiesCollection } from '../lib/paths'
 import type { Baby, BabySex, NighttimeHours } from '../types/models'
 
@@ -63,4 +63,8 @@ export async function updateBabyPhoto(
   photoDataUrl: string | null,
 ): Promise<void> {
   await updateDoc(doc(babiesCollection(householdId), babyId), { photoDataUrl })
+}
+
+export async function deleteBaby(householdId: string, babyId: string): Promise<void> {
+  await deleteDoc(doc(babiesCollection(householdId), babyId))
 }

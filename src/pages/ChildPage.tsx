@@ -5,6 +5,7 @@ import { ExportImportSection } from '../components/ExportImportSection'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { formatAge } from '../lib/age'
+import { deleteBabyWithData } from '../lib/babyExport'
 import { updateBaby } from '../repositories/babies'
 import type { BabySex } from '../types/models'
 
@@ -17,6 +18,8 @@ export function ChildPage() {
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [sex, setSex] = useState<BabySex | null>(null)
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState(false)
 
   useEffect(() => {
     if (baby) {
@@ -32,6 +35,24 @@ export function ChildPage() {
     event.preventDefault()
     if (name.trim() === '' || birthDate.trim() === '') return
     void updateBaby(household.id, baby.id, name.trim(), birthDate, sex)
+  }
+
+  const handleDeleteChild = () => {
+    if (
+      !window.confirm(
+        `Delete ${baby.name}? ${baby.name}'s profile and all of ${baby.name}'s data will be deleted. This cannot be undone.`,
+      )
+    )
+      return
+    setDeleting(true)
+    setDeleteError(false)
+    deleteBabyWithData(household.id, baby.id)
+      .then(() => navigate('/account/family', { replace: true }))
+      .catch((error: unknown) => {
+        console.error('[child] delete failed', error)
+        setDeleting(false)
+        setDeleteError(true)
+      })
   }
 
   return (
@@ -118,6 +139,16 @@ export function ChildPage() {
       </section>
 
       <ExportImportSection householdId={household.id} baby={baby} />
+
+      <button
+        type="button"
+        className="settings-action settings-action-danger"
+        onClick={handleDeleteChild}
+        disabled={deleting}
+      >
+        Delete Child
+      </button>
+      {deleteError && <p role="alert">Could not delete {baby.name}.</p>}
     </div>
   )
 }
