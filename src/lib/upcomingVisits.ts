@@ -1,6 +1,6 @@
 import type { PediatricianVisit } from '../types/models'
 
-/** Visits after `today` ("YYYY-MM-DD"), soonest first (visits come most recent first). */
+/** Visits from `today` ("YYYY-MM-DD") on, soonest first (visits come most recent first). */
 export function upcomingVisits(visits: PediatricianVisit[], today: string): PediatricianVisit[] {
-  return visits.filter((visit) => visit.date > today).reverse()
+  return visits.filter((visit) => visit.date >= today).reverse()
 }

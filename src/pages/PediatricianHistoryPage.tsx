@@ -34,7 +34,7 @@ export function PediatricianHistoryPage() {
   const visits = usePediatricianVisits(household?.id ?? null, selectedBaby?.id ?? null)
   const today = todayDateValue()
   const upcoming = upcomingVisits(visits ?? [], today)
-  const past = (visits ?? []).filter((visit) => visit.date <= today)
+  const past = (visits ?? []).filter((visit) => visit.date < today)
 
   return (
     <div>
