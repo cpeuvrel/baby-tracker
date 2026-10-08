@@ -117,6 +117,28 @@ describe('Pediatrician screens', () => {
     expect(screen.queryByText(/Jan 15/)).not.toBeInTheDocument()
   })
 
+  it('lists future visits apart, soonest first', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-08T10:00:00.000Z'))
+    visitsByBaby = {
+      b1: [
+        visit({ id: 'v4', date: '2027-01-10' }),
+        visit({ id: 'v3', date: '2026-11-02' }),
+        visit({ id: 'v2', date: '2026-10-08' }),
+        visit({ id: 'v1', date: '2026-07-01' }),
+      ],
+    }
+    renderAt('/account/pediatrician/history')
+    vi.useRealTimers()
+
+    const hrefs = (name: string) =>
+      within(screen.getByRole('region', { name }))
+        .getAllByRole('link')
+        .map((link) => link.getAttribute('href')?.split('/').pop())
+    expect(hrefs('Upcoming')).toEqual(['v3', 'v4'])
+    expect(hrefs('Past')).toEqual(['v2', 'v1'])
+  })
+
   it('leaves a visit that does not belong to the selected child', () => {
     visitsByBaby = { b1: [visit({ id: 'v1' })] }
     selectBaby(mia)
