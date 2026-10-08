@@ -16,7 +16,7 @@ export function FamilyPage() {
         <Link to="/account" aria-label="Back">
           ‹
         </Link>
-        <h2>Family</h2>
+        <h2>Children</h2>
       </div>
 
       <section aria-label="Children">

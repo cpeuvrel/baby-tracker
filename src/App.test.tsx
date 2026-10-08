@@ -80,6 +80,6 @@ describe('App', () => {
     mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument())
-    expect(screen.getByRole('link', { name: 'Account' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()
   })
 })

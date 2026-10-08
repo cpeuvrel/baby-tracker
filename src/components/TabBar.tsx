@@ -5,7 +5,7 @@ const TABS = [
   { to: '/', label: 'Activity', end: true, Icon: HomeIcon },
   { to: '/history', label: 'History', end: false, Icon: ListViewIcon },
   { to: '/trends', label: 'Trends', end: false, Icon: LineChartIcon },
-  { to: '/account', label: 'Account', end: false, Icon: UserIcon },
+  { to: '/account', label: 'Family', end: false, Icon: UserIcon },
 ]
 
 export function TabBar() {

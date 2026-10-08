@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom'
 export function AccountPage() {
   return (
     <div>
-      <h1>Account</h1>
+      <h1>Family</h1>
       <ul className="list-group">
         <li>
           <Link to="/account/family">
-            <span>Family</span>
+            <span>Children</span>
             <span className="list-row-chevron" aria-hidden="true">
               ›
             </span>
