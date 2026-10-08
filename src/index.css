@@ -1545,12 +1545,15 @@ main {
   margin-bottom: 12px;
 }
 
-.detail-header button {
+.detail-header button,
+.detail-header > a[aria-label='Back'] {
   background: none;
   color: var(--text);
   font-size: 24px;
+  font-weight: 600;
   line-height: 1;
   padding: 4px 8px;
+  text-decoration: none;
 }
 
 .detail-header h2 {
