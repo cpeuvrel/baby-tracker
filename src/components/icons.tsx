@@ -335,3 +335,31 @@ export function GearIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function NotebookIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <rect x="5" y="3.5" width="14" height="17" rx="2.5" />
+      <path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4" />
+    </Icon>
+  )
+}
+
+export function ChatIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M4.5 4.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H9l-3.5 3v-3h-1a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z" />
+      <path d="M15.5 9h3a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-1v2.5l-3-2.5h-2.5a2 2 0 0 1-2-2v-1" />
+    </Icon>
+  )
+}
+
+export function SyringeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="m17 3 4 4M19 5l-3 3" />
+      <path d="m18 9.5-3.5-3.5L6 14.5V18h3.5Z" />
+      <path d="m9 11.5 1.5 1.5M11.5 9l1.5 1.5M6 18l-3 3" />
+    </Icon>
+  )
+}

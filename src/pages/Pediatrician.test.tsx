@@ -144,7 +144,7 @@ describe('Pediatrician screens', () => {
     selectBaby(mia)
     renderAt('/account/pediatrician/visits/v1')
 
-    expect(screen.getByText('No visits yet.')).toBeInTheDocument()
+    expect(screen.getByText(/No visits yet/)).toBeInTheDocument()
   })
 
   it('opens the next upcoming visit, not the furthest one', () => {

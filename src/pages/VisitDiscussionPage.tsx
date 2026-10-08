@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { EmptyState } from '../components/EmptyState'
+import { ChatIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
 import { newItemId } from '../lib/visitItems'
@@ -34,9 +36,11 @@ export function VisitDiscussionPage() {
       <p className="hint">{formatVisitDate(visit.date)}</p>
 
       {visit.discussions.length === 0 ? (
-        <p className="hint">No questions yet.</p>
+        <EmptyState colorVar="--category-sleep" icon={<ChatIcon />}>
+          No questions yet. Note what you want to ask, and the answers.
+        </EmptyState>
       ) : (
-        <ul className="list-group">
+        <ul className="list-group list-group-large">
           {visit.discussions.map((entry) => (
             <li key={entry.id}>
               <button type="button" className="list-row-button visit-item" onClick={() => setEditing(entry)}>
