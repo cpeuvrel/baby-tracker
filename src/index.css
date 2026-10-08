@@ -940,6 +940,10 @@ main {
   gap: 4px;
 }
 
+.list-group-large .visit-item {
+  font-size: 16px;
+}
+
 .visit-item-question {
   font-weight: 600;
 }
@@ -955,12 +959,49 @@ main {
   align-items: center;
 }
 
-.list-group.account-links li {
+.list-group.list-group-large li {
   padding: 16px 0;
   font-size: 18px;
 }
 
-.account-link-label {
+.field-label-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.field-label-with-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.visit-vaccine-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.visit-vaccine-tag svg {
+  width: 15px;
+  height: 15px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 32px 16px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.empty-state p {
+  margin: 0;
+  max-width: 260px;
+}
+
+.list-row-label {
   display: flex;
   align-items: center;
   gap: 14px;
@@ -1545,12 +1586,15 @@ main {
   margin-bottom: 12px;
 }
 
-.detail-header button {
+.detail-header button,
+.detail-header > a[aria-label='Back'] {
   background: none;
   color: var(--text);
   font-size: 24px;
+  font-weight: 600;
   line-height: 1;
   padding: 4px 8px;
+  text-decoration: none;
 }
 
 .detail-header h2 {

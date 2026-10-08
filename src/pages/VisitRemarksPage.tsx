@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
+import { EmptyState } from '../components/EmptyState'
+import { NotebookIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
 import { newItemId } from '../lib/visitItems'
@@ -30,9 +32,11 @@ export function VisitRemarksPage() {
       <p className="hint">{formatVisitDate(visit.date)}</p>
 
       {visit.remarks.length === 0 ? (
-        <p className="hint">No remarks yet.</p>
+        <EmptyState colorVar="--category-feeding" icon={<NotebookIcon />}>
+          No remarks yet. Jot down what the pediatrician noticed.
+        </EmptyState>
       ) : (
-        <ul className="list-group">
+        <ul className="list-group list-group-large">
           {visit.remarks.map((remark) => (
             <li key={remark.id}>
               <button type="button" className="list-row-button visit-item" onClick={() => setEditing(remark)}>

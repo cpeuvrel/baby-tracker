@@ -7,7 +7,7 @@ function AccountLink({ to, label, colorVar, icon }: { to: string; label: string;
   return (
     <li>
       <Link to={to}>
-        <span className="account-link-label">
+        <span className="list-row-label">
           <BlobIcon colorVar={colorVar} size="small">
             {icon}
           </BlobIcon>
@@ -25,7 +25,7 @@ export function AccountPage() {
   return (
     <div>
       <h1>Family</h1>
-      <ul className="list-group account-links">
+      <ul className="list-group list-group-large">
         <AccountLink to="/account/family" label="Children" colorVar="--category-feeding" icon={<BabyAvatarIcon />} />
         <AccountLink
           to="/account/pediatrician"

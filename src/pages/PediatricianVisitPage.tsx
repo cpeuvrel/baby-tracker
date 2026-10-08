@@ -1,4 +1,6 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { BlobIcon } from '../components/BlobIcon'
+import { ChatIcon, NotebookIcon, SyringeIcon } from '../components/icons'
 import { NewVisitButton } from '../components/NewVisitButton'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
 import { formatVisitDate } from '../lib/visitDate'
@@ -49,7 +51,10 @@ export function PediatricianVisitPage() {
           onChange={(event) => setDate(event.target.value)}
         />
       </div>
-      <span className="field-label">Vaccine</span>
+      <span className="field-label field-label-with-icon">
+        <SyringeIcon />
+        Vaccine
+      </span>
       <div role="group" aria-label="Vaccine" className="segmented-control">
         <button type="button" aria-pressed={visit.vaccinated} onClick={() => setVaccinated(true)}>
           Yes
@@ -59,10 +64,15 @@ export function PediatricianVisitPage() {
         </button>
       </div>
 
-      <ul className="list-group">
+      <ul className="list-group list-group-large">
         <li>
           <Link to={`${base}/remarks`}>
-            <span>Remarks</span>
+            <span className="list-row-label">
+              <BlobIcon colorVar="--category-feeding" size="small">
+                <NotebookIcon />
+              </BlobIcon>
+              <span>Remarks</span>
+            </span>
             <span className="list-group-trailing">
               <span className="list-group-meta">{visit.remarks.length}</span>
               <span className="list-row-chevron" aria-hidden="true">
@@ -73,7 +83,12 @@ export function PediatricianVisitPage() {
         </li>
         <li>
           <Link to={`${base}/discussion`}>
-            <span>Discussion</span>
+            <span className="list-row-label">
+              <BlobIcon colorVar="--category-sleep" size="small">
+                <ChatIcon />
+              </BlobIcon>
+              <span>Discussion</span>
+            </span>
             <span className="list-group-trailing">
               <span className="list-group-meta">{visit.discussions.length}</span>
               <span className="list-row-chevron" aria-hidden="true">
