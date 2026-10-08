@@ -7,6 +7,7 @@ import { ChildPage } from './ChildPage'
 
 const updateBaby = vi.fn()
 const exportBabyData = vi.fn()
+const deleteBabyWithData = vi.fn()
 
 vi.mock('../repositories/babies', () => ({
   updateBaby: (...args: unknown[]) => updateBaby(...args),
@@ -15,6 +16,7 @@ vi.mock('../repositories/babies', () => ({
 
 vi.mock('../lib/babyExport', () => ({
   exportBabyData: (...args: unknown[]) => exportBabyData(...args),
+  deleteBabyWithData: (...args: unknown[]) => deleteBabyWithData(...args),
   importBabyData: vi.fn(),
   parseImportFile: vi.fn(),
   serializeBabyExport: vi.fn(),
@@ -40,6 +42,7 @@ function renderPage(babyId = 'b1') {
     <MemoryRouter initialEntries={[`/account/family/${babyId}`]}>
       <Routes>
         <Route path="/account/family/:babyId" element={<ChildPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -48,6 +51,7 @@ function renderPage(babyId = 'b1') {
 describe('ChildPage', () => {
   beforeEach(() => {
     updateBaby.mockReset()
+    deleteBabyWithData.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
@@ -137,5 +141,27 @@ describe('ChildPage', () => {
 
     expect(screen.queryByRole('group', { name: 'Unit' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Imperial/)).not.toBeInTheDocument()
+  })
+
+  it('deletes the child after a confirmation naming them', async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Child' }))
+
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Delete Léo?'))
+    expect(deleteBabyWithData).toHaveBeenCalledWith('h1', 'b1')
+    expect(await screen.findByText('Children list')).toBeInTheDocument()
+  })
+
+  it('keeps the child when the confirmation is cancelled', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Child' }))
+
+    expect(deleteBabyWithData).not.toHaveBeenCalled()
   })
 })

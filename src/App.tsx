@@ -15,8 +15,13 @@ import { GrowthDetailPage } from './pages/GrowthDetailPage'
 import { HistoryPage } from './pages/HistoryPage'
 import { LoginPage } from './pages/LoginPage'
 import { NighttimeHoursPage } from './pages/NighttimeHoursPage'
+import { PediatricianHistoryPage } from './pages/PediatricianHistoryPage'
+import { PediatricianPage } from './pages/PediatricianPage'
+import { PediatricianVisitPage } from './pages/PediatricianVisitPage'
 import { TrendDetailPage } from './pages/TrendDetailPage'
 import { TrendsPage } from './pages/TrendsPage'
+import { VisitDiscussionPage } from './pages/VisitDiscussionPage'
+import { VisitRemarksPage } from './pages/VisitRemarksPage'
 
 const STUCK_LOADING_MS = 8000
 
@@ -83,6 +88,11 @@ function AuthenticatedApp() {
           <Route path="account/family/:babyId" element={<ChildPage />} />
           <Route path="account/family/:babyId/activities" element={<EditActivitiesPage />} />
           <Route path="account/family/:babyId/nighttime-hours" element={<NighttimeHoursPage />} />
+          <Route path="account/pediatrician" element={<PediatricianPage />} />
+          <Route path="account/pediatrician/history" element={<PediatricianHistoryPage />} />
+          <Route path="account/pediatrician/visits/:visitId" element={<PediatricianVisitPage />} />
+          <Route path="account/pediatrician/visits/:visitId/remarks" element={<VisitRemarksPage />} />
+          <Route path="account/pediatrician/visits/:visitId/discussion" element={<VisitDiscussionPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

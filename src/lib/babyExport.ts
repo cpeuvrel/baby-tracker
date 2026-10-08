@@ -6,8 +6,11 @@ import {
   feedingEntriesCollection,
   growthEntriesCollection,
   medicationEntriesCollection,
+  pediatricianVisitsCollection,
+  remindersCollection,
   sleepEntriesCollection,
 } from './paths'
+import { deleteBaby } from '../repositories/babies'
 import { getAllBathEntries, importBathEntries } from '../repositories/bathEntries'
 import { getAllDiaperEntries, importDiaperEntries } from '../repositories/diaperEntries'
 import { getAllFeedingEntries, importFeedingEntries } from '../repositories/feedingEntries'
@@ -65,6 +68,20 @@ export async function deleteAllBabyData(householdId: string, babyId: string): Pr
     ].map((collectionFor) => batchDeleteAll(collectionFor(householdId, babyId))),
   )
   return counts.reduce((sum, count) => sum + count, 0)
+}
+
+/**
+ * Deletes a baby with everything stored under it (entries, reminders, pediatrician visits):
+ * Firestore keeps subcollections of a deleted document, so they are emptied first.
+ */
+export async function deleteBabyWithData(householdId: string, babyId: string): Promise<void> {
+  await deleteAllBabyData(householdId, babyId)
+  await Promise.all(
+    [remindersCollection, pediatricianVisitsCollection].map((collectionFor) =>
+      batchDeleteAll(collectionFor(householdId, babyId)),
+    ),
+  )
+  await deleteBaby(householdId, babyId)
 }
 
 // --- App's native format: a single CSV, one category per row ---
