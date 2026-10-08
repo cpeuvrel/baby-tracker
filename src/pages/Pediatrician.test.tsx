@@ -135,8 +135,8 @@ describe('Pediatrician screens', () => {
       within(screen.getByRole('region', { name }))
         .getAllByRole('link')
         .map((link) => link.getAttribute('href')?.split('/').pop())
-    expect(hrefs('Upcoming')).toEqual(['v3', 'v4'])
-    expect(hrefs('Past')).toEqual(['v2', 'v1'])
+    expect(hrefs('Upcoming')).toEqual(['v2', 'v3', 'v4'])
+    expect(hrefs('Past')).toEqual(['v1'])
   })
 
   it('leaves a visit that does not belong to the selected child', () => {
@@ -144,7 +144,59 @@ describe('Pediatrician screens', () => {
     selectBaby(mia)
     renderAt('/account/pediatrician/visits/v1')
 
-    expect(screen.getByText('Visits for Mia')).toBeInTheDocument()
+    expect(screen.getByText('No visits yet.')).toBeInTheDocument()
+  })
+
+  it('opens the next upcoming visit, not the furthest one', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-08T10:00:00.000Z'))
+    visitsByBaby = {
+      b1: [
+        visit({ id: 'v3', date: '2027-01-10' }),
+        visit({ id: 'v2', date: '2026-11-02' }),
+        visit({ id: 'v1', date: '2026-07-01' }),
+      ],
+    }
+    renderAt('/account/pediatrician')
+    vi.useRealTimers()
+
+    expect(screen.getByRole('heading', { name: 'Mon, Nov 2, 2026' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New Visit' })).toBeInTheDocument()
+  })
+
+  it('opens a visit planned for today', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-08T10:00:00.000Z'))
+    visitsByBaby = { b1: [visit({ id: 'v2', date: '2026-11-02' }), visit({ id: 'v1', date: '2026-10-08' })] }
+    renderAt('/account/pediatrician')
+    vi.useRealTimers()
+
+    expect(screen.getByRole('heading', { name: 'Thu, Oct 8, 2026' })).toBeInTheDocument()
+  })
+
+  it('opens the history when no visit is planned', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-08T10:00:00.000Z'))
+    visitsByBaby = { b1: [visit({ id: 'v1', date: '2026-07-01' })] }
+    renderAt('/account/pediatrician')
+    vi.useRealTimers()
+
+    expect(screen.getByRole('region', { name: 'Past' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'New Visit' })).toBeInTheDocument()
+  })
+
+  it('saves an edited remark when leaving the screen with the editor open', async () => {
+    const user = userEvent.setup()
+    visitsByBaby = { b1: [visit({ remarks: [{ id: 'r1', text: 'Good weight' }] })] }
+    const { unmount } = renderAt('/account/pediatrician/visits/v1/remarks')
+
+    await user.click(screen.getByRole('button', { name: 'Good weight' }))
+    await user.type(screen.getByRole('textbox', { name: 'Remark' }), '!')
+    unmount()
+
+    expect(updatePediatricianVisit).toHaveBeenCalledWith('h1', 'b1', 'v1', {
+      remarks: [{ id: 'r1', text: 'Good weight!' }],
+    })
   })
 
   it('adds a remark', async () => {

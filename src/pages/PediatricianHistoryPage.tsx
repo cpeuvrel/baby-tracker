@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
+import { NewVisitButton } from '../components/NewVisitButton'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { usePediatricianVisits } from '../hooks/usePediatricianVisits'
+import { upcomingVisits } from '../lib/upcomingVisits'
 import { formatVisitDate, todayDateValue } from '../lib/visitDate'
 import type { PediatricianVisit } from '../types/models'
 
@@ -31,22 +33,24 @@ export function PediatricianHistoryPage() {
   const { household, selectedBaby } = useHousehold()
   const visits = usePediatricianVisits(household?.id ?? null, selectedBaby?.id ?? null)
   const today = todayDateValue()
-  // Visits come most recent first: upcoming ones are listed soonest first.
-  const upcoming = (visits ?? []).filter((visit) => visit.date > today).reverse()
-  const past = (visits ?? []).filter((visit) => visit.date <= today)
+  const upcoming = upcomingVisits(visits ?? [], today)
+  const past = (visits ?? []).filter((visit) => visit.date < today)
 
   return (
     <div>
       <div className="detail-header">
-        <Link to="/account/pediatrician" aria-label="Back">
+        <Link to="/account" aria-label="Back">
           ‹
         </Link>
-        <h2>History</h2>
+        <h2>Pediatrician</h2>
       </div>
+
+      {!selectedBaby && <p className="hint">Add a child first.</p>}
 
       {visits && visits.length === 0 && <p className="hint">No visits yet.</p>}
       {upcoming.length > 0 && <VisitList label="Upcoming" visits={upcoming} />}
       {past.length > 0 && <VisitList label="Past" visits={past} />}
+      {selectedBaby && <NewVisitButton />}
     </div>
   )
 }

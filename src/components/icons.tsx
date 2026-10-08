@@ -315,3 +315,23 @@ export function HeartsIcon(props: SVGProps<SVGSVGElement>) {
     </Icon>
   )
 }
+
+export function StethoscopeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <path d="M6 3.5H5v5a4.5 4.5 0 0 0 9 0v-5h-1" />
+      <path d="M9.5 13v1.5a5 5 0 0 0 10 0V12" />
+      <circle cx="19.5" cy="10" r="2" />
+    </Icon>
+  )
+}
+
+export function GearIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.55 1.55M17.15 17.15l1.55 1.55M5.3 18.7l1.55-1.55M17.15 6.85l1.55-1.55" />
+      <circle cx="12" cy="12" r="7" />
+    </Icon>
+  )
+}

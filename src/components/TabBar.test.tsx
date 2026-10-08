@@ -27,4 +27,18 @@ describe('TabBar', () => {
     expect(screen.getByRole('link', { name: 'Trends' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()
   })
+
+  it('switches to Activity, visit History and Family on the pediatrician screens', () => {
+    render(
+      <MemoryRouter initialEntries={['/account/pediatrician/visits/v1']}>
+        <TabBar />
+      </MemoryRouter>,
+    )
+
+    const links = screen.getAllByRole('link')
+    expect(links.map((link) => link.textContent)).toEqual(['Activity', 'History', 'Family'])
+    expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('href', '/account/pediatrician/history')
+    expect(screen.getByRole('link', { name: 'History' })).toHaveAttribute('aria-current', 'page')
+    expect(screen.getByRole('link', { name: 'Family' })).not.toHaveAttribute('aria-current')
+  })
 })

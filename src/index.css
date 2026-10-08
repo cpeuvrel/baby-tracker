@@ -218,7 +218,7 @@ form > div {
 
 main {
   display: block;
-  padding: 24px 16px calc(24px + env(safe-area-inset-bottom, 0px));
+  padding: 24px 16px;
 }
 
 /* App shell (header + content + bottom nav) */
@@ -332,6 +332,7 @@ main {
   flex: 1;
   padding: 0 16px 24px;
 }
+
 
 /* Tab navigation (bottom of screen) */
 .tab-bar {
@@ -805,16 +806,19 @@ main {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  /* Sit in the lower third, clear of the bottom edge where phone banners and gesture bars appear. */
+  padding: max(16px, env(safe-area-inset-top, 0px)) 16px calc(12svh + env(safe-area-inset-bottom, 0px));
   z-index: 10;
 }
 
 .modal-dialog {
   width: 100%;
   max-width: 480px;
-  max-height: 92svh;
+  max-height: 100%;
   overflow-y: auto;
   background: var(--surface);
-  border-radius: 20px 20px 0 0;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(15, 23, 34, 0.35);
 }
 
 .modal-dialog header {
@@ -949,6 +953,17 @@ main {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.list-group.account-links li {
+  padding: 16px 0;
+  font-size: 18px;
+}
+
+.account-link-label {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 .list-group-meta {
@@ -2202,4 +2217,33 @@ main {
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* Floating action button, bottom right above the tab bar. */
+.fab {
+  position: fixed;
+  z-index: 6;
+  right: max(16px, calc((100vw - 480px) / 2 + 16px));
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 16px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 52px;
+  padding: 0 22px;
+  border-radius: 26px;
+  background: var(--action);
+  color: var(--action-contrast);
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 6px 16px rgba(15, 23, 34, 0.3);
+}
+
+.fab span {
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* Keep the last rows scrollable out from under the floating button. */
+.app-content:has(.fab) {
+  padding-bottom: 96px;
 }
