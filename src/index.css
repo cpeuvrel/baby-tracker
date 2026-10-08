@@ -333,11 +333,6 @@ main {
   padding: 0 16px 24px;
 }
 
-/* Lets the Family screen fill the height, so its Settings link sits at the bottom. */
-.app-content:has(> .account-page) {
-  display: flex;
-  flex-direction: column;
-}
 
 /* Tab navigation (bottom of screen) */
 .tab-bar {
@@ -960,12 +955,6 @@ main {
   align-items: center;
 }
 
-.account-page {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
 .list-group.account-links li {
   padding: 16px 0;
   font-size: 18px;
@@ -975,16 +964,6 @@ main {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-
-.account-settings-link {
-  margin-top: auto;
-  padding-top: 32px;
-  border-top: none;
-}
-
-.account-settings-link li:first-child {
-  border-top: 1px solid var(--border);
 }
 
 .list-group-meta {

@@ -23,7 +23,7 @@ function AccountLink({ to, label, colorVar, icon }: { to: string; label: string;
 
 export function AccountPage() {
   return (
-    <div className="account-page">
+    <div>
       <h1>Family</h1>
       <ul className="list-group account-links">
         <AccountLink to="/account/family" label="Children" colorVar="--category-feeding" icon={<BabyAvatarIcon />} />
@@ -33,9 +33,6 @@ export function AccountPage() {
           colorVar="--category-growth"
           icon={<StethoscopeIcon />}
         />
-      </ul>
-      {/* Kept apart at the bottom of the screen, away from the family's own screens. */}
-      <ul className="list-group account-links account-settings-link">
         <AccountLink to="/account/settings" label="Settings" colorVar="--category-sleep" icon={<GearIcon />} />
       </ul>
     </div>
