@@ -34,9 +34,6 @@
   /* Rounded, friendly type everywhere; `--serif` keeps its name for the display text it styles. */
   --sans: 'Nunito Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
   --serif: 'Nunito Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
-  --recap-bg: #e6efe0;
-  --recap-chip-bg: #fffdf8;
-  --recap-text-muted: #4f6b45;
 
   color-scheme: light dark;
   font: 16px/1.5 var(--sans);
@@ -67,9 +64,6 @@
     --week-chart-tab-bg: #2a2f42;
     --week-chart-night-bg: rgba(255, 255, 255, 0.07);
     --growth-tabs-active: #4b5670;
-    --recap-bg: #263328;
-    --recap-chip-bg: #324335;
-    --recap-text-muted: #b9d7a4;
   }
 }
 
@@ -2299,33 +2293,72 @@ main {
   padding-bottom: 96px;
 }
 
-/* Today's totals above the activity cards */
+/* Today's totals above the activity cards: one tile per category, in its pale tint */
 .today-recap {
+  margin-bottom: 16px;
+}
+
+.today-recap-title {
+  margin: 0 0 6px 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.today-recap-items {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
-  padding: 10px;
-  border-radius: 24px;
-  background: var(--recap-bg);
 }
 
 .today-recap-item {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 4px;
-  border-radius: 16px;
   margin: 0;
-  background: var(--recap-chip-bg);
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: var(--recap-tint);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--recap-text-muted);
+  font-weight: 700;
+  color: var(--recap-label);
 }
 
 .today-recap-value {
-  font-size: 20px;
+  display: block;
+  font-size: 22px;
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--text);
+}
+
+.today-recap-feeding {
+  --recap-tint: #fdf0c9;
+  --recap-label: #8a6514;
+}
+
+.today-recap-sleep {
+  --recap-tint: #dceaf6;
+  --recap-label: #3d6a90;
+}
+
+.today-recap-diaper {
+  --recap-tint: #efe8d6;
+  --recap-label: #7d6a45;
+}
+
+@media (prefers-color-scheme: dark) {
+  .today-recap-feeding {
+    --recap-tint: #3a3324;
+    --recap-label: #f5d27a;
+  }
+
+  .today-recap-sleep {
+    --recap-tint: #233247;
+    --recap-label: #b5d4ee;
+  }
+
+  .today-recap-diaper {
+    --recap-tint: #35312a;
+    --recap-label: #e6dabb;
+  }
 }

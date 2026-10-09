@@ -17,21 +17,32 @@ export function TodayRecap({ now }: { now: Date }) {
   const totals = buildTodayTotals(entries, range, now)
 
   const items = [
-    isVisible('feeding') && { label: totals.feeds === 1 ? 'feed' : 'feeds', value: String(totals.feeds) },
-    isVisible('sleep') && { label: 'sleep', value: formatDuration(totals.sleepSeconds) },
-    isVisible('diaper') && { label: totals.diapers === 1 ? 'diaper' : 'diapers', value: String(totals.diapers) },
-  ].filter((item): item is { label: string; value: string } => !!item)
+    isVisible('feeding') && {
+      category: 'feeding',
+      label: totals.feeds === 1 ? 'feed' : 'feeds',
+      value: String(totals.feeds),
+    },
+    isVisible('sleep') && { category: 'sleep', label: 'sleep', value: formatDuration(totals.sleepSeconds) },
+    isVisible('diaper') && {
+      category: 'diaper',
+      label: totals.diapers === 1 ? 'diaper' : 'diapers',
+      value: String(totals.diapers),
+    },
+  ].filter((item): item is { category: string; label: string; value: string } => !!item)
 
   if (items.length === 0) return null
 
   return (
     <section className="today-recap" aria-label="Today">
-      {items.map((item) => (
-        <p key={item.label} className="today-recap-item">
-          <span className="today-recap-value">{item.value}</span>
-          {item.label}
-        </p>
-      ))}
+      <h2 className="today-recap-title">Today so far</h2>
+      <div className="today-recap-items">
+        {items.map((item) => (
+          <p key={item.category} className={`today-recap-item today-recap-${item.category}`}>
+            <span className="today-recap-value">{item.value}</span>
+            {item.label}
+          </p>
+        ))}
+      </div>
     </section>
   )
 }
