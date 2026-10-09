@@ -31,8 +31,9 @@
   /* Text on a category-colored fill (Trends delta pills). */
   --on-category: #1f3a5c;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --serif: Georgia, 'Times New Roman', serif;
+  /* Rounded, friendly type everywhere; `--serif` keeps its name for the display text it styles. */
+  --sans: 'Nunito Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --serif: 'Nunito Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
 
   color-scheme: light dark;
   font: 16px/1.5 var(--sans);
@@ -2290,4 +2291,74 @@ main {
 /* Keep the last rows scrollable out from under the floating button. */
 .app-content:has(.fab) {
   padding-bottom: 96px;
+}
+
+/* Today's totals above the activity cards: one tile per category, in its pale tint */
+.today-recap {
+  margin-bottom: 16px;
+}
+
+.today-recap-title {
+  margin: 0 0 6px 4px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.today-recap-items {
+  display: flex;
+  gap: 8px;
+}
+
+.today-recap-item {
+  flex: 1;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 18px;
+  background: var(--recap-tint);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--recap-label);
+}
+
+.today-recap-value {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.today-recap-feeding {
+  --recap-tint: #fdf0c9;
+  --recap-label: #8a6514;
+}
+
+.today-recap-sleep {
+  --recap-tint: #dceaf6;
+  --recap-label: #3d6a90;
+}
+
+.today-recap-diaper {
+  --recap-tint: #efe8d6;
+  --recap-label: #7d6a45;
+}
+
+@media (prefers-color-scheme: dark) {
+  .today-recap-feeding {
+    --recap-tint: #3a3324;
+    --recap-label: #f5d27a;
+  }
+
+  .today-recap-sleep {
+    --recap-tint: #233247;
+    --recap-label: #b5d4ee;
+  }
+
+  .today-recap-diaper {
+    --recap-tint: #35312a;
+    --recap-label: #e6dabb;
+  }
 }

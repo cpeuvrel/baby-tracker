@@ -106,3 +106,21 @@ export function buildActivitySummary(entries: SummaryEntries, range: DateRange, 
 
   return rows
 }
+
+export interface TodayTotals {
+  /** Bottle volume drunk over the range. */
+  bottleMl: number
+  sleepSeconds: number
+  diapers: number
+}
+
+/** Headline totals for the recap above the activity cards. */
+export function buildTodayTotals(entries: SummaryEntries, range: DateRange, now: Date): TodayTotals {
+  return {
+    bottleMl: entries.feeding
+      .filter((entry) => entry.type === 'bottle' && isInRange(entry.occurredAt, range))
+      .reduce((sum, entry) => sum + (entry.volumeMl ?? 0), 0),
+    sleepSeconds: entries.sleep.reduce((sum, entry) => sum + sleepSecondsInRange(entry, range, now), 0),
+    diapers: entries.diaper.filter((entry) => isInRange(entry.occurredAt, range)).length,
+  }
+}

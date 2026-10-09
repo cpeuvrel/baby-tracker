@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildActivitySummary } from './activitySummary'
+import { buildActivitySummary, buildTodayTotals } from './activitySummary'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
 const range = { start: new Date('2026-03-04T17:00:00.000Z'), end: new Date('2026-03-05T17:00:00.000Z') }
@@ -111,5 +111,35 @@ describe('buildActivitySummary', () => {
       { id: 'bath', title: 'Bath', count: 1, lines: [] },
       { id: 'medication', title: 'Medication', count: 1, lines: ['Vitamin D'] },
     ])
+  })
+})
+
+describe('buildTodayTotals', () => {
+  it('sums today’s bottle volume, counts diapers and the part of each sleep inside the day', () => {
+    const range = { start: new Date('2026-10-08T22:00:00.000Z'), end: new Date('2026-10-09T22:00:00.000Z') }
+    const now = new Date('2026-10-09T12:00:00.000Z')
+    const base = { notes: '', createdBy: 'u', createdAt: '2026-10-09T00:00:00.000Z' }
+    const totals = buildTodayTotals(
+      {
+        feeding: [
+          { ...base, id: 'f1', type: 'bottle', occurredAt: '2026-10-09T06:00:00.000Z', volumeMl: 120, foodType: null },
+          { ...base, id: 'f2', type: 'solid', occurredAt: '2026-10-09T10:00:00.000Z', volumeMl: null, foodType: 'Carrot' },
+          { ...base, id: 'f0', type: 'bottle', occurredAt: '2026-10-08T20:00:00.000Z', volumeMl: 120, foodType: null },
+        ],
+        sleep: [
+          // Started an hour before the day: only the 3 hours after midnight count.
+          { ...base, id: 's1', startedAt: '2026-10-08T21:00:00.000Z', endedAt: '2026-10-09T01:00:00.000Z', durationSeconds: 14400 },
+          // Still running: counts up to now.
+          { ...base, id: 's2', startedAt: '2026-10-09T11:30:00.000Z', endedAt: null, durationSeconds: null },
+        ],
+        diaper: [{ ...base, id: 'd1', type: 'wet', occurredAt: '2026-10-09T07:00:00.000Z' }],
+        medication: [],
+        bath: [],
+      },
+      range,
+      now,
+    )
+
+    expect(totals).toEqual({ bottleMl: 120, sleepSeconds: 3 * 3600 + 30 * 60, diapers: 1 })
   })
 })

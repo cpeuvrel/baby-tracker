@@ -18,6 +18,7 @@
     "seed:emulator": "node scripts/seed-emulator.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/nunito": "^5.3.0",
     "firebase": "^12.19.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
