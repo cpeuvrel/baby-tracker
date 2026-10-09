@@ -12,7 +12,9 @@ import {
   formatMetricValue,
   getTrendMetric,
   TREND_METRICS,
+  isNightSleep,
 } from './trendMetrics'
+import { DEFAULT_NIGHTTIME_HOURS } from './aggregations'
 import { rollingDayFrame } from './timeline'
 
 const feeding: FeedingEntry = {
@@ -168,13 +170,13 @@ describe('sleep metrics', () => {
     expect(values('sleepNight')).toEqual([0, 10 * 3600])
   })
 
-  it('makes a sleep nighttime or daytime as a whole, by when it started', () => {
+  it('makes a sleep a night as a whole when it touches the nighttime hours', () => {
     const night = { start: '21:00', end: '07:00' }
     const series = (id: 'sleepDay' | 'sleepNight') =>
       computeMetricSeries(id, DAYS, bundle, night, NOW).map((point) => point.value)
-    // Started at 20:30, before this baby's night: the whole 10h sleep is daytime.
-    expect(series('sleepDay')).toEqual([1.5 * 3600, 13 * 3600])
-    expect(series('sleepNight')).toEqual([0, 0])
+    // Started at 20:30, before this baby's night, but still asleep at 21:00: the whole 10h is a night.
+    expect(series('sleepDay')).toEqual([1.5 * 3600, 3 * 3600])
+    expect(series('sleepNight')).toEqual([0, 10 * 3600])
   })
 
   it('counts a night that starts before the nighttime hours on the morning it ends', () => {
@@ -210,6 +212,22 @@ describe('sleep metrics', () => {
     // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h), both on the 5th.
     expect(values('wakeWindow')).toEqual([4.5 * 3600, 0])
     expect(computeMetricSummary('wakeWindow', DAYS, bundle)).toBe(4.5 * 3600)
+  })
+})
+
+describe('isNightSleep', () => {
+  // Paris is UTC+1 in March; nighttime 20:00 – 08:00.
+  const at = (id: string, start: string, end: string) => isNightSleep(sleepEntry(id, start, end), DEFAULT_NIGHTTIME_HOURS)
+
+  it('is a night when the sleep reaches the nighttime hours, wherever it starts and ends', () => {
+    expect(at('19h30-8h00', '2026-03-05T18:30:00.000Z', '2026-03-06T07:00:00.000Z')).toBe(true)
+    expect(at('21h00-8h15', '2026-03-05T20:00:00.000Z', '2026-03-06T07:15:00.000Z')).toBe(true)
+    expect(at('5h-9h', '2026-03-06T04:00:00.000Z', '2026-03-06T08:00:00.000Z')).toBe(true)
+  })
+
+  it('is a nap when the sleep stays outside the nighttime hours', () => {
+    expect(at('14h-15h', '2026-03-05T13:00:00.000Z', '2026-03-05T14:00:00.000Z')).toBe(false)
+    expect(at('8h30-9h30', '2026-03-05T07:30:00.000Z', '2026-03-05T08:30:00.000Z')).toBe(false)
   })
 })
 

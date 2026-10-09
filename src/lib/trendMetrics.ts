@@ -318,6 +318,23 @@ function sleepEnd(entry: SleepEntry, now: Date): Date {
 }
 
 /**
+ * Whether a sleep is a night (as a whole): it touches the nighttime hours, starting during
+ * them or still asleep when they begin. 19:30 → 08:00 is a night; a 14:00 nap is not.
+ */
+export function isNightSleep(entry: SleepEntry, nightRange: NighttimeHours, now: Date = new Date()): boolean {
+  const start = new Date(entry.startedAt)
+  if (isDuringNight(start, nightRange)) return true
+  const end = sleepEnd(entry, now)
+  const [hour, minute] = nightRange.start.split(':').map(Number)
+  for (let day = startOfDay(start); day.getTime() < end.getTime(); day = addDays(day, 1)) {
+    const { year, month, day: date } = zonedParts(day)
+    const nightStart = zonedTime(year, month, date, hour, minute)
+    if (nightStart.getTime() > start.getTime() && nightStart.getTime() < end.getTime()) return true
+  }
+  return false
+}
+
+/**
  * Day a sleep counts on, whole and never split: the day of `frame` the baby woke up in
  * (a running sleep: the current one). A night from 19:30 to 08:00 counts on the morning it ends.
  */
@@ -355,12 +372,11 @@ export function sleepSegmentInMetric(
 ): boolean {
   switch (id) {
     case 'sleepDay':
-      return !startsDuringNight(segment.entry.startedAt, nightRange)
-    case 'sleepNight':
-      return startsDuringNight(segment.entry.startedAt, nightRange)
     case 'napCount':
     case 'napLength':
-      return !startsDuringNight(segment.entry.startedAt, nightRange)
+      return !isNightSleep(segment.entry, nightRange)
+    case 'sleepNight':
+      return isNightSleep(segment.entry, nightRange)
     case 'sleepLongest':
       return longestIds.has(segment.entry.id)
     default:
@@ -415,14 +431,14 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
         ...entries,
         sleep: entries.sleep?.filter(
           (entry) =>
-            (id === 'sleepNight') === isNight(entry.startedAt) &&
+            (id === 'sleepNight') === isNightSleep(entry, nightRange, now) &&
             (!inPeriod || inPeriod.has(sleepWakeDayKey(entry, now, frame))),
         ),
       }
     }
     case 'napCount':
     case 'napLength':
-      return { ...entries, sleep: entries.sleep?.filter((entry) => !isNight(entry.startedAt)) }
+      return { ...entries, sleep: entries.sleep?.filter((entry) => !isNightSleep(entry, nightRange, now)) }
     case 'sleepLongest': {
       if (!dayKeys) return entries
       const kept = new Set(
@@ -482,7 +498,7 @@ function metricSamples(
   const isNight = (date: string) => startsDuringNight(date, nightRange)
   const bottlesWithVolume = entries.feeding.filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
   const sleeps = completedSleeps(entries.sleep)
-  const naps = sleeps.filter((entry) => !isNight(entry.startedAt))
+  const naps = sleeps.filter((entry) => !isNightSleep(entry, nightRange, now))
 
   switch (id) {
     case 'feedSessions':
@@ -510,10 +526,10 @@ function metricSamples(
     case 'sleepTotal':
     case 'sleepDay':
     case 'sleepNight':
-      // Each sleep whole, on the day the baby woke up; night or day by when it started.
+      // Each sleep whole, on the day the baby woke up; a night if it touches the nighttime hours.
       for (const entry of entries.sleep) {
-        if (id === 'sleepDay' && isNight(entry.startedAt)) continue
-        if (id === 'sleepNight' && !isNight(entry.startedAt)) continue
+        if (id === 'sleepDay' && isNightSleep(entry, nightRange, now)) continue
+        if (id === 'sleepNight' && !isNightSleep(entry, nightRange, now)) continue
         const seconds = (sleepEnd(entry, now).getTime() - new Date(entry.startedAt).getTime()) / 1000
         if (seconds > 0) addSample(samples, sleepWakeDayKey(entry, now, frame), seconds)
       }
