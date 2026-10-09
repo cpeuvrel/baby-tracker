@@ -385,16 +385,19 @@ export function sleepSegmentInMetric(
   }
 }
 
-/** Day a sleep counts on for the metric: naps on the day they start, the other sleep metrics on the day the baby woke up. */
+/**
+ * Day a sleep counts on for the metric: naps on the day they start, as wake windows (each on
+ * the day of the sleep that ends it), the other sleep metrics on the day the baby woke up.
+ */
 function sleepMetricDayKey(id: TrendMetricId, entry: SleepEntry, now: Date, frame: DayFrame): string {
-  if (id === 'napCount' || id === 'napLength') return frame.keyOf(new Date(entry.startedAt))
+  if (id === 'napCount' || id === 'napLength' || id === 'wakeWindow') return frame.keyOf(new Date(entry.startedAt))
   return sleepWakeDayKey(entry, now, frame)
 }
 
 /**
  * Every piece of the period's sleep, flagged as part of the metric or not. With `focusDayKey`
  * (a selected day), only the sleeps the metric counts on that day are: for Longest Sleep, that
- * day's longest, whole (the evening before included); Wake Windows keeps every sleep.
+ * day's longest, whole (the evening before included).
  */
 export function metricSleepSegments(
   id: TrendMetricId,
@@ -412,8 +415,7 @@ export function metricSleepSegments(
       .filter((entry): entry is SleepEntry => entry != null)
       .map((entry) => entry.id),
   )
-  const onFocusDay = (entry: SleepEntry) =>
-    !focusDayKey || id === 'wakeWindow' || sleepMetricDayKey(id, entry, now, frame) === focusDayKey
+  const onFocusDay = (entry: SleepEntry) => !focusDayKey || sleepMetricDayKey(id, entry, now, frame) === focusDayKey
   return sleepSegments(entries, nightRange, now, frame)
     .filter((segment) => inPeriod.has(segment.dayKey))
     .map((segment) => ({

@@ -143,6 +143,21 @@ describe('TrendDetailPage', () => {
     expect(heading).toHaveClass('is-focused')
   })
 
+  it('fades the feeds of the other days when a day is selected', () => {
+    const yesterday = addDays(now, -1)
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding: [...feeding, { ...feeding[0], id: 'f0', occurredAt: yesterday.toISOString() }],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+    })
+    const { container } = renderPage('feedSessions', `?day=${dayKey(yesterday)}`)
+
+    expect(container.querySelectorAll('.timeline-grid-mark')).toHaveLength(2)
+    expect(container.querySelectorAll('.timeline-grid-mark.is-faded')).toHaveLength(1)
+  })
+
   it('tapping the selected column again goes back to the average', async () => {
     const user = userEvent.setup()
     const { container } = renderPage('feedSessions')

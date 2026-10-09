@@ -139,7 +139,9 @@ export function TrendDetailPage() {
     now,
     frame,
   )
-  // In the Calendar, a selected day brings out the sleeps counted on it (its longest, for Longest Sleep).
+  // In the Calendar, a selected day brings out what the metric counts on it, the rest faded:
+  // its feeds or diapers, the sleeps counted on it (its longest, for Longest Sleep).
+  const onSelectedDay = (iso: string) => !selectedDayKey || frameKeyOf(iso) === selectedDayKey
   const calendarSleepSegments =
     metric.kind === 'sleep' && selectedDayKey
       ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now, frame, selectedDayKey)
@@ -232,11 +234,17 @@ export function TrendDetailPage() {
           }))}
           marks={
             metric.kind === 'feeding'
-              ? shown.feeding.map((entry) => ({ at: new Date(entry.occurredAt) }))
+              ? shown.feeding.map((entry) => ({
+                  at: new Date(entry.occurredAt),
+                  faded: !onSelectedDay(entry.occurredAt),
+                }))
               : metric.kind === 'diaper'
                 ? current.diaper
                     .filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt)))
-                    .map((entry) => ({ at: new Date(entry.occurredAt), faded: !isMetricDiaper(entry.occurredAt) }))
+                    .map((entry) => ({
+                      at: new Date(entry.occurredAt),
+                      faded: !isMetricDiaper(entry.occurredAt) || !onSelectedDay(entry.occurredAt),
+                    }))
                 : undefined
           }
         />

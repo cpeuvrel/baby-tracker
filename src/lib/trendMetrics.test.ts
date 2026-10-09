@@ -249,6 +249,8 @@ describe('metricSleepSegments with a selected day', () => {
     expect(highlighted('sleepTotal', '2026-03-06')).toEqual(['night', 'running'])
     expect(highlighted('sleepNight', '2026-03-05')).toEqual([])
     expect(highlighted('napCount', '2026-03-05')).toEqual(['nap1', 'nap2'])
+    // Wake windows count on the day of the sleep that ends them: the sleeps starting that day.
+    expect(highlighted('wakeWindow', '2026-03-06')).toEqual(['running'])
   })
 })
 
