@@ -36,9 +36,10 @@ export type TrendValueType = 'count' | 'volume' | 'duration'
 /**
  * How a day's samples become its value, and the period's samples its headline:
  * `sum` → the day's total, averaged per day over the period ("per day");
- * `mean` → the mean of the samples, over the day or over the whole period ("average").
+ * `mean` → the mean of the samples, over the day or over the whole period ("average");
+ * `max` → the largest sample, of the day or of the whole period ("longest").
  */
-export type TrendReducer = 'sum' | 'mean'
+export type TrendReducer = 'sum' | 'mean' | 'max'
 
 export interface TrendMetricMeta {
   id: TrendMetricId
@@ -178,7 +179,7 @@ export const TREND_METRICS: TrendMetricMeta[] = [
     colorVar: '--category-sleep',
     kind: 'sleep',
     valueType: 'duration',
-    reducer: 'mean',
+    reducer: 'max',
     seriesLabel: 'Longest sleep',
     deltaWords: ['Longer longest sleep', 'Shorter longest sleep'],
   },
@@ -558,6 +559,10 @@ function sum(values: number[]): number {
   return values.reduce((total, value) => total + value, 0)
 }
 
+function max(values: number[]): number {
+  return values.length > 0 ? Math.max(...values) : 0
+}
+
 function mean(values: number[]): number {
   return values.length > 0 ? sum(values) / values.length : 0
 }
@@ -571,15 +576,16 @@ export function computeMetricSeries(
   now: Date = new Date(),
   frame: DayFrame = CALENDAR_DAYS,
 ): DailyPoint[] {
-  const reduce = getTrendMetric(id)?.reducer === 'mean' ? mean : sum
+  const reducer = getTrendMetric(id)?.reducer
+  const reduce = reducer === 'mean' ? mean : reducer === 'max' ? max : sum
   const samples = metricSamples(id, dayKeys, entries, nightRange, now, frame)
   return dayKeys.map((key) => ({ dayKey: key, value: reduce(samples.get(key) ?? []) }))
 }
 
 /**
  * The period's headline value: the per-day average of a `sum` metric (its total over the
- * period's elapsed days, see `elapsedPeriodDays`), or the mean of every sample of a `mean`
- * metric (days without any don't count).
+ * period's elapsed days, see `elapsedPeriodDays`), the mean of every sample of a `mean`
+ * metric (days without any don't count), or the largest sample of a `max` metric.
  */
 export function computeMetricSummary(
   id: TrendMetricId,
@@ -589,11 +595,33 @@ export function computeMetricSummary(
   now: Date = new Date(),
   frame: DayFrame = CALENDAR_DAYS,
 ): number {
-  if (getTrendMetric(id)?.reducer === 'mean') {
-    return mean([...metricSamples(id, dayKeys, entries, nightRange, now, frame).values()].flat())
+  const reducer = getTrendMetric(id)?.reducer
+  if (reducer === 'mean' || reducer === 'max') {
+    const samples = [...metricSamples(id, dayKeys, entries, nightRange, now, frame).values()].flat()
+    return reducer === 'mean' ? mean(samples) : max(samples)
   }
   return sum(computeMetricSeries(id, dayKeys, entries, nightRange, now, frame).map((point) => point.value)) /
     elapsedPeriodDays(dayKeys, now, frame)
+}
+
+/**
+ * Day the headline comes from, for a `max` metric (the day of the period's longest sleep),
+ * or null: the other headlines span the whole period.
+ */
+export function metricHeadlineDayKey(
+  id: TrendMetricId,
+  dayKeys: string[],
+  entries: TrendEntriesBundle,
+  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
+  now: Date = new Date(),
+  frame: DayFrame = CALENDAR_DAYS,
+): string | null {
+  if (getTrendMetric(id)?.reducer !== 'max') return null
+  let best: DailyPoint | null = null
+  for (const point of computeMetricSeries(id, dayKeys, entries, nightRange, now, frame)) {
+    if (point.value > 0 && (!best || point.value > best.value)) best = point
+  }
+  return best?.dayKey ?? null
 }
 
 export interface TrendBreakdownItem {
@@ -655,6 +683,7 @@ export function formatMetricValue(id: TrendMetricId, value: number): string {
 export function formatMetricHeadline(id: TrendMetricId, value: number): string {
   const metric = getTrendMetric(id)
   if (metric?.reducer === 'mean') return `${formatMetricValue(id, value)} average`
+  if (metric?.reducer === 'max') return `${formatMetricValue(id, value)} longest`
   return [formatMetricValue(id, value), metric?.unitWord, 'per day'].filter(Boolean).join(' ')
 }
 

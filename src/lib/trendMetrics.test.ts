@@ -13,6 +13,7 @@ import {
   getTrendMetric,
   TREND_METRICS,
   isNightSleep,
+  metricHeadlineDayKey,
 } from './trendMetrics'
 import { DEFAULT_NIGHTTIME_HOURS } from './aggregations'
 import { rollingDayFrame } from './timeline'
@@ -203,9 +204,16 @@ describe('sleep metrics', () => {
     expect(computeMetricSummary('napCount', DAYS, bundle)).toBe(1)
   })
 
-  it('counts the longest sleep on the morning it ends, averaged over days that have one', () => {
+  it('counts each day\'s longest sleep on the morning it ends; the headline is the period\'s longest', () => {
     expect(values('sleepLongest')).toEqual([3600, 10 * 3600])
-    expect(computeMetricSummary('sleepLongest', DAYS, bundle)).toBe(5.5 * 3600)
+    expect(computeMetricSummary('sleepLongest', DAYS, bundle)).toBe(10 * 3600)
+    expect(formatMetricHeadline('sleepLongest', 10 * 3600)).toBe(`${formatMetricValue('sleepLongest', 10 * 3600)} longest`)
+    expect(metricHeadlineDayKey('sleepLongest', DAYS, bundle)).toBe('2026-03-06')
+  })
+
+  it('has no headline day for metrics over the whole period', () => {
+    expect(metricHeadlineDayKey('sleepTotal', DAYS, bundle)).toBeNull()
+    expect(metricHeadlineDayKey('sleepLongest', DAYS, { ...bundle, sleep: [] })).toBeNull()
   })
 
   it('measures wake windows between completed sleeps, on the day each one ends', () => {

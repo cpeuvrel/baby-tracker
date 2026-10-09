@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
 import { CalendarIcon, ClockIcon, DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
@@ -61,7 +61,9 @@ export function TrendDetailPage() {
   const [view, setView] = useState<ViewMode>('calendar')
   const [editing, setEditing] = useState<EditState>(null)
   /** Day selected in the Calendar or Graph view: shown in the headline and focused in the Entries view. */
-  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
+  // Opened from a headline that comes from one day (`?day=`, e.g. the longest sleep): that day.
+  const [searchParams] = useSearchParams()
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => searchParams.get('day'))
   const [dayMode, setDayMode] = useState<DayMode>('calendar')
   /** Taken when the page opens and again whenever the display changes: rolling days end at this time. */
   const [now, setNow] = useState(currentTime)

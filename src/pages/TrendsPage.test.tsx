@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
+import { dayKey } from '../lib/timeline'
 import { TrendsPage } from './TrendsPage'
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -94,6 +95,30 @@ describe('TrendsPage', () => {
     expect(screen.getByRole('heading', { name: 'Feed' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Sleep' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Diaper' })).toBeInTheDocument()
+  })
+
+  it('links Longest Sleep to the day of the period\'s longest sleep', () => {
+    const wokeUp = new Date(now.getTime() - 3600_000)
+    const night: SleepEntry = {
+      ...sleep[0],
+      id: 'night',
+      startedAt: new Date(wokeUp.getTime() - 11 * 3600_000).toISOString(),
+      endedAt: wokeUp.toISOString(),
+      durationSeconds: 11 * 3600,
+    }
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding,
+      sleep: [night],
+      diaper,
+      medication: [],
+      bath: [],
+    })
+
+    renderPage()
+
+    const row = screen.getByRole('link', { name: /Longest Sleep/ })
+    expect(row).toHaveAttribute('href', `/trends/sleepLongest?day=${dayKey(wokeUp)}`)
+    expect(row).toHaveTextContent('longest')
   })
 
   it('switches range and re-queries entries for the new period', async () => {
