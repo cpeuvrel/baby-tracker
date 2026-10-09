@@ -113,7 +113,10 @@ export interface PediatricianVisit {
   id: string
   /** Calendar day of the appointment, "YYYY-MM-DD" (like `Baby.birthDate`). */
   date: string
+  /** A vaccine is planned at this visit. */
   vaccinated: boolean
+  /** Someone confirmed the vaccine was bought: stops the purchase reminders (functions/src/vaccineReminders.ts). */
+  vaccineBought: boolean
   remarks: VisitRemark[]
   discussions: VisitDiscussion[]
   createdBy: string

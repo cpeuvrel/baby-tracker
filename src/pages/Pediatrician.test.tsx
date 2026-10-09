@@ -24,6 +24,8 @@ vi.mock('../repositories/pediatricianVisits', () => ({
   },
 }))
 
+vi.mock('../lib/pushRegistration', () => ({ registerPush: vi.fn().mockResolvedValue(undefined) }))
+
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { uid: 'uid1' } }),
 }))
@@ -37,6 +39,7 @@ function visit(overrides: Partial<PediatricianVisit>): PediatricianVisit {
     id: 'v1',
     date: '2026-10-08',
     vaccinated: false,
+    vaccineBought: false,
     remarks: [],
     discussions: [],
     createdBy: 'uid1',
@@ -45,6 +48,8 @@ function visit(overrides: Partial<PediatricianVisit>): PediatricianVisit {
   }
 }
 
+const selectBabyMock = vi.fn()
+
 function selectBaby(baby: typeof leo) {
   vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
     household,
@@ -52,7 +57,7 @@ function selectBaby(baby: typeof leo) {
     loading: false,
     error: null,
     selectedBaby: baby,
-    selectBaby: vi.fn(),
+    selectBaby: selectBabyMock,
   })
 }
 
@@ -277,5 +282,42 @@ describe('Pediatrician screens', () => {
     )
     expect(screen.getByRole('link', { name: /Remarks/ })).toHaveTextContent('1')
     expect(screen.getByRole('link', { name: /Discussion/ })).toHaveTextContent('0')
+  })
+  it('asks whether the vaccine was bought only when one is planned', async () => {
+    const user = userEvent.setup()
+    visitsByBaby = { b1: [visit({ vaccinated: true })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    const bought = screen.getByRole('group', { name: 'Vaccine bought' })
+    expect(screen.getByText(/Reminder at noon/)).toBeInTheDocument()
+    await user.click(within(bought).getByRole('button', { name: 'Yes' }))
+
+    expect(updatePediatricianVisit).toHaveBeenCalledWith('h1', 'b1', 'v1', { vaccineBought: true })
+  })
+
+  it('hides the purchase question for a visit without vaccine', () => {
+    visitsByBaby = { b1: [visit({ vaccinated: false })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    expect(screen.queryByRole('group', { name: 'Vaccine bought' })).not.toBeInTheDocument()
+  })
+
+  it('records the purchase from the notification’s “Yes”', async () => {
+    visitsByBaby = { b1: [visit({ vaccinated: true })] }
+    renderAt('/account/pediatrician/visits/v1?baby=b1&vaccineBought=yes')
+
+    await vi.waitFor(() =>
+      expect(updatePediatricianVisit).toHaveBeenCalledWith('h1', 'b1', 'v1', { vaccineBought: true }),
+    )
+    expect(updatePediatricianVisit).toHaveBeenCalledTimes(1)
+  })
+
+  it('selects the notification’s child instead of leaving its visit', () => {
+    selectBabyMock.mockReset()
+    visitsByBaby = { b2: [visit({ id: 'v7' })] }
+    renderAt('/account/pediatrician/visits/v7?baby=b2')
+
+    expect(selectBabyMock).toHaveBeenCalledWith('b2')
+    expect(screen.queryByText(/No visits yet/)).not.toBeInTheDocument()
   })
 })

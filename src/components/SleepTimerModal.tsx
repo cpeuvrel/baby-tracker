@@ -7,7 +7,7 @@ import { useNow } from '../hooks/useNow'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
 import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
-import { registerSleepTimerPush } from '../lib/sleepTimerPush'
+import { registerPush } from '../lib/pushRegistration'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -56,7 +56,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       // The running timer shows as a notification; this tap is the gesture asking needs.
       // Then this device gets the server's pushes that keep its elapsed time current.
       void requestSleepTimerNotificationPermission()
-        .then(() => registerSleepTimerPush(user.uid))
+        .then(() => registerPush(user.uid))
         .catch(() => {})
       if (timerEntryId) {
         // Start again after a stop: the same sleep goes on, not a new one.

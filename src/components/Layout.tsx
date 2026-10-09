@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Outlet, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatDate } from '../lib/appTime'
+import { showVaccinePushesInForeground } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 import { BabySelector } from './BabySelector'
 import { BabyAvatarIcon, MoreIcon } from './icons'
@@ -28,6 +29,18 @@ export function Layout() {
     navigator.serviceWorker.addEventListener('message', onMessage)
     return () => navigator.serviceWorker.removeEventListener('message', onMessage)
   }, [navigate])
+
+  useEffect(() => {
+    let unsubscribe: (() => void) | null = null
+    let cancelled = false
+    void showVaccinePushesInForeground()
+      .then((stop) => (cancelled ? stop() : (unsubscribe = stop)))
+      .catch(() => {})
+    return () => {
+      cancelled = true
+      unsubscribe?.()
+    }
+  }, [])
 
   return (
     <div className="app-shell">

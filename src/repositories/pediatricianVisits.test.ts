@@ -43,6 +43,7 @@ describe('pediatricianVisits repository', () => {
     expect(payload).toMatchObject({
       date: '2026-10-08',
       vaccinated: true,
+      vaccineBought: false,
       remarks: [],
       discussions: [],
       createdBy: 'uid1',
@@ -89,6 +90,7 @@ describe('pediatricianVisits repository', () => {
         id: 'v1',
         date: '2026-10-08',
         vaccinated: false,
+        vaccineBought: false,
         remarks: [],
         discussions: [],
         createdBy: 'uid1',

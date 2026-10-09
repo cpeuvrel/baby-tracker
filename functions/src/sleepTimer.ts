@@ -1,9 +1,8 @@
-import { getFirestore, type DocumentReference, type DocumentSnapshot } from 'firebase-admin/firestore'
-import { getMessaging } from 'firebase-admin/messaging'
+import { getFirestore, type DocumentSnapshot } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { collectHouseholdTokens } from './tokens'
+import { sendToHousehold } from './push'
 
 // `data.type` the service worker reads (src/lib/sleepTimerNotification.ts).
 const SLEEP_TIMER_PUSH = 'sleep-timer'
@@ -35,30 +34,6 @@ export function sleepChange(before: SleepFields | undefined, after: SleepFields 
   return null
 }
 
-const UNREGISTERED_TOKEN_CODES = new Set([
-  'messaging/registration-token-not-registered',
-  'messaging/invalid-registration-token',
-])
-
-async function sendToHousehold(householdRef: DocumentReference, data: Record<string, string>): Promise<void> {
-  const tokens = await collectHouseholdTokens(householdRef)
-  if (tokens.length === 0) return
-
-  const response = await getMessaging().sendEachForMulticast({
-    tokens: tokens.map(({ token }) => token),
-    // Data only: the service worker builds the notification itself.
-    data,
-    webpush: { headers: { Urgency: 'high', TTL: String(TICK_TTL_SECONDS) } },
-  })
-
-  // Uninstalled apps and cleared browsers: stop pushing to them every minute.
-  await Promise.all(
-    response.responses.map((result, index) =>
-      result.error && UNREGISTERED_TOKEN_CODES.has(result.error.code) ? tokens[index].ref.delete() : null,
-    ),
-  )
-}
-
 async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
   const babyRef = entry.ref.parent.parent
   const householdRef = babyRef?.parent.parent
@@ -66,11 +41,11 @@ async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
   if (!babyRef || !householdRef || !startedAt) return
 
   const babyName = ((await babyRef.get()).data()?.name as string | undefined) ?? 'Baby'
-  await sendToHousehold(householdRef, {
-    type: SLEEP_TIMER_PUSH,
-    babyName,
-    startedAt: startedAt.toISOString(),
-  })
+  await sendToHousehold(
+    householdRef,
+    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString() },
+    TICK_TTL_SECONDS,
+  )
 }
 
 /** Every minute while a sleep runs: refreshes the elapsed time on the household's devices. */
@@ -102,7 +77,8 @@ export const onSleepEntryWritten = onDocumentWritten(
 
     logger.info('Sleep timer notification', { change, ...event.params })
     if (change === 'stopped') {
-      await sendToHousehold(event.data.before.ref.parent.parent!.parent.parent!, { type: SLEEP_TIMER_STOP_PUSH })
+      const householdRef = event.data.before.ref.parent.parent!.parent.parent!
+      await sendToHousehold(householdRef, { type: SLEEP_TIMER_STOP_PUSH }, TICK_TTL_SECONDS)
     } else {
       await sendRunningTimer(event.data.after)
     }
