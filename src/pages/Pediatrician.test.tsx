@@ -105,6 +105,20 @@ describe('Pediatrician screens', () => {
     expect(await screen.findByRole('heading', { name: 'Wed, Sep 30, 2026' })).toBeInTheDocument()
   })
 
+  it('closes the new visit popup when created from another visit', async () => {
+    const user = userEvent.setup()
+    addPediatricianVisit.mockResolvedValue('v9')
+    visitsByBaby = { b1: [visit({ id: 'v9', date: '2026-09-30' }), visit({ id: 'v1', date: '2026-07-01' })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    await user.click(screen.getByRole('button', { name: /New Visit/ }))
+    const dialog = screen.getByRole('dialog', { name: 'New Visit' })
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    expect(await screen.findByRole('heading', { name: 'Wed, Sep 30, 2026' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'New Visit' })).not.toBeInTheDocument()
+  })
+
   it('lists the selected child’s visits by date', () => {
     visitsByBaby = {
       b1: [visit({ id: 'v2', date: '2026-10-08', vaccinated: true }), visit({ id: 'v1', date: '2026-07-01' })],
