@@ -13,7 +13,7 @@ vi.mock('../repositories/sleepEntries', () => ({
   stopSleep: (...args: unknown[]) => stopSleep(...args),
 }))
 
-vi.mock('../lib/sleepTimerPush', () => ({ registerSleepTimerPush: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../lib/pushRegistration', () => ({ registerPush: vi.fn().mockResolvedValue(undefined) }))
 
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: { uid: 'uid1' } }) }))
 

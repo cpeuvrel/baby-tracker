@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { closeSleepTimerNotification, showSleepTimerNotification } from '../lib/sleepTimerNotification'
-import { registerSleepTimerPush } from '../lib/sleepTimerPush'
+import { registerPush } from '../lib/pushRegistration'
 import type { SleepEntry } from '../types/models'
 import { useNow } from './useNow'
 
@@ -28,7 +28,7 @@ export function useSleepTimerNotification(
   useEffect(() => {
     if (uid == null || startedAt == null) return
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
-    void registerSleepTimerPush(uid).catch(() => {})
+    void registerPush(uid).catch(() => {})
   }, [uid, startedAt])
 
   useEffect(() => {

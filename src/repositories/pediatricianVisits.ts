@@ -19,7 +19,7 @@ export interface NewPediatricianVisit {
 }
 
 export type PediatricianVisitChanges = Partial<
-  Pick<PediatricianVisit, 'date' | 'vaccinated' | 'remarks' | 'discussions'>
+  Pick<PediatricianVisit, 'date' | 'vaccinated' | 'vaccineBought' | 'remarks' | 'discussions'>
 >
 
 function toPediatricianVisit(id: string, data: Record<string, unknown>): PediatricianVisit {
@@ -27,6 +27,7 @@ function toPediatricianVisit(id: string, data: Record<string, unknown>): Pediatr
     id,
     date: data.date as string,
     vaccinated: (data.vaccinated as boolean) ?? false,
+    vaccineBought: (data.vaccineBought as boolean | undefined) ?? false,
     remarks: (data.remarks as VisitRemark[] | undefined) ?? [],
     discussions: (data.discussions as VisitDiscussion[] | undefined) ?? [],
     createdBy: data.createdBy as string,
@@ -57,6 +58,7 @@ export async function addPediatricianVisit(
   const ref = await addDoc(pediatricianVisitsCollection(householdId, babyId), {
     date: visit.date,
     vaccinated: visit.vaccinated,
+    vaccineBought: false,
     remarks: [],
     discussions: [],
     createdBy,

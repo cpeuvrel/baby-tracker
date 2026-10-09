@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { registerPush } from '../lib/pushRegistration'
+import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { todayDateValue } from '../lib/visitDate'
 import { addPediatricianVisit } from '../repositories/pediatricianVisits'
 import { Modal } from './Modal'
@@ -30,6 +32,14 @@ export function NewVisitModal({ onClose, onCreated }: NewVisitModalProps) {
       })
   }
 
+  const chooseVaccine = () => {
+    setVaccinated(true)
+    // The vaccine reminders come as notifications; this tap is the gesture asking needs.
+    void requestSleepTimerNotificationPermission()
+      .then(() => registerPush(user.uid))
+      .catch(() => {})
+  }
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     submit()
@@ -56,7 +66,7 @@ export function NewVisitModal({ onClose, onCreated }: NewVisitModalProps) {
         </div>
         <span className="field-label">Vaccine</span>
         <div role="group" aria-label="Vaccine" className="segmented-control">
-          <button type="button" aria-pressed={vaccinated} onClick={() => setVaccinated(true)}>
+          <button type="button" aria-pressed={vaccinated} onClick={chooseVaccine}>
             Yes
           </button>
           <button type="button" aria-pressed={!vaccinated} onClick={() => setVaccinated(false)}>
