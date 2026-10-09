@@ -18,6 +18,7 @@ import {
   computeAxisTicks,
   computeMetricSeries,
   computeMetricSummary,
+  describeMetric,
   formatMetricAxisValue,
   formatMetricDayHeadline,
   formatMetricHeadline,
@@ -299,6 +300,14 @@ export function TrendDetailPage() {
           </p>
         </div>
       )}
+
+      <section className="detail-explainer" aria-labelledby="detail-explainer-title">
+        <h3 id="detail-explainer-title">How it’s calculated</h3>
+        <p>{describeMetric(metric.id, nightRange)}</p>
+        {dayMode === 'rolling' && (
+          <p>In rolling 24 h mode, each day is the 24 hours ending at the time shown instead of a calendar day.</p>
+        )}
+      </section>
 
       {editing?.kind === 'feeding' && <FeedingForm entry={editing.entry} onClose={() => setEditing(null)} />}
       {editing?.kind === 'diaper' && <DiaperForm entry={editing.entry} onClose={() => setEditing(null)} />}

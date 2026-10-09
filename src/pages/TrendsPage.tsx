@@ -8,6 +8,8 @@ import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib
 import {
   computeMetricBreakdown,
   computeMetricSummary,
+  describeMetric,
+  describeTrendRules,
   formatMetricHeadline,
   formatMetricValue,
   TREND_METRICS,
@@ -63,6 +65,15 @@ export function TrendsPage() {
         ))}
       </div>
 
+      <details className="trend-explainer">
+        <summary>How are these numbers calculated?</summary>
+        <ul>
+          {describeTrendRules(nightRange).map((rule) => (
+            <li key={rule}>{rule}</li>
+          ))}
+        </ul>
+      </details>
+
       {SECTIONS.map((section) => (
         <section key={section} className="trend-section" aria-labelledby={`trend-section-${section}`}>
           <h2 id={`trend-section-${section}`} className="trend-section-title">
@@ -92,6 +103,17 @@ export function TrendsPage() {
               />
             )
           })}
+          <details className="trend-explainer">
+            <summary>How the {section.toLowerCase()} numbers are calculated</summary>
+            <dl>
+              {TREND_METRICS.filter((metric) => metric.section === section).map((metric) => (
+                <div key={metric.id}>
+                  <dt>{metric.title}</dt>
+                  <dd>{describeMetric(metric.id, nightRange)}</dd>
+                </div>
+              ))}
+            </dl>
+          </details>
         </section>
       ))}
     </div>

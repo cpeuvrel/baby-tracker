@@ -2362,3 +2362,62 @@ main {
     --recap-label: #e6dabb;
   }
 }
+
+/* "How it's calculated" notes on the Trends screens */
+.trend-explainer {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.trend-explainer summary {
+  cursor: pointer;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.trend-explainer ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.trend-explainer li + li {
+  margin-top: 6px;
+}
+
+.trend-explainer dl {
+  margin: 8px 0 0;
+}
+
+.trend-explainer dl > div + div {
+  margin-top: 10px;
+}
+
+.trend-explainer dt {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.trend-explainer dd {
+  margin: 2px 0 0;
+}
+
+.detail-explainer {
+  margin: 16px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.detail-explainer h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--text);
+}
+
+.detail-explainer p {
+  margin: 0 0 6px;
+}
+
+.trends > .trend-explainer {
+  padding: 0 0 16px;
+}

@@ -5,6 +5,7 @@ import {
   computeMetricBreakdown,
   computeMetricSeries,
   computeMetricSummary,
+  describeMetric,
   filterMetricEntries,
   formatMetricAxisValue,
   formatMetricDayHeadline,
@@ -267,5 +268,12 @@ describe('diaper metrics', () => {
     expect(values('diaperCount')).toEqual([2, 0])
     expect(values('diaperDay')).toEqual([1, 0])
     expect(values('diaperNight')).toEqual([1, 0])
+  })
+})
+
+describe('describeMetric', () => {
+  it('has an explanation for every metric, using the baby’s nighttime hours', () => {
+    for (const metric of TREND_METRICS) expect(describeMetric(metric.id).length).toBeGreaterThan(40)
+    expect(describeMetric('sleepNight', { start: '19:30', end: '07:00' })).toContain('19:30–07:00')
   })
 })

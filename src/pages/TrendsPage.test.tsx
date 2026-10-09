@@ -109,6 +109,16 @@ describe('TrendsPage', () => {
     )
   })
 
+  it('explains how the numbers are calculated, with the shared rules and one note per metric', () => {
+    renderPage()
+
+    expect(screen.getByText('How are these numbers calculated?')).toBeInTheDocument()
+    expect(screen.getByText(/divided by the number of days elapsed: today only counts/)).toBeInTheDocument()
+    expect(screen.getByText('How the sleep numbers are calculated')).toBeInTheDocument()
+    expect(screen.getByText(/All the time asleep, day and night/)).toBeInTheDocument()
+    expect(screen.getByText(/diaper changes logged during the nighttime hours \(20:00–08:00\)/)).toBeInTheDocument()
+  })
+
   it('does not render the growth section', () => {
     renderPage()
 

@@ -669,3 +669,56 @@ export function computeAxisTicks(id: TrendMetricId, max: number): number[] {
   const count = Math.max(1, Math.ceil(max / unit / step))
   return Array.from({ length: count + 1 }, (_, index) => index * step * unit)
 }
+
+/** Nighttime hours as shown in the explanations, e.g. "20:00–08:00". */
+function formatNightRange(nightRange: NighttimeHours): string {
+  return `${nightRange.start}–${nightRange.end}`
+}
+
+const PER_DAY = "The period's total is then divided by the number of days elapsed, giving an average per day."
+
+/** Plain-language account of how a metric is calculated, shown on the Trends screens. */
+export function describeMetric(id: TrendMetricId, nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS): string {
+  const night = formatNightRange(nightRange)
+  switch (id) {
+    case 'feedSessions':
+      return `Every feeding logged (bottles and solids), counted on the day it was logged. ${PER_DAY} The lines underneath split it by feeding type.`
+    case 'feedVolume':
+      return `The millilitres of every bottle logged with a volume, added up for each day. ${PER_DAY} Solids and bottles without a volume are not counted.`
+    case 'feedAvgVolume':
+      return 'The size of a single bottle: the millilitres of every bottle logged with a volume during the period, divided by the number of those bottles. Bottles without a volume are left out.'
+    case 'feedInterval':
+      return 'The time from one feeding (bottle or solids) to the next, between their logged times. Every gap of the period is averaged; a gap counts on the day of the feeding that ends it.'
+    case 'diaperCount':
+      return `Every diaper change logged, counted on the day of the change. ${PER_DAY}`
+    case 'diaperDay':
+      return `The diaper changes logged outside the nighttime hours (${night}), counted on the day of the change. ${PER_DAY}`
+    case 'diaperNight':
+      return `The diaper changes logged during the nighttime hours (${night}), counted on the day of the change. ${PER_DAY}`
+    case 'sleepTotal':
+      return `All the time asleep, day and night, added up for each day. A sleep that runs past midnight is split between the two days, and a sleep still in progress counts up to now. ${PER_DAY}`
+    case 'sleepDay':
+      return `Only the time asleep outside the nighttime hours (${night}): a sleep that crosses the start or the end of the night only counts for its daytime part. Added up for each day. ${PER_DAY}`
+    case 'sleepNight':
+      return `Only the time asleep during the nighttime hours (${night}). A night is split at midnight: the part before midnight counts on the evening's day, the rest on the next day. Added up for each day. ${PER_DAY}`
+    case 'sleepLongest':
+      return `The longest finished sleep of each day, with its full duration. A sleep starting after ${nightRange.start} counts on the next day, the morning it ends (in rolling 24 h mode, on the 24 hours it ends in). The value shown is the average of these daily longest sleeps, over the days that have one.`
+    case 'napCount':
+      return `The finished sleeps that start outside the nighttime hours (${night}), counted on the day they start; a nap still in progress is not counted yet. ${PER_DAY}`
+    case 'napLength':
+      return `The full duration of each finished nap (a sleep starting outside ${night}), averaged over every nap of the period.`
+    case 'wakeWindow':
+      return 'The time awake between the end of one finished sleep and the start of the next, day and night alike. Every wake window of the period is averaged; one counts on the day the next sleep starts.'
+  }
+}
+
+/** Rules shared by every metric of the Trends screen: period, "per day" / "average", comparison arrow, nighttime hours. */
+export function describeTrendRules(nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS): string[] {
+  return [
+    '1d is today, since midnight; 7d and 14d are the last 7 or 14 calendar days, today included.',
+    '“per day” values are the total over the period divided by the number of days elapsed: today only counts for the hours already gone, so an unfinished day does not pull the average down (1d therefore shows today’s total so far).',
+    '“average” values are the mean of every single measurement of the period (each bottle, nap, gap…); days without any are left out.',
+    'The coloured arrow is the difference with the previous period of the same length (the day, 7 or 14 days just before).',
+    `Daytime and nighttime follow the baby’s nighttime hours (${formatNightRange(nightRange)}), set in Family › Children › the baby › Nighttime Hours.`,
+  ]
+}
