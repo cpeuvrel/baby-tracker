@@ -6,7 +6,7 @@ import { addDays } from '../lib/appTime'
 import { formatDuration } from '../lib/duration'
 import { dayRange } from '../lib/timeline'
 
-/** Today's feeds, sleep and diapers at a glance, above the activity cards. */
+/** Today's milk, sleep and diapers at a glance, above the activity cards. */
 export function TodayRecap({ now }: { now: Date }) {
   const { household, selectedBaby } = useHousehold()
   const { isVisible } = useActivityVisibility()
@@ -17,11 +17,7 @@ export function TodayRecap({ now }: { now: Date }) {
   const totals = buildTodayTotals(entries, range, now)
 
   const items = [
-    isVisible('feeding') && {
-      category: 'feeding',
-      label: totals.feeds === 1 ? 'feed' : 'feeds',
-      value: String(totals.feeds),
-    },
+    isVisible('feeding') && { category: 'feeding', label: 'milk', value: `${totals.bottleMl} mL` },
     isVisible('sleep') && { category: 'sleep', label: 'sleep', value: formatDuration(totals.sleepSeconds) },
     isVisible('diaper') && {
       category: 'diaper',

@@ -115,7 +115,7 @@ describe('buildActivitySummary', () => {
 })
 
 describe('buildTodayTotals', () => {
-  it('counts today’s feeds and diapers and the part of each sleep inside the day', () => {
+  it('sums today’s bottle volume, counts diapers and the part of each sleep inside the day', () => {
     const range = { start: new Date('2026-10-08T22:00:00.000Z'), end: new Date('2026-10-09T22:00:00.000Z') }
     const now = new Date('2026-10-09T12:00:00.000Z')
     const base = { notes: '', createdBy: 'u', createdAt: '2026-10-09T00:00:00.000Z' }
@@ -140,6 +140,6 @@ describe('buildTodayTotals', () => {
       now,
     )
 
-    expect(totals).toEqual({ feeds: 2, sleepSeconds: 3 * 3600 + 30 * 60, diapers: 1 })
+    expect(totals).toEqual({ bottleMl: 120, sleepSeconds: 3 * 3600 + 30 * 60, diapers: 1 })
   })
 })

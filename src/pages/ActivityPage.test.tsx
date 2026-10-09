@@ -391,13 +391,13 @@ describe('ActivityPage', () => {
     }
   })
 
-  it("shows today's feeds, sleep and diapers above the cards", () => {
+  it("shows today's milk, sleep and diapers above the cards", () => {
     setupHooks()
 
     renderPage()
 
     const recap = screen.getByRole('region', { name: 'Today' })
-    expect(recap).toHaveTextContent('0feeds')
+    expect(recap).toHaveTextContent('0 mLmilk')
     expect(recap).toHaveTextContent('0msleep')
     expect(recap).toHaveTextContent('0diapers')
   })
