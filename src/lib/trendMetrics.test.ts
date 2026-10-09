@@ -13,6 +13,8 @@ import {
   getTrendMetric,
   TREND_METRICS,
   isNightSleep,
+  metricHeadlineDayKey,
+  metricSleepSegments,
 } from './trendMetrics'
 import { DEFAULT_NIGHTTIME_HOURS } from './aggregations'
 import { rollingDayFrame } from './timeline'
@@ -203,15 +205,52 @@ describe('sleep metrics', () => {
     expect(computeMetricSummary('napCount', DAYS, bundle)).toBe(1)
   })
 
-  it('counts the longest sleep on the morning it ends, averaged over days that have one', () => {
+  it('counts each day\'s longest sleep on the morning it ends; the headline is the period\'s longest', () => {
     expect(values('sleepLongest')).toEqual([3600, 10 * 3600])
-    expect(computeMetricSummary('sleepLongest', DAYS, bundle)).toBe(5.5 * 3600)
+    expect(computeMetricSummary('sleepLongest', DAYS, bundle)).toBe(10 * 3600)
+    expect(formatMetricHeadline('sleepLongest', 10 * 3600)).toBe(`${formatMetricValue('sleepLongest', 10 * 3600)} longest`)
+    expect(metricHeadlineDayKey('sleepLongest', DAYS, bundle)).toBe('2026-03-06')
+  })
+
+  it('has no headline day for metrics over the whole period', () => {
+    expect(metricHeadlineDayKey('sleepTotal', DAYS, bundle)).toBeNull()
+    expect(metricHeadlineDayKey('sleepLongest', DAYS, { ...bundle, sleep: [] })).toBeNull()
   })
 
   it('measures wake windows between completed sleeps, on the day each one ends', () => {
     // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h), both on the 5th.
     expect(values('wakeWindow')).toEqual([4.5 * 3600, 0])
     expect(computeMetricSummary('wakeWindow', DAYS, bundle)).toBe(4.5 * 3600)
+  })
+})
+
+describe('metricSleepSegments with a selected day', () => {
+  const highlighted = (id: Parameters<typeof metricSleepSegments>[0], focus: string | null) => [
+    ...new Set(
+      metricSleepSegments(id, DAYS, sleeps, undefined, NOW, undefined, focus)
+        .filter((segment) => segment.inMetric)
+        .map((segment) => segment.entry.id),
+    ),
+  ]
+
+  it('brings out only the selected day\'s longest sleep, the evening before included', () => {
+    expect(highlighted('sleepLongest', null)).toEqual(['nap1', 'night'])
+    expect(highlighted('sleepLongest', '2026-03-06')).toEqual(['night'])
+    expect(highlighted('sleepLongest', '2026-03-05')).toEqual(['nap1'])
+    // The night starts on the 5th: its evening piece is brought out too.
+    const nightPieces = metricSleepSegments('sleepLongest', DAYS, sleeps, undefined, NOW, undefined, '2026-03-06')
+      .filter((segment) => segment.inMetric)
+      .map((segment) => segment.dayKey)
+    expect(nightPieces).toContain('2026-03-05')
+    expect(nightPieces).toContain('2026-03-06')
+  })
+
+  it('brings out the sleeps counted on the selected day', () => {
+    expect(highlighted('sleepTotal', '2026-03-06')).toEqual(['night', 'running'])
+    expect(highlighted('sleepNight', '2026-03-05')).toEqual([])
+    expect(highlighted('napCount', '2026-03-05')).toEqual(['nap1', 'nap2'])
+    // Wake windows count on the day of the sleep that ends them: the sleeps starting that day.
+    expect(highlighted('wakeWindow', '2026-03-06')).toEqual(['running'])
   })
 })
 

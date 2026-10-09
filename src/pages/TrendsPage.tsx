@@ -10,6 +10,7 @@ import {
   computeMetricSummary,
   formatMetricHeadline,
   formatMetricValue,
+  metricHeadlineDayKey,
   TREND_METRICS,
   trendFetchRange,
 } from '../lib/trendMetrics'
@@ -74,11 +75,13 @@ export function TrendsPage() {
             const delta = computeDelta(currentValue, previousValue)
             const deltaLabel = formatMetricValue(metric.id, Math.abs(delta.value))
             const shownDelta = deltaLabel === formatMetricValue(metric.id, 0) ? { ...delta, direction: 'flat' as const } : delta
+            // A headline from one day (the longest sleep) opens the calendar on that day.
+            const headlineDay = metricHeadlineDayKey(metric.id, currentDayKeys, current, nightRange, now)
 
             return (
               <TrendRow
                 key={metric.id}
-                to={`/trends/${metric.id}`}
+                to={headlineDay ? `/trends/${metric.id}?day=${headlineDay}` : `/trends/${metric.id}`}
                 icon={<TrendMetricIcon id={metric.id} colorVar={metric.colorVar} />}
                 title={metric.title}
                 subtitle={formatMetricHeadline(metric.id, currentValue)}

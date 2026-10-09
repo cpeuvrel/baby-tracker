@@ -6,6 +6,7 @@ import { addDays, formatDate } from '../lib/appTime'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { FeedingEntry } from '../types/models'
+import { dayKey } from '../lib/timeline'
 import { TrendDetailPage } from './TrendDetailPage'
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -26,9 +27,9 @@ const feeding: FeedingEntry[] = [
   },
 ]
 
-function renderPage(metricId = 'feedSessions') {
+function renderPage(metricId = 'feedSessions', search = '') {
   return render(
-    <MemoryRouter initialEntries={[`/trends/${metricId}`]}>
+    <MemoryRouter initialEntries={[`/trends/${metricId}${search}`]}>
       <Routes>
         <Route path="/trends" element={<p>Trends list</p>} />
         <Route path="/trends/:metricId" element={<TrendDetailPage />} />
@@ -127,6 +128,34 @@ describe('TrendDetailPage', () => {
     expect(heading).toHaveClass('is-focused')
     expect(screen.getByText('No entries this day')).toBeInTheDocument()
     expect(screen.getByText('120 mL')).toBeInTheDocument()
+  })
+
+  it('opens with the day given in the link selected', async () => {
+    const user = userEvent.setup()
+    const yesterday = addDays(now, -1)
+    renderPage('feedSessions', `?day=${dayKey(yesterday)}`)
+
+    await user.click(screen.getByRole('button', { name: 'Entries' }))
+
+    const heading = screen.getByRole('heading', {
+      name: formatDate(yesterday, { month: 'short', day: 'numeric', year: 'numeric' }),
+    })
+    expect(heading).toHaveClass('is-focused')
+  })
+
+  it('fades the feeds of the other days when a day is selected', () => {
+    const yesterday = addDays(now, -1)
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding: [...feeding, { ...feeding[0], id: 'f0', occurredAt: yesterday.toISOString() }],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+    })
+    const { container } = renderPage('feedSessions', `?day=${dayKey(yesterday)}`)
+
+    expect(container.querySelectorAll('.timeline-grid-mark')).toHaveLength(2)
+    expect(container.querySelectorAll('.timeline-grid-mark.is-faded')).toHaveLength(1)
   })
 
   it('tapping the selected column again goes back to the average', async () => {

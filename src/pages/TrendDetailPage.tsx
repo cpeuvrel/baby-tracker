@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
 import { CalendarIcon, ClockIcon, DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
@@ -61,7 +61,9 @@ export function TrendDetailPage() {
   const [view, setView] = useState<ViewMode>('calendar')
   const [editing, setEditing] = useState<EditState>(null)
   /** Day selected in the Calendar or Graph view: shown in the headline and focused in the Entries view. */
-  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
+  // Opened from a headline that comes from one day (`?day=`, e.g. the longest sleep): that day.
+  const [searchParams] = useSearchParams()
+  const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => searchParams.get('day'))
   const [dayMode, setDayMode] = useState<DayMode>('calendar')
   /** Taken when the page opens and again whenever the display changes: rolling days end at this time. */
   const [now, setNow] = useState(currentTime)
@@ -137,6 +139,13 @@ export function TrendDetailPage() {
     now,
     frame,
   )
+  // In the Calendar, a selected day brings out what the metric counts on it, the rest faded:
+  // its feeds or diapers, the sleeps counted on it (its longest, for Longest Sleep).
+  const onSelectedDay = (iso: string) => !selectedDayKey || frameKeyOf(iso) === selectedDayKey
+  const calendarSleepSegments =
+    metric.kind === 'sleep' && selectedDayKey
+      ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now, frame, selectedDayKey)
+      : sleepSegments
   const isMetricDiaper = (iso: string) =>
     metric.id === 'diaperDay'
       ? !startsDuringNight(iso, nightRange)
@@ -218,18 +227,24 @@ export function TrendDetailPage() {
           frame={frame}
           onPrevious={() => changePeriod((back) => back + 1)}
           onNext={periodsBack > 0 ? () => changePeriod((back) => back - 1) : undefined}
-          blocks={sleepSegments.map((segment) => ({
+          blocks={calendarSleepSegments.map((segment) => ({
             start: segment.start,
             end: segment.end,
             faded: !segment.inMetric,
           }))}
           marks={
             metric.kind === 'feeding'
-              ? shown.feeding.map((entry) => ({ at: new Date(entry.occurredAt) }))
+              ? shown.feeding.map((entry) => ({
+                  at: new Date(entry.occurredAt),
+                  faded: !onSelectedDay(entry.occurredAt),
+                }))
               : metric.kind === 'diaper'
                 ? current.diaper
                     .filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt)))
-                    .map((entry) => ({ at: new Date(entry.occurredAt), faded: !isMetricDiaper(entry.occurredAt) }))
+                    .map((entry) => ({
+                      at: new Date(entry.occurredAt),
+                      faded: !isMetricDiaper(entry.occurredAt) || !onSelectedDay(entry.occurredAt),
+                    }))
                 : undefined
           }
         />
