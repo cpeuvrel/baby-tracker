@@ -31,12 +31,17 @@ function isInRange(iso: string, range: DateRange): boolean {
   return time >= range.start.getTime() && time < range.end.getTime()
 }
 
-/** Seconds of a sleep that fall inside `range` (a running sleep counts up to `now`). */
+/**
+ * A sleep's full length if the baby woke up within `range` (a running sleep: if `now` is in it,
+ * counted up to `now`), else 0: sleeps are never split, they count on the day they end.
+ */
 function sleepSecondsInRange(entry: SleepEntry, range: DateRange, now: Date): number {
-  const start = Math.max(new Date(entry.startedAt).getTime(), range.start.getTime())
-  const endedAt = entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime()
-  const end = Math.min(endedAt, range.end.getTime(), now.getTime())
-  return Math.max(0, Math.round((end - start) / 1000))
+  const end = entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime()
+  const endsInRange = entry.endedAt
+    ? end >= range.start.getTime() && end < range.end.getTime()
+    : end >= range.start.getTime() && end <= range.end.getTime()
+  if (!endsInRange) return 0
+  return Math.max(0, Math.round((end - new Date(entry.startedAt).getTime()) / 1000))
 }
 
 function uniqueValues(values: string[]): string[] {
@@ -45,7 +50,7 @@ function uniqueValues(values: string[]): string[] {
 
 /**
  * Per-category totals for the Summary sheet. Categories with nothing in the
- * range are left out; sleeps count for the part that overlaps the range.
+ * range are left out; sleeps count whole, in the range the baby woke up in.
  */
 export function buildActivitySummary(entries: SummaryEntries, range: DateRange, now: Date): SummaryRow[] {
   const rows: SummaryRow[] = []

@@ -87,12 +87,12 @@ export function TrendDetailPage() {
   const current = useEntriesInRange(
     household?.id ?? null,
     selectedBaby?.id ?? null,
-    trendFetchRange(currentRange, nightRange),
+    trendFetchRange(currentRange),
   )
   const previous = useEntriesInRange(
     household?.id ?? null,
     selectedBaby?.id ?? null,
-    trendFetchRange(previousRange, nightRange),
+    trendFetchRange(previousRange),
   )
 
   if (!household || !selectedBaby || !metric) return null

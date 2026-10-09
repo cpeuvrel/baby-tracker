@@ -71,11 +71,12 @@ describe('buildActivitySummary', () => {
     expect(rows).toEqual([{ id: 'solid', title: 'Solids', count: 2, lines: ['Carrot'] }])
   })
 
-  it('counts only the part of a sleep inside the range, and a running one up to now', () => {
+  it('counts each sleep whole in the range the baby woke up in, and a running one up to now', () => {
     const rows = buildActivitySummary(
       {
         ...empty,
         sleep: [
+          // Started before the range, ended inside it: counts in full.
           sleep('2026-03-04T16:00:00.000Z', '2026-03-04T18:00:00.000Z'),
           sleep('2026-03-05T16:30:00.000Z', null),
           sleep('2026-03-04T10:00:00.000Z', '2026-03-04T11:00:00.000Z'),
@@ -85,7 +86,7 @@ describe('buildActivitySummary', () => {
       now,
     )
 
-    expect(rows).toEqual([{ id: 'sleep', title: 'Sleep', count: 2, lines: ['1h 30m total sleep'] }])
+    expect(rows).toEqual([{ id: 'sleep', title: 'Sleep', count: 2, lines: ['2h 30m total sleep'] }])
   })
 
   it('breaks diapers down by type, counts baths and lists medication names', () => {
@@ -115,7 +116,7 @@ describe('buildActivitySummary', () => {
 })
 
 describe('buildTodayTotals', () => {
-  it('sums today’s bottle volume, counts diapers and the part of each sleep inside the day', () => {
+  it('sums today’s bottle volume, counts diapers and each sleep that ended today, whole', () => {
     const range = { start: new Date('2026-10-08T22:00:00.000Z'), end: new Date('2026-10-09T22:00:00.000Z') }
     const now = new Date('2026-10-09T12:00:00.000Z')
     const base = { notes: '', createdBy: 'u', createdAt: '2026-10-09T00:00:00.000Z' }
@@ -127,7 +128,7 @@ describe('buildTodayTotals', () => {
           { ...base, id: 'f0', type: 'bottle', occurredAt: '2026-10-08T20:00:00.000Z', volumeMl: 120, foodType: null },
         ],
         sleep: [
-          // Started an hour before the day: only the 3 hours after midnight count.
+          // Started an hour before the day but ended in it: all 4 hours count.
           { ...base, id: 's1', startedAt: '2026-10-08T21:00:00.000Z', endedAt: '2026-10-09T01:00:00.000Z', durationSeconds: 14400 },
           // Still running: counts up to now.
           { ...base, id: 's2', startedAt: '2026-10-09T11:30:00.000Z', endedAt: null, durationSeconds: null },
@@ -140,6 +141,6 @@ describe('buildTodayTotals', () => {
       now,
     )
 
-    expect(totals).toEqual({ bottleMl: 120, sleepSeconds: 3 * 3600 + 30 * 60, diapers: 1 })
+    expect(totals).toEqual({ bottleMl: 120, sleepSeconds: 4 * 3600 + 30 * 60, diapers: 1 })
   })
 })

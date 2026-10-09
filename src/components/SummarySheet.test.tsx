@@ -61,12 +61,12 @@ describe('SummarySheet', () => {
     vi.useRealTimers()
   })
 
-  it("totals today's entries, counting only the part of last night's sleep after midnight", () => {
+  it("totals today's entries, with last night's sleep in full on the morning it ended", () => {
     render(<SummarySheet onClose={vi.fn()} />)
 
     expect(screen.getByText('Bottle Feed')).toBeInTheDocument()
     expect(screen.getByText('320 mL total')).toBeInTheDocument()
-    expect(screen.getByText('8h 25m total sleep')).toBeInTheDocument()
+    expect(screen.getByText('12h 48m total sleep')).toBeInTheDocument()
   })
 
   it('switches to the last 24 hours', async () => {
