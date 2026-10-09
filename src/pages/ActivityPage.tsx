@@ -23,6 +23,7 @@ import { MedicationForm } from '../components/MedicationForm'
 import { ReminderSettingsModal } from '../components/ReminderSettingsModal'
 import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
 import { SleepTimerModal } from '../components/SleepTimerModal'
+import { TodayRecap } from '../components/TodayRecap'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility } from '../hooks/useActivityVisibility'
@@ -259,6 +260,7 @@ export function ActivityPage() {
 
   return (
     <div className="activity-page">
+      <TodayRecap now={now} />
       {isVisible('feeding') && (
         <CategoryCard
           title="Feed"

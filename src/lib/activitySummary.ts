@@ -106,3 +106,18 @@ export function buildActivitySummary(entries: SummaryEntries, range: DateRange, 
 
   return rows
 }
+
+export interface TodayTotals {
+  feeds: number
+  sleepSeconds: number
+  diapers: number
+}
+
+/** Headline totals for the recap above the activity cards. */
+export function buildTodayTotals(entries: SummaryEntries, range: DateRange, now: Date): TodayTotals {
+  return {
+    feeds: entries.feeding.filter((entry) => isInRange(entry.occurredAt, range)).length,
+    sleepSeconds: entries.sleep.reduce((sum, entry) => sum + sleepSecondsInRange(entry, range, now), 0),
+    diapers: entries.diaper.filter((entry) => isInRange(entry.occurredAt, range)).length,
+  }
+}

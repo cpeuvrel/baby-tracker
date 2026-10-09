@@ -60,6 +60,9 @@ vi.mock('../repositories/medicationEntries', () => ({
 vi.mock('../repositories/reminders', () => ({
   setReminder: (...args: unknown[]) => setReminder(...args),
 }))
+vi.mock('../hooks/useEntriesInRange', () => ({
+  useEntriesInRange: () => ({ feeding: [], sleep: [], diaper: [], medication: [], bath: [] }),
+}))
 vi.mock('../repositories/growthEntries', () => ({
   addGrowthEntry: (...args: unknown[]) => addGrowthEntry(...args),
 }))
@@ -388,12 +391,24 @@ describe('ActivityPage', () => {
     }
   })
 
+  it("shows today's feeds, sleep and diapers above the cards", () => {
+    setupHooks()
+
+    renderPage()
+
+    const recap = screen.getByRole('region', { name: 'Today' })
+    expect(recap).toHaveTextContent('0feeds')
+    expect(recap).toHaveTextContent('0msleep')
+    expect(recap).toHaveTextContent('0diapers')
+  })
+
   it('orders the cards like the reference app: Feed, Diaper, Sleep, Routine, Growth', () => {
     setupHooks()
 
     renderPage()
 
     expect(screen.getAllByRole('region').map((region) => region.getAttribute('aria-label'))).toEqual([
+      'Today',
       'Feed',
       'Diaper',
       'Sleep',
