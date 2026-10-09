@@ -2,11 +2,9 @@ import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
 import { DEFAULT_NIGHTTIME_HOURS, isDuringNight, startsDuringNight, type DailyPoint } from './aggregations'
 import { formatDuration } from './duration'
 import {
-  activityWindowStart,
   CALENDAR_DAYS,
   dayKey,
   nextDayKey,
-  nightDayKey,
   type DateRange,
   type DayFrame,
 } from './timeline'
@@ -314,30 +312,30 @@ export function sleepSegments(
   return segments
 }
 
-/**
- * Day a completed sleep counts on for Longest Sleep: with calendar days, the morning a night
- * ends (sleep days start at night); with rolling days, the window in which it ends.
- */
-function longestSleepDayKey(
-  nightRange: NighttimeHours,
-  frame: DayFrame,
-): (entry: { startedAt: string; endedAt: string }) => string {
-  if (frame.kind === 'rolling') return (entry) => frame.keyOf(new Date(entry.endedAt))
-  return (entry) => nightDayKey(new Date(entry.startedAt), nightRange.start)
+/** End of a sleep: when the baby woke up, or `now` for a sleep still running. */
+function sleepEnd(entry: SleepEntry, now: Date): Date {
+  return entry.endedAt ? new Date(entry.endedAt) : now
 }
 
-/** The longest completed sleep of each day of `dayKeys` (see `longestSleepDayKey`). */
+/**
+ * Day a sleep counts on, whole and never split: the day of `frame` the baby woke up in
+ * (a running sleep: the current one). A night from 19:30 to 08:00 counts on the morning it ends.
+ */
+function sleepWakeDayKey(entry: SleepEntry, now: Date, frame: DayFrame): string {
+  // A running sleep is in the day still going on: `now` itself can be where a rolling window ends.
+  return frame.keyOf(entry.endedAt ? new Date(entry.endedAt) : new Date(now.getTime() - 1))
+}
+
+/** The longest completed sleep of each day of `dayKeys`, on the day the baby woke up. */
 function longestSleeps(
   dayKeys: string[],
   entries: SleepEntry[],
-  nightRange: NighttimeHours,
   frame: DayFrame = CALENDAR_DAYS,
 ): Map<string, SleepEntry> {
-  const keyOf = longestSleepDayKey(nightRange, frame)
   const inPeriod = new Set(dayKeys)
   const longest = new Map<string, SleepEntry>()
   for (const entry of completedSleeps(entries)) {
-    const key = keyOf(entry)
+    const key = sleepWakeDayKey(entry, new Date(entry.endedAt), frame)
     if (!inPeriod.has(key)) continue
     const current = longest.get(key)
     if (!current || (current.durationSeconds ?? 0) < entry.durationSeconds) longest.set(key, entry)
@@ -357,9 +355,9 @@ export function sleepSegmentInMetric(
 ): boolean {
   switch (id) {
     case 'sleepDay':
-      return !segment.night
+      return !startsDuringNight(segment.entry.startedAt, nightRange)
     case 'sleepNight':
-      return segment.night
+      return startsDuringNight(segment.entry.startedAt, nightRange)
     case 'napCount':
     case 'napLength':
       return !startsDuringNight(segment.entry.startedAt, nightRange)
@@ -381,16 +379,19 @@ export function metricSleepSegments(
 ): Array<SleepSegment & { inMetric: boolean }> {
   const inPeriod = new Set(dayKeys)
   const longestIds = new Set(
-    [...longestSleeps(dayKeys, entries, nightRange, frame).values()].map((entry) => entry.id),
+    [...longestSleeps(dayKeys, entries, frame).values()].map((entry) => entry.id),
   )
   return sleepSegments(entries, nightRange, now, frame)
     .filter((segment) => inPeriod.has(segment.dayKey))
     .map((segment) => ({ ...segment, inMetric: sleepSegmentInMetric(id, segment, nightRange, longestIds) }))
 }
 
-/** Range to load for a period of calendar days: from the start of the night before, so its first sleep day is complete. */
-export function trendFetchRange(range: DateRange, nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS): DateRange {
-  return { start: activityWindowStart(range.start, nightRange.start), end: range.end }
+/**
+ * Range to load for a period of calendar days: from the day before, so a night that ends on
+ * the period's first morning (sleeps count on the day they end) is loaded.
+ */
+export function trendFetchRange(range: DateRange): DateRange {
+  return { start: addDays(range.start, -1), end: range.end }
 }
 
 /**
@@ -409,15 +410,15 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
   switch (id) {
     case 'sleepDay':
     case 'sleepNight': {
-      const segments = sleepSegments(entries.sleep ?? [], nightRange, now, frame)
       const inPeriod = dayKeys ? new Set(dayKeys) : null
-      const kept = new Set(
-        segments
-          .filter((segment) => (id === 'sleepNight') === segment.night)
-          .filter((segment) => !inPeriod || inPeriod.has(segment.dayKey))
-          .map((segment) => segment.entry.id),
-      )
-      return { ...entries, sleep: entries.sleep?.filter((entry) => kept.has(entry.id)) }
+      return {
+        ...entries,
+        sleep: entries.sleep?.filter(
+          (entry) =>
+            (id === 'sleepNight') === isNight(entry.startedAt) &&
+            (!inPeriod || inPeriod.has(sleepWakeDayKey(entry, now, frame))),
+        ),
+      }
     }
     case 'napCount':
     case 'napLength':
@@ -425,7 +426,7 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
     case 'sleepLongest': {
       if (!dayKeys) return entries
       const kept = new Set(
-        [...longestSleeps(dayKeys, entries.sleep ?? [], nightRange, frame).values()].map((entry) => entry.id),
+        [...longestSleeps(dayKeys, entries.sleep ?? [], frame).values()].map((entry) => entry.id),
       )
       return { ...entries, sleep: entries.sleep?.filter((entry) => kept.has(entry.id)) }
     }
@@ -509,15 +510,16 @@ function metricSamples(
     case 'sleepTotal':
     case 'sleepDay':
     case 'sleepNight':
-      // Time asleep within each day, split at the night's start and end.
-      for (const segment of sleepSegments(entries.sleep, nightRange, now, frame)) {
-        if (id === 'sleepDay' && segment.night) continue
-        if (id === 'sleepNight' && !segment.night) continue
-        addSample(samples, segment.dayKey, (segment.end.getTime() - segment.start.getTime()) / 1000)
+      // Each sleep whole, on the day the baby woke up; night or day by when it started.
+      for (const entry of entries.sleep) {
+        if (id === 'sleepDay' && isNight(entry.startedAt)) continue
+        if (id === 'sleepNight' && !isNight(entry.startedAt)) continue
+        const seconds = (sleepEnd(entry, now).getTime() - new Date(entry.startedAt).getTime()) / 1000
+        if (seconds > 0) addSample(samples, sleepWakeDayKey(entry, now, frame), seconds)
       }
       return samples
     case 'sleepLongest':
-      for (const [key, entry] of longestSleeps(dayKeys, entries.sleep, nightRange, frame)) {
+      for (const [key, entry] of longestSleeps(dayKeys, entries.sleep, frame)) {
         addSample(samples, key, entry.durationSeconds ?? 0)
       }
       return samples

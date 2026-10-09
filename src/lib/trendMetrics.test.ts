@@ -160,21 +160,30 @@ const values = (id: Parameters<typeof computeMetricSeries>[0]) =>
   computeMetricSeries(id, DAYS, bundle, undefined, NOW).map((point) => point.value)
 
 describe('sleep metrics', () => {
-  it('clips sleep to calendar days and splits it at the night boundaries', () => {
-    // 5th: naps 10:00–11:00 and 14:00–14:30, night from 20:30 to midnight.
-    // 6th: night until 06:30, then a sleep running since 09:00 (3h until noon).
-    expect(values('sleepTotal')).toEqual([5 * 3600, 9.5 * 3600])
+  it('counts each sleep whole on the day the baby woke up, never split', () => {
+    // 5th: naps 10:00–11:00 and 14:00–14:30.
+    // 6th: the whole night from 20:30 on the 5th to 06:30 (10h), then a sleep running since 09:00 (3h until noon).
+    expect(values('sleepTotal')).toEqual([1.5 * 3600, 13 * 3600])
     expect(values('sleepDay')).toEqual([1.5 * 3600, 3 * 3600])
-    expect(values('sleepNight')).toEqual([3.5 * 3600, 6.5 * 3600])
+    expect(values('sleepNight')).toEqual([0, 10 * 3600])
   })
 
-  it('splits sleep at the baby\'s own nighttime hours', () => {
+  it('makes a sleep nighttime or daytime as a whole, by when it started', () => {
     const night = { start: '21:00', end: '07:00' }
     const series = (id: 'sleepDay' | 'sleepNight') =>
       computeMetricSeries(id, DAYS, bundle, night, NOW).map((point) => point.value)
-    // 20:30–21:00 is still daytime; 06:30 is already past the night.
-    expect(series('sleepDay')).toEqual([2 * 3600, 3 * 3600])
-    expect(series('sleepNight')).toEqual([3 * 3600, 6.5 * 3600])
+    // Started at 20:30, before this baby's night: the whole 10h sleep is daytime.
+    expect(series('sleepDay')).toEqual([1.5 * 3600, 13 * 3600])
+    expect(series('sleepNight')).toEqual([0, 0])
+  })
+
+  it('counts a night that starts before the nighttime hours on the morning it ends', () => {
+    // 19:30 on the 5th → 08:00 on the 6th (Paris), the night starting at 20:00.
+    const early = sleepEntry('early', '2026-03-05T18:30:00.000Z', '2026-03-06T07:00:00.000Z')
+    const series = (id: 'sleepTotal' | 'sleepLongest') =>
+      computeMetricSeries(id, DAYS, { ...bundle, sleep: [early] }, undefined, NOW).map((point) => point.value)
+    expect(series('sleepTotal')).toEqual([0, 12.5 * 3600])
+    expect(series('sleepLongest')).toEqual([0, 12.5 * 3600])
   })
 
   it('averages a per-day total over the elapsed part of the period', () => {
@@ -210,7 +219,7 @@ describe('rolling days', () => {
   const rolling = (id: Parameters<typeof computeMetricSeries>[0]) =>
     computeMetricSeries(id, DAYS, bundle, undefined, NOW, frame).map((point) => point.value)
 
-  it('clips sleep to the rolling windows', () => {
+  it('counts each sleep whole in the rolling window the baby woke up in', () => {
     // 5th's window: the morning nap. 6th's: the afternoon nap, the night and the running sleep.
     expect(rolling('sleepTotal')).toEqual([3600, 13.5 * 3600])
     expect(rolling('sleepDay')).toEqual([3600, 3.5 * 3600])
