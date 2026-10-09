@@ -1,5 +1,6 @@
 import { getFirestore, type DocumentReference } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
+import { onDocumentWritten } from 'firebase-functions/v2/firestore'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { APP_TIME_ZONE, zonedParts } from './parisTime'
 import { sendToHousehold } from './push'
@@ -7,6 +8,7 @@ import { sendToHousehold } from './push'
 // `data.type` the service worker reads (src/lib/vaccineNotification.ts).
 const VACCINE_PURCHASE_PUSH = 'vaccine-purchase'
 const VACCINE_DAY_PUSH = 'vaccine-day'
+const VACCINE_PURCHASE_CLOSE_PUSH = 'vaccine-purchase-close'
 
 /** The purchase question starts this many days before the visit, then comes back daily. */
 export const VACCINE_PURCHASE_LEAD_DAYS = 4
@@ -48,6 +50,15 @@ export function needsPurchaseQuestion(visit: VaccineVisit, today: string): boole
 /** Morning reminder on the day of a vaccine visit, whatever the purchase answer. */
 export function needsDayReminder(visit: VaccineVisit, today: string): boolean {
   return visit.vaccinated === true && visit.date === today
+}
+
+/**
+ * Whether a write settles the purchase question of a visit (vaccine bought,
+ * vaccine dropped, visit deleted): the question showing on the other phones goes.
+ */
+export function purchaseQuestionSettled(before: VaccineVisit | undefined, after: VaccineVisit | undefined): boolean {
+  const asked = (visit: VaccineVisit | undefined) => visit?.vaccinated === true && visit.vaccineBought !== true
+  return asked(before) && !asked(after)
 }
 
 /** Every vaccine visit of the household's babies passing `select`, from today to the purchase horizon. */
@@ -101,3 +112,24 @@ export const remindVaccineDay = onSchedule({ schedule: '30 8 * * *', timeZone: A
     (householdRef, data) => sendToHousehold(householdRef, { type: VACCINE_DAY_PUSH, ...data }, REMINDER_TTL_SECONDS),
   )
 })
+
+/** Someone answered "yes" (or the vaccine is no longer planned): clears the question on every phone. */
+export const onPediatricianVisitWritten = onDocumentWritten(
+  'households/{householdId}/babies/{babyId}/pediatricianVisits/{visitId}',
+  async (event) => {
+    if (!event.data) return
+    const settled = purchaseQuestionSettled(
+      event.data.before.data() as VaccineVisit | undefined,
+      event.data.after.data() as VaccineVisit | undefined,
+    )
+    if (!settled) return
+
+    logger.info('Closing vaccine purchase question', event.params)
+    const householdRef = event.data.before.ref.parent.parent!.parent.parent!
+    await sendToHousehold(
+      householdRef,
+      { type: VACCINE_PURCHASE_CLOSE_PUSH, visitId: event.params.visitId },
+      REMINDER_TTL_SECONDS,
+    )
+  },
+)

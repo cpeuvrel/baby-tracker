@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   VACCINE_BOUGHT_ACTION,
   VACCINE_DAY_PUSH,
+  VACCINE_PURCHASE_CLOSE_PUSH,
   VACCINE_PURCHASE_PUSH,
+  readVaccinePurchaseClose,
   readVaccinePush,
   vaccineNotification,
   type VaccineNotificationData,
@@ -31,7 +33,7 @@ describe('vaccine notifications', () => {
     expect((options as { actions: { action: string }[] }).actions.map((a) => a.action)).toContain(
       VACCINE_BOUGHT_ACTION,
     )
-    expect(options.tag).toBe('vaccine-v1')
+    expect(options.tag).toBe('vaccine-purchase-v1')
     expect(options.data as VaccineNotificationData).toEqual({
       url: '/account/pediatrician/visits/v1?baby=b1',
       boughtUrl: '/account/pediatrician/visits/v1?baby=b1&vaccineBought=yes',
@@ -44,5 +46,14 @@ describe('vaccine notifications', () => {
     expect(title).toBe('Vaccine today')
     expect(options.body).toBe("Don't forget to take Léo's vaccine to the pediatrician.")
     expect('actions' in options).toBe(false)
+  })
+  it('reads the push closing a visit’s question', () => {
+    expect(readVaccinePurchaseClose({ type: VACCINE_PURCHASE_CLOSE_PUSH, visitId: 'v1' })).toBe('v1')
+    expect(readVaccinePurchaseClose({ type: VACCINE_PURCHASE_PUSH, visitId: 'v1' })).toBeNull()
+    expect(readVaccinePush({ type: VACCINE_PURCHASE_CLOSE_PUSH, ...push })).toBeNull()
+  })
+
+  it('keeps the day reminder apart from the question it closes', () => {
+    expect(vaccineNotification({ type: VACCINE_DAY_PUSH, ...push }).options.tag).toBe('vaccine-day-v1')
   })
 })

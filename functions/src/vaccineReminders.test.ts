@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, needsDayReminder, needsPurchaseQuestion, parisDateValue } from './vaccineReminders'
+import { addDays, needsDayReminder, needsPurchaseQuestion, parisDateValue, purchaseQuestionSettled } from './vaccineReminders'
 
 const visit = (date: string, overrides: { vaccinated?: boolean; vaccineBought?: boolean } = {}) => ({
   date,
@@ -49,5 +49,25 @@ describe('dates', () => {
   it('reads today in Paris', () => {
     expect(parisDateValue(new Date('2026-07-01T22:30:00Z'))).toBe('2026-07-02')
     expect(parisDateValue(new Date('2026-01-15T22:30:00Z'))).toBe('2026-01-15')
+  })
+})
+
+describe('purchaseQuestionSettled', () => {
+  const asked = visit('2026-10-11')
+
+  it('settles when someone says the vaccine is bought', () => {
+    expect(purchaseQuestionSettled(asked, { ...asked, vaccineBought: true })).toBe(true)
+  })
+
+  it('settles when the vaccine is dropped or the visit deleted', () => {
+    expect(purchaseQuestionSettled(asked, { ...asked, vaccinated: false })).toBe(true)
+    expect(purchaseQuestionSettled(asked, undefined)).toBe(true)
+  })
+
+  it('ignores other edits', () => {
+    expect(purchaseQuestionSettled(asked, { ...asked, date: '2026-10-12' })).toBe(false)
+    expect(purchaseQuestionSettled(undefined, asked)).toBe(false)
+    const bought = { ...asked, vaccineBought: true }
+    expect(purchaseQuestionSettled(bought, { ...bought, date: '2026-10-12' })).toBe(false)
   })
 })

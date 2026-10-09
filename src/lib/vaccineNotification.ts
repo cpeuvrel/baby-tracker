@@ -3,6 +3,8 @@ import { formatVisitDate } from './visitDate'
 /** `data.type` of the server's pushes (functions/src/vaccineReminders.ts). */
 export const VACCINE_PURCHASE_PUSH = 'vaccine-purchase'
 export const VACCINE_DAY_PUSH = 'vaccine-day'
+/** Someone answered "yes": the question goes from every phone. */
+export const VACCINE_PURCHASE_CLOSE_PUSH = 'vaccine-purchase-close'
 
 /** Notification actions of the purchase question. */
 export const VACCINE_BOUGHT_ACTION = 'vaccine-bought'
@@ -35,6 +37,22 @@ export function readVaccinePush(data: Record<string, string> | undefined): Vacci
   return { type, babyId, babyName: babyName || 'Baby', visitId, visitDate }
 }
 
+/** The purchase question of a visit, one per phone: a new day's question replaces yesterday's. */
+export function vaccinePurchaseTag(visitId: string): string {
+  return `vaccine-purchase-${visitId}`
+}
+
+/** `visitId` of a push closing the purchase question, else `null`. */
+export function readVaccinePurchaseClose(data: Record<string, string> | undefined): string | null {
+  return data?.type === VACCINE_PURCHASE_CLOSE_PUSH && data.visitId ? data.visitId : null
+}
+
+/** Closes the purchase question of a visit shown on this phone. */
+export async function closeVaccinePurchaseQuestion(registration: ServiceWorkerRegistration, visitId: string) {
+  const notifications = await registration.getNotifications({ tag: vaccinePurchaseTag(visitId) })
+  notifications.forEach((notification) => notification.close())
+}
+
 export function vaccineVisitUrl(babyId: string, visitId: string): string {
   return `/account/pediatrician/visits/${visitId}?${VISIT_BABY_PARAM}=${encodeURIComponent(babyId)}`
 }
@@ -43,24 +61,19 @@ export function vaccineVisitUrl(babyId: string, visitId: string): string {
 export function vaccineNotification(push: VaccinePush): { title: string; options: NotificationOptions } {
   const url = vaccineVisitUrl(push.babyId, push.visitId)
   const data: VaccineNotificationData = { url, boughtUrl: `${url}&${VACCINE_BOUGHT_PARAM}=yes` }
-  const common = {
-    icon: '/icon-192.png',
-    badge: '/badge-96.png',
-    // One per visit: a new day's question replaces yesterday's unanswered one.
-    tag: `vaccine-${push.visitId}`,
-    data,
-  }
+  const common = { icon: '/icon-192.png', badge: '/badge-96.png', data }
 
   if (push.type === VACCINE_DAY_PUSH) {
     return {
       title: 'Vaccine today',
-      options: { ...common, body: `Don't forget to take ${push.babyName}'s vaccine to the pediatrician.` },
+      options: { ...common, tag: `vaccine-day-${push.visitId}`, body: `Don't forget to take ${push.babyName}'s vaccine to the pediatrician.` },
     }
   }
   return {
     title: 'Vaccine bought?',
     options: {
       ...common,
+      tag: vaccinePurchaseTag(push.visitId),
       body: `${push.babyName}'s visit on ${formatVisitDate(push.visitDate)}: have you bought the vaccine?`,
       requireInteraction: true,
       // Not shown on every platform (iOS): tapping the notification opens the visit to answer there.

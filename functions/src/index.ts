@@ -92,4 +92,4 @@ export const checkMedicationReminders = onSchedule(
 )
 
 export { onSleepEntryWritten, tickSleepTimerNotifications } from './sleepTimer'
-export { askVaccinePurchase, remindVaccineDay } from './vaccineReminders'
+export { askVaccinePurchase, onPediatricianVisitWritten, remindVaccineDay } from './vaccineReminders'

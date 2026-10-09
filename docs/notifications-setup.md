@@ -44,7 +44,8 @@ pediatrician visits marked "Vaccine: Yes":
 - `askVaccinePurchase`, every day at 12:00 (Paris): from 4 days before the
   visit until the day before, asks "Vaccine bought?" with Yes/No buttons.
   "No" (or no answer) asks again the next day; "Yes" — on the notification or
-  on the visit screen ("Vaccine bought") — stops the question.
+  on the visit screen ("Vaccine bought") — stops the question, and
+  `onPediatricianVisitWritten` clears it right away from every phone.
 - `remindVaccineDay`, every day at 8:30 (Paris): on the day of the visit,
   reminds to take the vaccine, whatever the answer.
 

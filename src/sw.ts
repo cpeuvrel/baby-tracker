@@ -18,6 +18,8 @@ import {
 import {
   VACCINE_BOUGHT_ACTION,
   VACCINE_NOT_BOUGHT_ACTION,
+  closeVaccinePurchaseQuestion,
+  readVaccinePurchaseClose,
   readVaccinePush,
   vaccineNotification,
   type VaccineNotificationData,
@@ -63,6 +65,11 @@ onBackgroundMessage(messaging, async (payload) => {
   if (vaccinePush) {
     const { title, options } = vaccineNotification(vaccinePush)
     await self.registration.showNotification(title, options)
+    return
+  }
+  const settledVisitId = readVaccinePurchaseClose(data)
+  if (settledVisitId) {
+    await closeVaccinePurchaseQuestion(self.registration, settledVisitId)
     return
   }
 
