@@ -15,7 +15,11 @@ export function NewVisitButton() {
       {creating && (
         <NewVisitModal
           onClose={() => setCreating(false)}
-          onCreated={(visitId) => navigate(`/account/pediatrician/visits/${visitId}`)}
+          onCreated={(visitId) => {
+            // From a visit screen, the new visit opens in the same (still mounted) page: close explicitly.
+            setCreating(false)
+            navigate(`/account/pediatrician/visits/${visitId}`)
+          }}
         />
       )}
     </>
