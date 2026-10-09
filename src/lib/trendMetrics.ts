@@ -385,7 +385,17 @@ export function sleepSegmentInMetric(
   }
 }
 
-/** Every piece of the period's sleep, flagged as part of the metric or not. */
+/** Day a sleep counts on for the metric: naps on the day they start, the other sleep metrics on the day the baby woke up. */
+function sleepMetricDayKey(id: TrendMetricId, entry: SleepEntry, now: Date, frame: DayFrame): string {
+  if (id === 'napCount' || id === 'napLength') return frame.keyOf(new Date(entry.startedAt))
+  return sleepWakeDayKey(entry, now, frame)
+}
+
+/**
+ * Every piece of the period's sleep, flagged as part of the metric or not. With `focusDayKey`
+ * (a selected day), only the sleeps the metric counts on that day are: for Longest Sleep, that
+ * day's longest, whole (the evening before included); Wake Windows keeps every sleep.
+ */
 export function metricSleepSegments(
   id: TrendMetricId,
   dayKeys: string[],
@@ -393,14 +403,23 @@ export function metricSleepSegments(
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
   now: Date = new Date(),
   frame: DayFrame = CALENDAR_DAYS,
+  focusDayKey: string | null = null,
 ): Array<SleepSegment & { inMetric: boolean }> {
   const inPeriod = new Set(dayKeys)
+  const longest = longestSleeps(dayKeys, entries, frame)
   const longestIds = new Set(
-    [...longestSleeps(dayKeys, entries, frame).values()].map((entry) => entry.id),
+    (focusDayKey ? [longest.get(focusDayKey)] : [...longest.values()])
+      .filter((entry): entry is SleepEntry => entry != null)
+      .map((entry) => entry.id),
   )
+  const onFocusDay = (entry: SleepEntry) =>
+    !focusDayKey || id === 'wakeWindow' || sleepMetricDayKey(id, entry, now, frame) === focusDayKey
   return sleepSegments(entries, nightRange, now, frame)
     .filter((segment) => inPeriod.has(segment.dayKey))
-    .map((segment) => ({ ...segment, inMetric: sleepSegmentInMetric(id, segment, nightRange, longestIds) }))
+    .map((segment) => ({
+      ...segment,
+      inMetric: sleepSegmentInMetric(id, segment, nightRange, longestIds) && onFocusDay(segment.entry),
+    }))
 }
 
 /**

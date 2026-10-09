@@ -139,6 +139,11 @@ export function TrendDetailPage() {
     now,
     frame,
   )
+  // In the Calendar, a selected day brings out the sleeps counted on it (its longest, for Longest Sleep).
+  const calendarSleepSegments =
+    metric.kind === 'sleep' && selectedDayKey
+      ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now, frame, selectedDayKey)
+      : sleepSegments
   const isMetricDiaper = (iso: string) =>
     metric.id === 'diaperDay'
       ? !startsDuringNight(iso, nightRange)
@@ -220,7 +225,7 @@ export function TrendDetailPage() {
           frame={frame}
           onPrevious={() => changePeriod((back) => back + 1)}
           onNext={periodsBack > 0 ? () => changePeriod((back) => back - 1) : undefined}
-          blocks={sleepSegments.map((segment) => ({
+          blocks={calendarSleepSegments.map((segment) => ({
             start: segment.start,
             end: segment.end,
             faded: !segment.inMetric,
