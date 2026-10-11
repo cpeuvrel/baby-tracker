@@ -731,7 +731,9 @@ main {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(15, 23, 34, 0.55);
+  background: rgba(15, 23, 34, 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
 }
 
 .action-menu {
@@ -803,7 +805,10 @@ main {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 34, 0.4);
+  /* Dim and blur the page behind so the dialog stands out clearly. */
+  background: rgba(15, 23, 34, 0.65);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
