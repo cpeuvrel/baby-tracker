@@ -10,12 +10,15 @@ import {
   Timestamp,
   updateDoc,
   where,
+  writeBatch,
+  type DocumentReference,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { secondsBetween } from '../lib/duration'
 import { batchInsert } from '../lib/firestoreBatch'
 import { nullableTimestampToIso, timestampToIso } from '../lib/firestoreDates'
-import { sleepEntriesCollection } from '../lib/paths'
+import { db } from '../lib/firebase'
+import { sleepEntriesCollection, sleepTimerLockDoc } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
 import type { SleepEntry } from '../types/models'
 
@@ -31,21 +34,36 @@ function toSleepEntry(id: string, data: Record<string, unknown>): SleepEntry {
   }
 }
 
-export function subscribeToActiveSleep(
+/** Every sleep in progress, earliest first: normally one, but two devices can each start one. */
+export function subscribeToActiveSleeps(
   householdId: string,
   babyId: string,
-  onChange: (entry: SleepEntry | null) => void,
+  onChange: (entries: SleepEntry[]) => void,
 ): Unsubscribe {
-  const activeQuery = query(
-    sleepEntriesCollection(householdId, babyId),
-    where('endedAt', '==', null),
-    limit(1),
-  )
+  const activeQuery = query(sleepEntriesCollection(householdId, babyId), where('endedAt', '==', null))
 
   return onSnapshot(activeQuery, (snapshot) => {
-    const docSnap = snapshot.docs[0]
-    onChange(docSnap ? toSleepEntry(docSnap.id, docSnap.data()) : null)
+    const entries = snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data()))
+    onChange(entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt)))
   })
+}
+
+/**
+ * Writes a sleep that runs (again) together with the lock naming it: firestore.rules refuse the
+ * whole write while another sleep runs, e.g. one started on another device this one did not see yet.
+ */
+async function writeRunningSleep(
+  householdId: string,
+  babyId: string,
+  entryRef: DocumentReference,
+  data: Record<string, unknown>,
+  isNew: boolean,
+): Promise<void> {
+  const batch = writeBatch(db)
+  if (isNew) batch.set(entryRef, data)
+  else batch.update(entryRef, data)
+  batch.set(sleepTimerLockDoc(householdId, babyId), { entryId: entryRef.id })
+  await batch.commit()
 }
 
 export function subscribeToSleepEntriesInRange(
@@ -97,7 +115,9 @@ export async function importSleepEntries(
   babyId: string,
   entries: SleepEntry[],
 ): Promise<void> {
-  await batchInsert(sleepEntriesCollection(householdId, babyId), entries, (entry) => ({
+  // A timer still running in the export is stale: it would be refused without the lock anyway.
+  const stopped = entries.filter((entry) => entry.endedAt != null)
+  await batchInsert(sleepEntriesCollection(householdId, babyId), stopped, (entry) => ({
     startedAt: Timestamp.fromDate(new Date(entry.startedAt)),
     endedAt: entry.endedAt ? Timestamp.fromDate(new Date(entry.endedAt)) : null,
     durationSeconds: entry.durationSeconds,
@@ -113,14 +133,20 @@ export async function startSleep(
   createdBy: string,
   startedAt: Date = new Date(),
 ): Promise<void> {
-  await addDoc(sleepEntriesCollection(householdId, babyId), {
-    startedAt: Timestamp.fromDate(startedAt),
-    endedAt: null,
-    durationSeconds: null,
-    notes: '',
-    createdBy,
-    createdAt: Timestamp.now(),
-  })
+  await writeRunningSleep(
+    householdId,
+    babyId,
+    doc(sleepEntriesCollection(householdId, babyId)),
+    {
+      startedAt: Timestamp.fromDate(startedAt),
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy,
+      createdAt: Timestamp.now(),
+    },
+    true,
+  )
 }
 
 export interface LogSleepInput {
@@ -165,11 +191,13 @@ export async function resumeSleep(
   entryId: string,
   startedAt: Date,
 ): Promise<void> {
-  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
-    startedAt: Timestamp.fromDate(startedAt),
-    endedAt: null,
-    durationSeconds: null,
-  })
+  await writeRunningSleep(
+    householdId,
+    babyId,
+    doc(sleepEntriesCollection(householdId, babyId), entryId),
+    { startedAt: Timestamp.fromDate(startedAt), endedAt: null, durationSeconds: null },
+    false,
+  )
 }
 
 /** Moves the start of a sleep in progress: its live timer follows. */
@@ -196,12 +224,16 @@ export async function updateSleepEntry(
   entryId: string,
   input: UpdateSleepInput,
 ): Promise<void> {
-  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
+  const entryRef = doc(sleepEntriesCollection(householdId, babyId), entryId)
+  const data = {
     startedAt: Timestamp.fromDate(input.startedAt),
     endedAt: input.endedAt ? Timestamp.fromDate(input.endedAt) : null,
     durationSeconds: input.endedAt ? secondsBetween(input.startedAt, input.endedAt) : null,
     notes: input.notes,
-  })
+  }
+  // Without an end time the sleep runs: it takes the lock like a start.
+  if (input.endedAt) await updateDoc(entryRef, data)
+  else await writeRunningSleep(householdId, babyId, entryRef, data, false)
 }
 
 export async function deleteSleepEntry(

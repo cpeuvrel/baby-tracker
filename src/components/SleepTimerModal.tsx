@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
+import { useActiveSleepEntries } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { useNow } from '../hooks/useNow'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
 import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { registerPush } from '../lib/pushRegistration'
+import { alertSleepAlreadyRunning } from '../lib/sleepAlreadyRunning'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
 import { Modal } from './Modal'
@@ -20,7 +21,8 @@ interface SleepTimerModalProps {
 export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
-  const activeEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
+  const activeEntries = useActiveSleepEntries(household?.id ?? null, selectedBaby?.id ?? null)
+  const activeEntry = activeEntries[0] ?? null
   const elapsedSeconds = useElapsedSeconds(activeEntry?.startedAt ?? null)
   const [pendingStart, setPendingStart] = useState(false)
   const [startedAt, setStartedAt] = useState(() => toDatetimeLocalValue(new Date()))
@@ -47,7 +49,10 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (activeEntry) {
       const stoppedAt = new Date()
       const startDate = new Date(activeEntry.startedAt)
-      void stopSleep(household.id, selectedBaby.id, activeEntry.id, startDate)
+      // Stops any sleep started at the same time on another device too.
+      for (const entry of activeEntries) {
+        void stopSleep(household.id, selectedBaby.id, entry.id, new Date(entry.startedAt))
+      }
       setStartedAt(toDatetimeLocalValue(startDate))
       setDurationMinutes(Math.round((stoppedAt.getTime() - startDate.getTime()) / 60000))
       setTimerEntryId(activeEntry.id)
@@ -58,12 +63,17 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       void requestSleepTimerNotificationPermission()
         .then(() => registerPush(user.uid))
         .catch(() => {})
+      // Refused when another device started a sleep this one did not see yet: it shows up instead.
+      const onRefused = () => {
+        setPendingStart(false)
+        alertSleepAlreadyRunning()
+      }
       if (timerEntryId) {
         // Start again after a stop: the same sleep goes on, not a new one.
-        void resumeSleep(household.id, selectedBaby.id, timerEntryId, fromDatetimeLocalValue(startedAt))
+        resumeSleep(household.id, selectedBaby.id, timerEntryId, fromDatetimeLocalValue(startedAt)).catch(onRefused)
         setDurationMinutes(null)
       } else {
-        void startSleep(household.id, selectedBaby.id, user.uid, fromDatetimeLocalValue(startedAt))
+        startSleep(household.id, selectedBaby.id, user.uid, fromDatetimeLocalValue(startedAt)).catch(onRefused)
       }
     }
   }
@@ -71,11 +81,12 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const handleSave = () => {
     if (timerEntryId) {
       if (!isActive) {
-        void updateSleepEntry(household.id, selectedBaby.id, timerEntryId, {
+        // Without an end time the sleep runs again: refused if another one runs.
+        updateSleepEntry(household.id, selectedBaby.id, timerEntryId, {
           startedAt: fromDatetimeLocalValue(startedAt),
           endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
           notes,
-        })
+        }).catch(alertSleepAlreadyRunning)
       }
     } else if (!isActive && endedAt !== '') {
       void logSleep(household.id, selectedBaby.id, user.uid, {

@@ -4,6 +4,7 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
+import { alertSleepAlreadyRunning } from '../lib/sleepAlreadyRunning'
 import { deleteSleepEntry, resumeSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
 import { DurationInput } from './DurationInput'
@@ -55,11 +56,12 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   }
 
   const submit = () => {
-    void updateSleepEntry(household.id, selectedBaby.id, entry.id, {
+    // Without an end time the sleep runs again: refused if another one runs.
+    updateSleepEntry(household.id, selectedBaby.id, entry.id, {
       startedAt: fromDatetimeLocalValue(startedAt),
       endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
       notes,
-    })
+    }).catch(alertSleepAlreadyRunning)
     onClose()
   }
 
@@ -69,7 +71,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   }
 
   const handleStart = () => {
-    void resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt))
+    resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt)).catch(alertSleepAlreadyRunning)
     if (onResumed) onResumed()
     else onClose()
   }

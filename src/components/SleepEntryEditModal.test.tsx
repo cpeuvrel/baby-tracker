@@ -8,9 +8,9 @@ import type { SleepEntry } from '../types/models'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
 import { dateTimeValue } from '../test/timeFields'
 
-const updateSleepEntry = vi.fn()
+const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
 const deleteSleepEntry = vi.fn()
-const resumeSleep = vi.fn()
+const resumeSleep = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../repositories/sleepEntries', () => ({
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
@@ -33,9 +33,9 @@ const entry: SleepEntry = {
 
 describe('SleepEntryEditModal', () => {
   beforeEach(() => {
-    updateSleepEntry.mockReset()
+    updateSleepEntry.mockReset().mockResolvedValue(undefined)
     deleteSleepEntry.mockReset()
-    resumeSleep.mockReset()
+    resumeSleep.mockReset().mockResolvedValue(undefined)
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
     vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([entry])
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
