@@ -9,6 +9,17 @@ export function LoginPage() {
   const [email, setEmail] = useState(DEV_EMAIL)
   const [password, setPassword] = useState(DEV_PASSWORD)
   const [submitting, setSubmitting] = useState(false)
+  // A second tap while the popup opens would cancel the first one.
+  const [signingIn, setSigningIn] = useState(false)
+
+  const handleGoogleLogin = async () => {
+    setSigningIn(true)
+    try {
+      await loginWithGoogle()
+    } finally {
+      setSigningIn(false)
+    }
+  }
 
   const handleDevLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -20,7 +31,7 @@ export function LoginPage() {
   return (
     <main>
       <h1>Baby Tracker</h1>
-      <button type="button" onClick={() => void loginWithGoogle()}>
+      <button type="button" onClick={() => void handleGoogleLogin()} disabled={signingIn}>
         Sign in with Google
       </button>
 
@@ -53,9 +64,7 @@ export function LoginPage() {
         </form>
       )}
 
-      <p role="alert" aria-live="polite">
-        {error}
-      </p>
+      {error && <p role="alert">{error}</p>}
     </main>
   )
 }

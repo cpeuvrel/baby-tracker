@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
@@ -22,7 +22,7 @@ describe('LoginPage', () => {
   }
 
   beforeEach(() => {
-    loginWithGoogle.mockReset()
+    loginWithGoogle.mockReset().mockResolvedValue(undefined)
     loginWithPassword.mockReset().mockResolvedValue(undefined)
     mockAuth()
   })
@@ -48,6 +48,26 @@ describe('LoginPage', () => {
     render(<LoginPage />)
 
     expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign in with Google.')
+  })
+
+  it('renders no alert without an error', () => {
+    render(<LoginPage />)
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('disables the Google button while the sign-in is in progress', async () => {
+    let finish = () => {}
+    loginWithGoogle.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)))
+    const user = userEvent.setup()
+    render(<LoginPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Sign in with Google' }))
+
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeDisabled()
+    await act(async () => finish())
+    expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeEnabled()
+    expect(loginWithGoogle).toHaveBeenCalledTimes(1)
   })
 
   it('hides the local sign-in form outside the emulator', () => {

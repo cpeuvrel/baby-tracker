@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockAuth } from '../test/mockAuthState'
 import { AuthProvider, useAuth } from './AuthContext'
 
@@ -10,8 +10,16 @@ const signInWithPopup = vi.fn()
 const signInWithEmailAndPassword = vi.fn()
 const createUserWithEmailAndPassword = vi.fn()
 const signOut = vi.fn()
+const calls: string[] = []
+const unregisterPush = vi.fn()
+const clearLocalDataAndReload = vi.fn()
 
-vi.mock('../lib/firebase', () => ({ auth: {}, usingEmulators: true }))
+vi.mock('../lib/firebase', () => ({
+  auth: {},
+  usingEmulators: true,
+  clearLocalDataAndReload: () => clearLocalDataAndReload(),
+}))
+vi.mock('../lib/pushRegistration', () => ({ unregisterPush: (uid: string) => unregisterPush(uid) }))
 
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
@@ -28,7 +36,7 @@ function Probe() {
   return (
     <div>
       <span data-role="status">{loading ? 'loading' : user ? `in:${user.email}` : 'out'}</span>
-      <span data-role="error">{error}</span>
+      <span data-testid="error">{error}</span>
       <button type="button" onClick={() => void loginWithGoogle()}>
         login
       </button>
@@ -46,11 +54,24 @@ function Probe() {
 }
 
 describe('AuthContext', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     signInWithPopup.mockReset()
     signInWithEmailAndPassword.mockReset()
     createUserWithEmailAndPassword.mockReset()
-    signOut.mockReset()
+    calls.length = 0
+    signOut.mockReset().mockImplementation(async () => {
+      calls.push('signOut')
+    })
+    unregisterPush.mockReset().mockImplementation(async (uid: string) => {
+      calls.push(`unregisterPush:${uid}`)
+    })
+    clearLocalDataAndReload.mockReset().mockImplementation(async () => {
+      calls.push('clearLocalDataAndReload')
+    })
   })
 
   it('starts in loading state then reflects a signed-out user', async () => {
@@ -113,7 +134,8 @@ describe('AuthContext', () => {
   })
 
   it('surfaces an error when signInWithPopup rejects', async () => {
-    signInWithPopup.mockRejectedValue(new Error('auth/popup-closed-by-user'))
+    signInWithPopup.mockRejectedValue({ code: 'auth/network-request-failed' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     const user = userEvent.setup()
     render(
       <AuthProvider>
@@ -130,19 +152,62 @@ describe('AuthContext', () => {
     )
   })
 
-  it('delegates logout to signOut', async () => {
+  it.each(['auth/popup-closed-by-user', 'auth/cancelled-popup-request'])(
+    'shows no error when the popup is dismissed (%s)',
+    async (code) => {
+      signInWithPopup.mockRejectedValue({ code })
+      const user = userEvent.setup()
+      render(
+        <AuthProvider>
+          <Probe />
+        </AuthProvider>,
+      )
+      mockAuth.emit(null)
+      await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+
+      await user.click(screen.getByRole('button', { name: 'login' }))
+
+      await waitFor(() => expect(signInWithPopup).toHaveBeenCalled())
+      expect(screen.getByTestId('error')).toBeEmptyDOMElement()
+    },
+  )
+
+  it('unregisters this device, signs out, then clears the local data', async () => {
     const user = userEvent.setup()
     render(
       <AuthProvider>
         <Probe />
       </AuthProvider>,
     )
-    mockAuth.emit(null)
-    await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    await waitFor(() => expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'logout' }))
 
+    await waitFor(() =>
+      expect(calls).toEqual(['unregisterPush:uid1', 'signOut', 'clearLocalDataAndReload']),
+    )
     expect(signOut).toHaveBeenCalledWith({})
+  })
+
+  it('surfaces a sign-out failure and keeps the local data', async () => {
+    signOut.mockRejectedValue({ code: 'auth/network-request-failed' })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const user = userEvent.setup()
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    await waitFor(() => expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument())
+
+    await user.click(screen.getByRole('button', { name: 'logout' }))
+
+    await waitFor(() =>
+      expect(screen.getByText('Unable to sign out. (auth/network-request-failed)')).toBeInTheDocument(),
+    )
+    expect(clearLocalDataAndReload).not.toHaveBeenCalled()
   })
 
   it('leaves the loading state for a rejected account instead of hanging', async () => {
