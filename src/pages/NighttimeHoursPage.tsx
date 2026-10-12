@@ -17,9 +17,12 @@ export function NighttimeHoursPage() {
   if (!household || !baby) return null
 
   const backTo = `/account/family/${baby.id}`
+  // A night starting and ending at the same time would be no night at all.
+  const sameTime = start === end
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (sameTime) return
     void updateNighttimeHours(household.id, baby.id, { start, end }).then(() => navigate(backTo))
   }
 
@@ -30,7 +33,7 @@ export function NighttimeHoursPage() {
           ‹
         </button>
         <h2>Nighttime Hours</h2>
-        <button type="submit" className="modal-header-action">
+        <button type="submit" className="modal-header-action" disabled={sameTime}>
           Save
         </button>
       </div>
@@ -43,6 +46,7 @@ export function NighttimeHoursPage() {
         <span className="field-label">To</span>
         <TimeSelect label="To" value={end} onChange={setEnd} />
       </div>
+      {sameTime && <p role="alert">From and To must be different times.</p>}
     </form>
   )
 }

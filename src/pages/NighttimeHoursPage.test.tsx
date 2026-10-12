@@ -78,4 +78,19 @@ describe('NighttimeHoursPage', () => {
 
     expect(updateNighttimeHours).toHaveBeenCalledWith('h1', 'b1', { start: '21:30', end: '08:00' })
   })
+
+  it('refuses a night that starts and ends at the same time', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('To hour'), '20')
+    await user.type(screen.getByLabelText('To minute'), '00')
+
+    expect(timeValue('To')).toBe('20:00')
+    expect(screen.getByRole('alert')).toHaveTextContent('From and To must be different times.')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(updateNighttimeHours).not.toHaveBeenCalled()
+  })
 })
