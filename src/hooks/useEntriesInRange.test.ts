@@ -1,8 +1,8 @@
-import { renderHook } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dayRange } from '../lib/timeline'
 import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
-import { useEntriesInRange } from './useEntriesInRange'
+import { useEntriesInRange, useEntriesInRangeState } from './useEntriesInRange'
 
 const subscribeToFeedingEntriesInRange = vi.fn()
 const subscribeToSleepEntriesInRange = vi.fn()
@@ -83,9 +83,17 @@ describe('useEntriesInRange', () => {
   })
 
   it('returns empty arrays without subscribing when household or baby is missing', () => {
-    const { result } = renderHook(() => useEntriesInRange(null, null, range))
+    const { result } = renderHook(() => useEntriesInRangeState(null, null, range))
 
-    expect(result.current).toEqual({ feeding: [], sleep: [], diaper: [], medication: [], bath: [] })
+    expect(result.current).toEqual({
+      feeding: [],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+      loading: false,
+      error: null,
+    })
     expect(subscribeToFeedingEntriesInRange).not.toHaveBeenCalled()
   })
 
@@ -113,13 +121,22 @@ describe('useEntriesInRange', () => {
 
     const { result } = renderHook(() => useEntriesInRange('h1', 'b1', range))
 
-    expect(result.current).toEqual({
+    expect(result.current).toMatchObject({
       feeding: [feeding],
       sleep: [sleep],
       diaper: [diaper],
       medication: [medication],
       bath: [bath],
+      loading: false,
+      error: null,
     })
+    expect(subscribeToFeedingEntriesInRange).toHaveBeenCalledWith(
+      'h1',
+      'b1',
+      range,
+      expect.any(Function),
+      expect.any(Function),
+    )
   })
 
   it('unsubscribes all five subscriptions on unmount', () => {
@@ -142,5 +159,73 @@ describe('useEntriesInRange', () => {
     expect(unsubscribeDiaper).toHaveBeenCalled()
     expect(unsubscribeMedication).toHaveBeenCalled()
     expect(unsubscribeBath).toHaveBeenCalled()
+  })
+
+  describe('loading, errors and baby switch', () => {
+    type Listener = { babyId: string; onChange: (entries: unknown[]) => void; onError: (error: Error) => void }
+    let listeners: Record<string, Listener[]>
+
+    beforeEach(() => {
+      listeners = { feeding: [], sleep: [], diaper: [], medication: [], bath: [] }
+      const capture = (name: string) => (_h: string, babyId: string, _r: unknown, onChange: Listener['onChange'], onError: Listener['onError']) => {
+        listeners[name].push({ babyId, onChange, onError })
+        return vi.fn()
+      }
+      subscribeToFeedingEntriesInRange.mockImplementation(capture('feeding'))
+      subscribeToSleepEntriesInRange.mockImplementation(capture('sleep'))
+      subscribeToDiaperEntriesInRange.mockImplementation(capture('diaper'))
+      subscribeToMedicationEntriesInRange.mockImplementation(capture('medication'))
+      subscribeToBathEntriesInRange.mockImplementation(capture('bath'))
+    })
+
+    const answerAll = (index: number) => {
+      for (const name of Object.keys(listeners)) listeners[name][index].onChange([])
+    }
+
+    it('loads until every collection delivered its first snapshot', () => {
+      const { result } = renderHook(() => useEntriesInRangeState('h1', 'b1', range))
+      expect(result.current.loading).toBe(true)
+
+      act(() => {
+        listeners.feeding[0].onChange([feeding])
+        listeners.sleep[0].onChange([])
+        listeners.diaper[0].onChange([])
+        listeners.medication[0].onChange([])
+      })
+      expect(result.current.loading).toBe(true)
+      expect(result.current.feeding).toEqual([feeding])
+
+      act(() => listeners.bath[0].onChange([bath]))
+      expect(result.current.loading).toBe(false)
+      expect(result.current.error).toBeNull()
+    })
+
+    it('reports the error of a failed listener', () => {
+      const { result } = renderHook(() => useEntriesInRangeState('h1', 'b1', range))
+      act(() => answerAll(0))
+
+      act(() => listeners.sleep[0].onError(new Error('permission-denied')))
+
+      expect(result.current.error).toEqual(new Error('permission-denied'))
+      expect(result.current.loading).toBe(false)
+    })
+
+    it("never shows the previous baby's entries after a switch", () => {
+      const { result, rerender } = renderHook(({ babyId }) => useEntriesInRange('h1', babyId, range), {
+        initialProps: { babyId: 'b1' },
+      })
+      act(() => {
+        answerAll(0)
+        listeners.feeding[0].onChange([feeding])
+      })
+      expect(result.current.feeding).toEqual([feeding])
+
+      rerender({ babyId: 'b2' })
+
+      expect(result.current.feeding).toEqual([])
+      expect(listeners.feeding[1].babyId).toBe('b2')
+      act(() => listeners.feeding[0].onChange([feeding]))
+      expect(result.current.feeding).toEqual([])
+    })
   })
 })
