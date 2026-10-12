@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { rollingDayFrame } from './timeline'
 import { buildWeekBlocks, buildWeekMarks, markForInstant, nightFractions, splitIntervalByDay } from './weekTimeline'

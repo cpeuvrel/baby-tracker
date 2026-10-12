@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { doc, getDocs, writeBatch } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { batchDeleteAll, batchInsert } from './firestoreBatch'

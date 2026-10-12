@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { CollectionReference, DocumentReference } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteBabyWithData } from './babyExport'

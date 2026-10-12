@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { ageInMonths, DAYS_PER_WHO_MONTH, formatAge } from './age'
 import { percentileForValue } from './growthPercentiles'

@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { VisitDiscussion, VisitRemark } from '../types/models'
 import { appendItem, editItem, newItemId, removeItem } from './visitItems'
