@@ -45,6 +45,15 @@ describe('Layout', () => {
       medication: [],
       bath: [],
     })
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRangeState').mockReturnValue({
+      feeding: [],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+      loading: false,
+      error: null,
+    })
   })
 
   it("shows the baby's name, an avatar and today's date in the header", () => {

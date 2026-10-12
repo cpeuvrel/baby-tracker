@@ -53,7 +53,7 @@ describe('CategoryCard', () => {
     const onShowHistory = vi.fn()
     const user = userEvent.setup()
     renderCard({
-      lines: [{ title: '08:33 Bottle', value: '40 mL', barFraction: 0.5, onClick: onSelectRow }],
+      lines: [{ id: 'f1', title: '08:33 Bottle', value: '40 mL', barFraction: 0.5, onClick: onSelectRow }],
       onShowHistory,
       historyLabel: 'Entries before 20:00',
     })
@@ -74,7 +74,7 @@ describe('CategoryCard', () => {
 
   it('remembers that a card was expanded', async () => {
     const user = userEvent.setup()
-    const lines = [{ title: '08:33 Bottle', onClick: vi.fn() }]
+    const lines = [{ id: 'f1', title: '08:33 Bottle', onClick: vi.fn() }]
     const { unmount } = renderCard({ lines })
     await user.click(screen.getByRole('button', { name: 'Show More' }))
     unmount()
@@ -88,7 +88,7 @@ describe('CategoryCard', () => {
     renderCard({
       showPrimary: false,
       primary: null,
-      pinnedRows: [{ title: 'Weight', subtitle: 'Jul 10, 2026', value: '6.48 kg', onClick: vi.fn() }],
+      pinnedRows: [{ id: 'weight', title: 'Weight', subtitle: 'Jul 10, 2026', value: '6.48 kg', onClick: vi.fn() }],
     })
 
     expect(screen.getByText('Jul 10, 2026')).toBeInTheDocument()
@@ -143,5 +143,51 @@ describe('CategoryCard', () => {
     renderCard({ primary: null, highlight: { value: 'mix' } })
 
     expect(screen.queryByText('mix')).not.toBeInTheDocument()
+  })
+
+  it('says Loading… instead of the empty label until its data arrives', () => {
+    const { rerender } = renderCard({ primary: null, loading: true })
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByText('No entries')).not.toBeInTheDocument()
+
+    rerender(
+      <CategoryCard
+        title="Sleep"
+        colorVar="--category-sleep"
+        addLabel="Add a sleep entry"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={null}
+        emptyLabel="No entries"
+      />,
+    )
+    expect(screen.getByText('No entries')).toBeInTheDocument()
+  })
+
+  it('keeps each row with its entry when an entry is added at the top', async () => {
+    const user = userEvent.setup()
+    const lines = [
+      { id: 'f2', title: '09:00 Bottle', onClick: vi.fn() },
+      { id: 'f1', title: '08:33 Bottle', onClick: vi.fn() },
+    ]
+    const { rerender } = renderCard({ lines })
+    await user.click(screen.getByRole('button', { name: 'Show More' }))
+    const firstRow = screen.getByText('09:00 Bottle').closest('li')
+
+    rerender(
+      <CategoryCard
+        title="Sleep"
+        colorVar="--category-sleep"
+        addLabel="Add a sleep entry"
+        onAdd={vi.fn()}
+        icon={<SleepIcon />}
+        primary={{ label: 'Woke up', meta: '30m ago' }}
+        emptyLabel="No entries"
+        lines={[{ id: 'f3', title: '10:00 Bottle', onClick: vi.fn() }, ...lines]}
+      />,
+    )
+
+    // Keyed by id, the row of 09:00 is the same element, not the first one reused for 10:00.
+    expect(screen.getByText('09:00 Bottle').closest('li')).toBe(firstRow)
   })
 })
