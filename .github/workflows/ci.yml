@@ -47,8 +47,8 @@ jobs:
       - run: npm run build
       - run: npm test
 
-  # firestore.rules against the Firestore emulator (rules/*.test.ts). Java is
-  # preinstalled on ubuntu-latest; firebase-tools comes from functions/.
+  # firestore.rules against the Firestore emulator (rules/*.test.ts); the emulator
+  # needs a JDK >= 21 (set up below), firebase-tools comes from functions/.
   rules:
     runs-on: ubuntu-latest
     steps:
@@ -60,6 +60,11 @@ jobs:
           cache-dependency-path: |
             package-lock.json
             functions/package-lock.json
+      # firebase-tools needs a JDK >= 21 for the Firestore emulator; ubuntu-latest ships an older default.
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
       - run: npm ci
       - run: npm ci
         working-directory: functions
