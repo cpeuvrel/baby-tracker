@@ -22,10 +22,10 @@ export default defineConfig({
       VITE_USE_FIREBASE_EMULATORS: 'true',
       VITE_FCM_VAPID_KEY: 'test-vapid-key',
     },
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text-summary', 'html', 'json-summary'],
       include: ['src/**'],
       exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/sw.ts', 'src/test/**'],
       thresholds: {

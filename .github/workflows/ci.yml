@@ -12,14 +12,22 @@ jobs:
   app:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
       - run: npm ci
       - run: npm run lint
-      - run: npm test
+      # The suite with the coverage thresholds of vitest.config.ts.
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: coverage
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 14
       - run: npm run build
 
   functions:
@@ -28,21 +36,40 @@ jobs:
       run:
         working-directory: functions
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: functions/package-lock.json
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run build
       - run: npm test
 
-  # Dependabot PRs: merge minor/patch updates once both jobs above pass (the
+  # firestore.rules against the Firestore emulator (rules/*.test.ts). Java is
+  # preinstalled on ubuntu-latest; firebase-tools comes from functions/.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            functions/package-lock.json
+      - run: npm ci
+      - run: npm ci
+        working-directory: functions
+      - run: npm run test:rules
+
+  # Dependabot PRs: merge minor/patch updates once the jobs above pass (the
   # merge lands on main, which triggers the Vercel deploy); ping the owner on a
   # major update or a failure so they get an email.
   dependabot:
-    needs: [app, functions]
+    needs: [app, functions, rules]
     if: always() && github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
     runs-on: ubuntu-latest
     permissions:
@@ -54,28 +81,29 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GH_REPO: ${{ github.repository }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      CI_PASSED: ${{ needs.app.result == 'success' && needs.functions.result == 'success' && needs.rules.result == 'success' }}
     steps:
       - id: meta
-        uses: dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
       - name: Report failure
-        if: needs.app.result != 'success' || needs.functions.result != 'success'
+        if: env.CI_PASSED != 'true'
         run: >-
           gh pr comment "$PR_URL" --body
           "@${{ github.repository_owner }} CI fails on this update, not merged: $RUN_URL"
 
       - name: Report major update
-        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type == 'version-update:semver-major'
+        if: env.CI_PASSED == 'true' && steps.meta.outputs.update-type == 'version-update:semver-major'
         run: >-
           gh pr comment "$PR_URL" --body
           "@${{ github.repository_owner }} Major update: CI passes but it needs a manual review before merging."
 
       - name: Merge
-        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type != 'version-update:semver-major'
+        if: env.CI_PASSED == 'true' && steps.meta.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --squash "$PR_URL"
 
       # A merge made with GITHUB_TOKEN doesn't trigger push workflows, so start
       # the functions deploy explicitly.
       - name: Deploy functions
-        if: needs.app.result == 'success' && needs.functions.result == 'success' && steps.meta.outputs.update-type != 'version-update:semver-major' && steps.meta.outputs.directory == '/functions'
+        if: env.CI_PASSED == 'true' && steps.meta.outputs.update-type != 'version-update:semver-major' && steps.meta.outputs.directory == '/functions'
         run: gh workflow run deploy-functions.yml --ref main
