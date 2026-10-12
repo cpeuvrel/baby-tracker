@@ -13,6 +13,7 @@ import { VisitRemarksPage } from './VisitRemarksPage'
 const addPediatricianVisit = vi.fn()
 const updatePediatricianVisit = vi.fn()
 const mutateVisitItems = vi.fn()
+const appendVisitItem = vi.fn()
 const deletePediatricianVisit = vi.fn()
 let visitsByBaby: Record<string, PediatricianVisit[]> = {}
 // 'pending': no snapshot yet; an Error: the listener fails.
@@ -22,6 +23,7 @@ vi.mock('../repositories/pediatricianVisits', () => ({
   addPediatricianVisit: (...args: unknown[]) => addPediatricianVisit(...args),
   updatePediatricianVisit: (...args: unknown[]) => updatePediatricianVisit(...args),
   mutateVisitItems: (...args: unknown[]) => mutateVisitItems(...args),
+  appendVisitItem: (...args: unknown[]) => appendVisitItem(...args),
   deletePediatricianVisit: (...args: unknown[]) => deletePediatricianVisit(...args),
   subscribeToPediatricianVisits: (
     _h: string,
@@ -102,6 +104,7 @@ describe('Pediatrician screens', () => {
     addPediatricianVisit.mockReset()
     updatePediatricianVisit.mockReset().mockResolvedValue(undefined)
     mutateVisitItems.mockReset().mockResolvedValue(undefined)
+    appendVisitItem.mockReset().mockResolvedValue(undefined)
     deletePediatricianVisit.mockReset().mockResolvedValue(undefined)
     visitsByBaby = {}
     subscriptionOutcome = 'snapshot'
@@ -346,22 +349,18 @@ describe('Pediatrician screens', () => {
     await user.type(screen.getByRole('textbox', { name: 'Remark' }), '  Next visit in 2 months ')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(
-      lastChangeApplied('remarks', [
-        { id: 'r1', text: 'Good weight' },
-        { id: 'r2', text: 'From the other phone' },
-      ]),
-    ).toEqual([
-      { id: 'r1', text: 'Good weight' },
-      { id: 'r2', text: 'From the other phone' },
-      { id: expect.any(String), text: 'Next visit in 2 months' },
-    ])
+    // Added with an array union (queued offline, merged server-side), not a transaction.
+    expect(appendVisitItem).toHaveBeenCalledWith('h1', 'b1', 'v1', 'remarks', {
+      id: expect.any(String),
+      text: 'Next visit in 2 months',
+    })
+    expect(mutateVisitItems).not.toHaveBeenCalled()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('keeps the editor open with an error when the remark cannot be saved', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    mutateVisitItems.mockRejectedValue(new Error('unavailable'))
+    appendVisitItem.mockRejectedValue(new Error('unavailable'))
     const user = userEvent.setup()
     visitsByBaby = { b1: [visit({})] }
     renderAt('/account/pediatrician/visits/v1/remarks')
@@ -479,10 +478,12 @@ describe('Pediatrician screens', () => {
     await user.type(screen.getByRole('textbox', { name: 'Question' }), 'Vitamin D?')
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(lastChangeApplied('discussions', [{ id: 'd2', question: 'From the other phone', answer: '' }])).toEqual([
-      { id: 'd2', question: 'From the other phone', answer: '' },
-      { id: expect.any(String), question: 'Vitamin D?', answer: '' },
-    ])
+    expect(appendVisitItem).toHaveBeenCalledWith('h1', 'b1', 'v1', 'discussions', {
+      id: expect.any(String),
+      question: 'Vitamin D?',
+      answer: '',
+    })
+    expect(mutateVisitItems).not.toHaveBeenCalled()
   })
 
   it('deletes a question after confirmation', async () => {

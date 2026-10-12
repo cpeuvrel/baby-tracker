@@ -4,9 +4,9 @@ import { EmptyState } from '../components/EmptyState'
 import { NotebookIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
-import { appendItem, editItem, newItemId, removeItem } from '../lib/visitItems'
+import { editItem, newItemId, removeItem } from '../lib/visitItems'
 import { formatVisitDate } from '../lib/visitDate'
-import { mutateVisitItems } from '../repositories/pediatricianVisits'
+import { appendVisitItem, mutateVisitItems } from '../repositories/pediatricianVisits'
 import type { VisitRemark } from '../types/models'
 
 const FIELDS = [{ name: 'text', label: 'Remark' }]
@@ -59,7 +59,10 @@ export function VisitRemarksPage() {
           fields={FIELDS}
           initialValues={{ text: editing === 'new' ? '' : editing.text }}
           onSave={({ text }) =>
-            change(editing === 'new' ? appendItem({ id: newItemId(), text }) : editItem(editing.id, { text }))
+            editing === 'new'
+              ? // A plain array union: queued while offline, merged with the other phone's additions.
+                appendVisitItem(household.id, baby.id, visit.id, 'remarks', { id: newItemId(), text })
+              : change(editItem(editing.id, { text }))
           }
           onDelete={editing === 'new' ? undefined : () => change(removeItem(editing.id))}
           onClose={() => setEditing(null)}

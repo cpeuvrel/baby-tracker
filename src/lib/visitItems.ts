@@ -12,11 +12,6 @@ interface VisitItem {
 // Changes to a visit's remarks or questions, applied to their latest stored list (see
 // `mutateVisitItems`): they touch one item only, so the other parent's concurrent changes stay.
 
-/** Adds `item` at the end. */
-export function appendItem<T extends VisitItem>(item: T): (items: T[]) => T[] {
-  return (items) => [...items, item]
-}
-
 /** Changes the item `id` (gone already: nothing to change). */
 export function editItem<T extends VisitItem>(id: string, changes: Partial<Omit<T, 'id'>>): (items: T[]) => T[] {
   return (items) => items.map((item) => (item.id === id ? { ...item, ...changes } : item))

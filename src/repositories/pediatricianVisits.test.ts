@@ -1,6 +1,8 @@
 import {
   addDoc,
+  arrayUnion,
   deleteDoc,
+  type FieldValue,
   onSnapshot,
   orderBy,
   query,
@@ -16,6 +18,7 @@ import type { VisitRemark } from '../types/models'
 import {
   addPediatricianVisit,
   deletePediatricianVisit,
+  appendVisitItem,
   mutateVisitItems,
   subscribeToPediatricianVisits,
   updatePediatricianVisit,
@@ -159,6 +162,18 @@ describe('pediatricianVisits queries and robustness', () => {
     subscribeToPediatricianVisits('h1', 'b1', vi.fn(), onError)
 
     expect(onError).toHaveBeenCalledWith(new Error('permission-denied'))
+  })
+})
+
+describe('appendVisitItem', () => {
+  it('adds the item with an array union on the visit document', async () => {
+    updateDocMock.mockReset().mockResolvedValue(undefined)
+
+    await appendVisitItem('h1', 'b1', 'v1', 'remarks', { id: 'r1', text: 'Good weight' })
+
+    const [ref, payload] = updateDocMock.mock.calls[0] as unknown as [{ path: string }, { remarks: FieldValue }]
+    expect(ref.path).toBe('households/h1/babies/b1/pediatricianVisits/v1')
+    expect(payload.remarks.isEqual(arrayUnion({ id: 'r1', text: 'Good weight' }))).toBe(true)
   })
 })
 

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { VisitDiscussion, VisitRemark } from '../types/models'
-import { appendItem, editItem, newItemId, removeItem } from './visitItems'
+import { editItem, newItemId, removeItem } from './visitItems'
 
 describe('newItemId', () => {
   afterEach(() => {
@@ -30,13 +30,6 @@ describe('visit item changes', () => {
     { id: 'r1', text: 'Good weight' },
     { id: 'r2', text: 'Added on the other phone' },
   ]
-
-  it('appends an item after the stored ones', () => {
-    expect(appendItem<VisitRemark>({ id: 'r3', text: 'New' })(stored)).toEqual([
-      ...stored,
-      { id: 'r3', text: 'New' },
-    ])
-  })
 
   it('edits only its own item', () => {
     expect(editItem<VisitRemark>('r1', { text: 'Very good weight' })(stored)).toEqual([

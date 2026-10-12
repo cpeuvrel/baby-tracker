@@ -4,9 +4,9 @@ import { EmptyState } from '../components/EmptyState'
 import { ChatIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
-import { appendItem, editItem, newItemId, removeItem } from '../lib/visitItems'
+import { editItem, newItemId, removeItem } from '../lib/visitItems'
 import { formatVisitDate } from '../lib/visitDate'
-import { mutateVisitItems } from '../repositories/pediatricianVisits'
+import { appendVisitItem, mutateVisitItems } from '../repositories/pediatricianVisits'
 import type { VisitDiscussion } from '../types/models'
 
 const FIELDS = [
@@ -65,11 +65,10 @@ export function VisitDiscussionPage() {
             editing === 'new' ? { question: '', answer: '' } : { question: editing.question, answer: editing.answer }
           }
           onSave={({ question, answer }) =>
-            change(
-              editing === 'new'
-                ? appendItem({ id: newItemId(), question, answer })
-                : editItem(editing.id, { question, answer }),
-            )
+            editing === 'new'
+              ? // A plain array union: queued while offline, merged with the other phone's additions.
+                appendVisitItem(household.id, baby.id, visit.id, 'discussions', { id: newItemId(), question, answer })
+              : change(editItem(editing.id, { question, answer }))
           }
           onDelete={editing === 'new' ? undefined : () => change(removeItem(editing.id))}
           onClose={() => setEditing(null)}

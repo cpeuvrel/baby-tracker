@@ -1,5 +1,6 @@
 import {
   addDoc,
+  arrayUnion,
   deleteDoc,
   doc,
   onSnapshot,
@@ -111,6 +112,22 @@ export async function mutateVisitItems<F extends keyof VisitItemsByField>(
     const items = (snapshot.data()[field] as VisitItemsByField[F] | undefined) ?? []
     transaction.update(visitRef, { [field]: mutate(items) })
   })
+}
+
+/**
+ * Adds one remark or question. Unlike `mutateVisitItems`, this is a plain update with
+ * `arrayUnion`: it is queued while offline (notes taken in a waiting room without network still
+ * land) and a concurrent change from the other phone is merged by the server, not overwritten.
+ */
+export async function appendVisitItem<F extends keyof VisitItemsByField>(
+  householdId: string,
+  babyId: string,
+  visitId: string,
+  field: F,
+  item: VisitItemsByField[F][number],
+): Promise<void> {
+  const visitRef = doc(pediatricianVisitsCollection(householdId, babyId), visitId)
+  await updateDoc(visitRef, { [field]: arrayUnion(item) })
 }
 
 export async function deletePediatricianVisit(
