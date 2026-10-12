@@ -35,7 +35,7 @@ export function EditActivitiesPage() {
       </ul>
       <p className="hint">
         Turn off an activity to hide it from the Activity screen. Only the activities tracked by
-        this app are listed here.
+        this app are listed here. This setting is saved on this device only.
       </p>
     </div>
   )

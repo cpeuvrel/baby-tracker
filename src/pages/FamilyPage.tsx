@@ -20,7 +20,7 @@ export function FamilyPage() {
       </div>
 
       <section aria-label="Children">
-        <h2>Children</h2>
+        <h3>Children</h3>
         <ul className="list-group">
           {babies.map((baby) => (
             <li key={baby.id}>
@@ -42,7 +42,7 @@ export function FamilyPage() {
       </section>
 
       <section aria-label="Parents">
-        <h2>Caregivers</h2>
+        <h3>Caregivers</h3>
         <ul className="list-group">
           <li>
             <span>{user?.email}</span>

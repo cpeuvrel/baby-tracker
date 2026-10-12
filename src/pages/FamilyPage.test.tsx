@@ -96,4 +96,23 @@ describe('FamilyPage', () => {
     expect(screen.getByText('Your Profile')).toBeInTheDocument()
     expect(screen.getByText('Other caregiver')).toBeInTheDocument()
   })
+
+  it('titles the screen once, its sections one level below', () => {
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household,
+      babies: [baby],
+      loading: false,
+      error: null,
+      selectedBaby: baby,
+      selectBaby: vi.fn(),
+    })
+
+    renderPage()
+
+    expect(screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent)).toEqual(['Children'])
+    expect(screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual([
+      'Children',
+      'Caregivers',
+    ])
+  })
 })

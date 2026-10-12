@@ -56,4 +56,10 @@ describe('EditActivitiesPage', () => {
     expect(screen.getByLabelText('Growth')).not.toBeChecked()
     expect(JSON.parse(localStorage.getItem('baby-tracker:hiddenActivities') ?? '[]')).toEqual(['growth'])
   })
+
+  it('says the setting stays on this device', () => {
+    renderPage()
+
+    expect(screen.getByText(/This setting is saved on this device only\./)).toBeInTheDocument()
+  })
 })
