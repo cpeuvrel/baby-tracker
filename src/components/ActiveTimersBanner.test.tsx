@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
+import { mockHousehold } from '../test/mockContexts'
 import type { SleepEntry } from '../types/models'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 
@@ -57,20 +57,10 @@ const runningSleep: SleepEntry = {
   createdAt: '2026-03-05T20:00:00.000Z',
 }
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 describe('ActiveTimersBanner', () => {
   beforeEach(() => {
     stopSleep.mockReset().mockResolvedValue(undefined)
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   afterEach(() => {

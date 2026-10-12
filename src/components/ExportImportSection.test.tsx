@@ -1,9 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
 import { ExportImportSection } from './ExportImportSection'
+import { defaultBaby, mockAuth } from '../test/mockContexts'
 
 const deleteAllBabyData = vi.fn()
 const exportBabyData = vi.fn()
@@ -18,8 +17,6 @@ vi.mock('../lib/babyExport', () => ({
   parseImportFile: (...args: unknown[]) => parseImportFile(...args),
   serializeBabyExport: (...args: unknown[]) => serializeBabyExport(...args),
 }))
-
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const emptyExport = {
   feedingEntries: [],
@@ -37,15 +34,7 @@ describe('ExportImportSection', () => {
     importBabyData.mockReset()
     parseImportFile.mockReset()
     serializeBabyExport.mockReset()
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth()
     URL.createObjectURL = vi.fn().mockReturnValue('blob:mock')
     URL.revokeObjectURL = vi.fn()
     // jsdom cannot follow the download link (it logs "Not implemented: navigation").
@@ -53,17 +42,9 @@ describe('ExportImportSection', () => {
   })
 
   it('renders nothing without a signed-in user', () => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: null,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth({ user: null })
 
-    const { container } = render(<ExportImportSection householdId="h1" baby={baby} />)
+    const { container } = render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
 
     expect(container).toBeEmptyDOMElement()
   })
@@ -73,10 +54,10 @@ describe('ExportImportSection', () => {
     serializeBabyExport.mockReturnValue('category,at\n')
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.click(screen.getByRole('button', { name: 'Export Data (CSV)' }))
 
-    expect(exportBabyData).toHaveBeenCalledWith('h1', baby)
+    expect(exportBabyData).toHaveBeenCalledWith('h1', defaultBaby)
     expect(await screen.findByRole('status')).toHaveTextContent('Export downloaded.')
   })
 
@@ -84,7 +65,7 @@ describe('ExportImportSection', () => {
     exportBabyData.mockRejectedValue(new Error('boom'))
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.click(screen.getByRole('button', { name: 'Export Data (CSV)' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent("Export failed.")
@@ -94,7 +75,7 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
     const file = new File(['category,at\nfeeding,2026-01-01'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
 
     expect(screen.getByRole('button', { name: 'Import Data' })).toBeDisabled()
 
@@ -113,7 +94,7 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
     const file = new File(['category,at\nfeeding,2026-01-01'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
     expect(importBabyData).not.toHaveBeenCalled()
 
@@ -130,7 +111,7 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
     const file = new File(['Type,...'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
     await user.click(screen.getByRole('button', { name: 'Import Data' }))
 
@@ -145,7 +126,7 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
     const file = new File(['Type,...'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
     await user.click(screen.getByRole('button', { name: 'Import Data' }))
 
@@ -161,7 +142,7 @@ describe('ExportImportSection', () => {
     const user = userEvent.setup()
     const file = new File(['not a csv'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
     await user.click(screen.getByRole('button', { name: 'Import Data' }))
 
@@ -174,7 +155,7 @@ describe('ExportImportSection', () => {
     deleteAllBabyData.mockResolvedValue(12)
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
 
     expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining('Léo'))
@@ -186,7 +167,7 @@ describe('ExportImportSection', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
 
     expect(deleteAllBabyData).not.toHaveBeenCalled()
@@ -197,7 +178,7 @@ describe('ExportImportSection', () => {
     deleteAllBabyData.mockRejectedValue(new Error('boom'))
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.click(screen.getByRole('button', { name: 'Delete All Data' }))
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Delete failed.')
@@ -210,15 +191,7 @@ describe('ExportImportSection download and messages', () => {
     importBabyData.mockReset()
     parseImportFile.mockReset()
     serializeBabyExport.mockReset()
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth()
     URL.createObjectURL = vi.fn().mockReturnValue('blob:mock')
     URL.revokeObjectURL = vi.fn()
   })
@@ -237,7 +210,7 @@ describe('ExportImportSection download and messages', () => {
     exportBabyData.mockResolvedValue(emptyExport)
     serializeBabyExport.mockReturnValue('category,at')
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     fireEvent.click(screen.getByRole('button', { name: 'Export Data (CSV)' }))
     // vi.waitFor polls with real timers: Testing Library's findBy would wait on the faked ones.
     await vi.waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Export downloaded.'))
@@ -264,7 +237,7 @@ describe('ExportImportSection download and messages', () => {
     const user = userEvent.setup()
     const file = new File(['category,at'], 'export.csv', { type: 'text/csv' })
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
     await user.upload(screen.getByLabelText('Import a CSV file (native or Nara export)'), file)
     await user.click(screen.getByRole('button', { name: 'Import Data' }))
 
@@ -277,7 +250,7 @@ describe('ExportImportSection download and messages', () => {
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
     const user = userEvent.setup()
 
-    render(<ExportImportSection householdId="h1" baby={baby} />)
+    render(<ExportImportSection householdId="h1" baby={defaultBaby} />)
 
     expect(screen.getByText(/pediatrician visits and reminders are not exported/)).toBeInTheDocument()
     const deleteButton = screen.getByRole('button', { name: 'Delete All Data' })

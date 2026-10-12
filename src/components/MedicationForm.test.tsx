@@ -1,9 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { MedicationEntry } from '../types/models'
 import { MedicationForm } from './MedicationForm'
 
@@ -17,9 +15,6 @@ vi.mock('../repositories/medicationEntries', () => ({
   deleteMedicationEntry: (...args: unknown[]) => deleteMedicationEntry(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 const entry: MedicationEntry = {
   id: 'm1',
   name: 'Vitamin D',
@@ -31,23 +26,8 @@ const entry: MedicationEntry = {
 }
 
 function renderMedicationForm(onClose = vi.fn(), medicationEntry?: MedicationEntry) {
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-    user: { uid: 'uid1' } as User,
-    loading: false,
-    error: null,
-    devLoginAvailable: false,
-    loginWithGoogle: vi.fn(),
-    loginWithPassword: vi.fn(),
-    logout: vi.fn(),
-  })
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
+  mockAuth()
+  mockHousehold()
   render(<MedicationForm entry={medicationEntry} onClose={onClose} />)
 }
 

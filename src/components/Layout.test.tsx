@@ -2,27 +2,19 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
+import { mockHousehold } from '../test/mockContexts'
 import type { Baby } from '../types/models'
 import { Layout } from './Layout'
 
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: { uid: 'uid1' } }) }))
 vi.mock('../lib/foregroundPush', () => ({ routeForegroundPushes: vi.fn().mockResolvedValue(() => {}) }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby: Baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 
-function mockHousehold(selectedBaby: Baby | null) {
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: selectedBaby ? [selectedBaby] : [],
-    loading: false,
-    error: null,
-    selectedBaby,
-    selectBaby: vi.fn(),
-  })
+function mockSelectedBaby(selectedBaby: Baby | null) {
+  mockHousehold({ babies: selectedBaby ? [selectedBaby] : [], selectedBaby })
 }
 
 function BrokenScreen(): never {
@@ -84,7 +76,7 @@ describe('Layout', () => {
   })
 
   it("shows the baby's name, an avatar and today's date in the header", () => {
-    mockHousehold(baby)
+    mockSelectedBaby(baby)
 
     const { container } = renderLayout()
 
@@ -94,7 +86,7 @@ describe('Layout', () => {
   })
 
   it("shows the baby's photo next to the name when there is one", () => {
-    mockHousehold({ ...baby, photoDataUrl: 'data:image/jpeg;base64,AAA' })
+    mockSelectedBaby({ ...baby, photoDataUrl: 'data:image/jpeg;base64,AAA' })
 
     const { container } = renderLayout()
 
@@ -102,7 +94,7 @@ describe('Layout', () => {
   })
 
   it('opens the Summary from the "…" button on the Activity screen, and closes it', async () => {
-    mockHousehold(baby)
+    mockSelectedBaby(baby)
     const user = userEvent.setup()
 
     renderLayout()
@@ -117,7 +109,7 @@ describe('Layout', () => {
   })
 
   it('has no "…" button on other screens', () => {
-    mockHousehold(baby)
+    mockSelectedBaby(baby)
 
     renderLayout('/history')
 
@@ -125,7 +117,7 @@ describe('Layout', () => {
   })
 
   it('opens the screen a notification tap names', () => {
-    mockHousehold(baby)
+    mockSelectedBaby(baby)
     const postFromServiceWorker = stubServiceWorker()
     renderLayout()
 
@@ -137,7 +129,7 @@ describe('Layout', () => {
   it.each(['https://evil.example/history', '//evil.example/history', '/\\evil.example/history'])(
     'ignores a notification URL that leaves the app: %s',
     (url) => {
-      mockHousehold(baby)
+      mockSelectedBaby(baby)
       const postFromServiceWorker = stubServiceWorker()
       renderLayout()
 
@@ -150,7 +142,7 @@ describe('Layout', () => {
 
   it('keeps the header and tab bar when a screen fails, and lets another tab load', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockHousehold(baby)
+    mockSelectedBaby(baby)
     const user = userEvent.setup()
     renderLayout('/trends')
 
@@ -164,7 +156,7 @@ describe('Layout', () => {
   })
 
   it('invites to add a child when the family has none', () => {
-    mockHousehold(null)
+    mockSelectedBaby(null)
 
     renderLayout('/history')
 
@@ -174,7 +166,7 @@ describe('Layout', () => {
   })
 
   it('keeps the Family screens reachable without a child', () => {
-    mockHousehold(null)
+    mockSelectedBaby(null)
 
     renderLayout('/account')
 

@@ -1,30 +1,20 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
+import { mockAuth } from '../test/mockContexts'
 import { LoginPage } from './LoginPage'
 
 describe('LoginPage', () => {
   const loginWithGoogle = vi.fn()
   const loginWithPassword = vi.fn()
 
-  const mockAuth = (overrides: Partial<ReturnType<typeof AuthContext.useAuth>> = {}) => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: null,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle,
-      loginWithPassword,
-      logout: vi.fn(),
-      ...overrides,
-    })
-  }
+  const mockSignedOut = (overrides: Parameters<typeof mockAuth>[0] = {}) =>
+    mockAuth({ user: null, loginWithGoogle, loginWithPassword, ...overrides })
 
   beforeEach(() => {
     loginWithGoogle.mockReset().mockResolvedValue(undefined)
     loginWithPassword.mockReset().mockResolvedValue(undefined)
-    mockAuth()
+    mockSignedOut()
   })
 
   it('renders a Google sign-in button', () => {
@@ -43,7 +33,7 @@ describe('LoginPage', () => {
   })
 
   it('shows the auth error when present', () => {
-    mockAuth({ error: 'Unable to sign in with Google.' })
+    mockSignedOut({ error: 'Unable to sign in with Google.' })
 
     render(<LoginPage />)
 
@@ -77,7 +67,7 @@ describe('LoginPage', () => {
   })
 
   it('signs in with the prefilled emulator credentials', async () => {
-    mockAuth({ devLoginAvailable: true })
+    mockSignedOut({ devLoginAvailable: true })
     const user = userEvent.setup()
     render(<LoginPage />)
 

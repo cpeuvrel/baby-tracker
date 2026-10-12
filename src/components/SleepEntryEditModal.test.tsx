@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
+import { mockHousehold } from '../test/mockContexts'
 import type { SleepEntry } from '../types/models'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
 import { dateTimeValue, setDateTime } from '../test/timeFields'
@@ -17,9 +17,6 @@ vi.mock('../repositories/sleepEntries', () => ({
   deleteSleepEntry: (...args: unknown[]) => deleteSleepEntry(...args),
   resumeSleep: (...args: unknown[]) => resumeSleep(...args),
 }))
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const entry: SleepEntry = {
   id: 's1',
@@ -38,14 +35,7 @@ describe('SleepEntryEditModal', () => {
     resumeSleep.mockReset().mockResolvedValue(undefined)
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
     vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([entry])
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   afterEach(() => {

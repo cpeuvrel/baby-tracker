@@ -3,14 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, formatDate } from '../lib/appTime'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
+import { mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry } from '../types/models'
 import { dayKey } from '../lib/timeline'
 import { TrendDetailPage } from './TrendDetailPage'
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const now = new Date()
 
@@ -40,14 +37,7 @@ function renderPage(metricId = 'feedSessions', search = '') {
 
 describe('TrendDetailPage', () => {
   beforeEach(() => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
       feeding,
       sleep: [],

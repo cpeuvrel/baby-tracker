@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockHousehold } from '../test/mockContexts'
 import type { Baby } from '../types/models'
 import { BabySelector } from './BabySelector'
 
@@ -18,14 +18,7 @@ describe('BabySelector', () => {
   })
 
   it('renders nothing when there are no babies', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby,
-    })
+    mockHousehold({ household: null, babies: [], selectedBaby: null, selectBaby })
 
     const { container } = render(<BabySelector />)
 
@@ -33,14 +26,7 @@ describe('BabySelector', () => {
   })
 
   it('lists babies and lets the user pick one', async () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: { id: 'h1', name: 'Famille Test', memberUids: [] },
-      babies,
-      loading: false,
-      error: null,
-      selectedBaby: babies[0],
-      selectBaby,
-    })
+    mockHousehold({ babies, selectedBaby: babies[0], selectBaby })
     const user = userEvent.setup()
 
     render(<BabySelector />)

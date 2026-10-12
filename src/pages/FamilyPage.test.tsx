@@ -1,13 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import type { User } from 'firebase/auth'
 import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { FamilyPage } from './FamilyPage'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: ['uid1', 'uid2'] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 function renderPage() {
   return render(
@@ -19,26 +17,11 @@ function renderPage() {
 
 describe('FamilyPage', () => {
   beforeEach(() => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1', email: 'parent1@example.com' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth({ user: { uid: 'uid1', email: 'parent1@example.com' } as User })
   })
 
   it('renders nothing without a resolved household', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household: null, babies: [], selectedBaby: null })
 
     const { container } = renderPage()
 
@@ -46,14 +29,7 @@ describe('FamilyPage', () => {
   })
 
   it('lists the babies of the household with their age, linking to their Child screen', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household })
 
     renderPage()
 
@@ -63,14 +39,7 @@ describe('FamilyPage', () => {
   })
 
   it('links "Add child" to the Add Child screen', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household, babies: [], selectedBaby: null })
 
     renderPage()
 
@@ -81,14 +50,7 @@ describe('FamilyPage', () => {
   })
 
   it('lists the current user as "Your Profile" and other members generically', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household })
 
     renderPage()
 
@@ -98,14 +60,7 @@ describe('FamilyPage', () => {
   })
 
   it('titles the screen once, its sections one level below', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household })
 
     renderPage()
 

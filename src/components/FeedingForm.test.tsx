@@ -1,9 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry } from '../types/models'
 import { FeedingForm } from './FeedingForm'
 
@@ -17,9 +15,6 @@ vi.mock('../repositories/feedingEntries', () => ({
   deleteFeedingEntry: (...args: unknown[]) => deleteFeedingEntry(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 const entry: FeedingEntry = {
   id: 'f1',
   type: 'bottle',
@@ -32,23 +27,8 @@ const entry: FeedingEntry = {
 }
 
 function renderFeedingForm(onClose = vi.fn(), feedingEntry?: FeedingEntry) {
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-    user: { uid: 'uid1' } as User,
-    loading: false,
-    error: null,
-    devLoginAvailable: false,
-    loginWithGoogle: vi.fn(),
-    loginWithPassword: vi.fn(),
-    logout: vi.fn(),
-  })
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
+  mockAuth()
+  mockHousehold()
   render(<FeedingForm entry={feedingEntry} onClose={onClose} />)
 }
 

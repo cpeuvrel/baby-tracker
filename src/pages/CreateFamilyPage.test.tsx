@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
 import { CreateFamilyPage } from './CreateFamilyPage'
+import { mockAuth } from '../test/mockContexts'
 
 const createHouseholdWithBaby = vi.fn()
 
@@ -14,27 +13,11 @@ vi.mock('../repositories/households', () => ({
 describe('CreateFamilyPage', () => {
   beforeEach(() => {
     createHouseholdWithBaby.mockReset()
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth()
   })
 
   it('renders nothing without a signed-in user', () => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: null,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
+    mockAuth({ user: null })
 
     const { container } = render(<CreateFamilyPage />)
 
