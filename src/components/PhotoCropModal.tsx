@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type WheelEvent } from 'react'
+import { useEffect, useRef, useState, type PointerEvent } from 'react'
 import { clampOffset, MAX_ZOOM, MIN_ZOOM, sourceSquare, type Offset, type Size } from '../lib/photoCrop'
 import { exportCroppedPhoto } from '../lib/photoExport'
 import { Modal } from './Modal'
@@ -76,9 +76,23 @@ export function PhotoCropModal({ file, onCancel, onSave }: PhotoCropModalProps) 
     else gesture.current = null
   }
 
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    applyZoom(zoom * (1 - event.deltaY * WHEEL_ZOOM_STEP))
-  }
+  // Wheel zoom, listened to natively: React's wheel listener is passive, so it could not keep
+  // the wheel from also scrolling the dialog and the page behind it.
+  const viewportRef = useRef<HTMLDivElement>(null)
+  const wheelZoom = useRef<(deltaY: number) => void>(() => {})
+  useEffect(() => {
+    wheelZoom.current = (deltaY) => applyZoom(zoom * (1 - deltaY * WHEEL_ZOOM_STEP))
+  })
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+    const handleWheel = (event: WheelEvent) => {
+      event.preventDefault()
+      wheelZoom.current(event.deltaY)
+    }
+    viewport.addEventListener('wheel', handleWheel, { passive: false })
+    return () => viewport.removeEventListener('wheel', handleWheel)
+  }, [])
 
   const handleSave = () => {
     if (!imageRef.current || !imageSize) return
@@ -100,13 +114,13 @@ export function PhotoCropModal({ file, onCancel, onSave }: PhotoCropModalProps) 
       headerAction={{ label: 'Save', onClick: handleSave, disabled: !imageSize }}
     >
       <div
+        ref={viewportRef}
         className="photo-crop-viewport"
         style={{ width: VIEWPORT_SIZE, height: VIEWPORT_SIZE }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onWheel={handleWheel}
       >
         {imageUrl && (
           <img

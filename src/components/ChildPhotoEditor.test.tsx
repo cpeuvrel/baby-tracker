@@ -128,6 +128,21 @@ describe('ChildPhotoEditor', () => {
     expect(square.size).toBeCloseTo(3000)
   })
 
+  it('zooms with the wheel without scrolling the page behind', async () => {
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={baby} />)
+
+    await user.upload(screen.getByTestId('photo-library-input'), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+    loadImage(4000, 3000)
+    const viewport = screen.getByAltText('Photo to crop').parentElement as HTMLElement
+    const zoomBefore = Number((screen.getByLabelText('Zoom') as HTMLInputElement).value)
+
+    const notCancelled = fireEvent.wheel(viewport, { deltaY: -200, cancelable: true })
+
+    expect(notCancelled).toBe(false)
+    expect(Number((screen.getByLabelText('Zoom') as HTMLInputElement).value)).toBeGreaterThan(zoomBefore)
+  })
+
   it('discards the picture on Close', async () => {
     const user = userEvent.setup()
     render(<ChildPhotoEditor householdId="h1" baby={baby} />)
