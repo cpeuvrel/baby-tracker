@@ -97,7 +97,7 @@ export function MetricCalendar({
   const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
 
   return (
-    <div className="metric-calendar" aria-label="Metric calendar">
+    <section className="metric-calendar" aria-label="Metric calendar">
       <TimelineGrid
         dayKeys={dayKeys}
         visibleDays={dayKeys.length}
@@ -141,6 +141,6 @@ export function MetricCalendar({
           </>
         )}
       />
-    </div>
+    </section>
   )
 }
