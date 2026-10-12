@@ -16,8 +16,25 @@ export const SLEEP_TIMER_TITLE = 'Sleep Timer'
 export const SLEEP_TIMER_PUSH = 'sleep-timer'
 export const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
 
+/**
+ * HTTP function (functions/src/sleepTimer.ts) the service worker calls when the
+ * notification is swiped away: the server stops refreshing it on this device for that sleep.
+ */
+export const MUTE_SLEEP_TIMER_FUNCTION = 'muteSleepTimer'
+
+export interface SleepTimerNotificationData {
+  url: string
+  entryId: string
+}
+
 /** Shared by the app and the service worker (server pushes while the app is in the background). */
-export function sleepTimerNotificationOptions(babyName: string, startedAt: Date, now: Date): NotificationOptions {
+export function sleepTimerNotificationOptions(
+  babyName: string,
+  startedAt: Date,
+  now: Date,
+  entryId: string,
+): NotificationOptions {
+  const data: SleepTimerNotificationData = { url: SLEEP_TIMER_URL, entryId }
   return {
     body: sleepTimerNotificationBody(babyName, startedAt, now),
     icon: '/icon-192.png',
@@ -27,7 +44,7 @@ export function sleepTimerNotificationOptions(babyName: string, startedAt: Date,
     silent: true,
     requireInteraction: true,
     timestamp: startedAt.getTime(),
-    data: { url: SLEEP_TIMER_URL },
+    data,
   } as NotificationOptions
 }
 
@@ -45,11 +62,30 @@ export async function requestSleepTimerNotificationPermission(): Promise<void> {
   }
 }
 
-/** Shows or silently refreshes the "Sleep Timer" notification. */
-export async function showSleepTimerNotification(babyName: string, startedAt: Date, now: Date): Promise<void> {
+/** Shows the "Sleep Timer" notification, or silently refreshes it in place. */
+export async function showSleepTimerNotification(
+  babyName: string,
+  startedAt: Date,
+  now: Date,
+  entryId: string,
+): Promise<void> {
   if (!notificationsAllowed()) return
   const registration = await navigator.serviceWorker.ready
-  await registration.showNotification(SLEEP_TIMER_TITLE, sleepTimerNotificationOptions(babyName, startedAt, now))
+  await registration.showNotification(SLEEP_TIMER_TITLE, sleepTimerNotificationOptions(babyName, startedAt, now, entryId))
+}
+
+/** Updates the elapsed time of a notification still on screen: a swiped-away one stays away. */
+export async function refreshSleepTimerNotification(
+  babyName: string,
+  startedAt: Date,
+  now: Date,
+  entryId: string,
+): Promise<void> {
+  if (!notificationsAllowed()) return
+  const registration = await navigator.serviceWorker.ready
+  const notifications = await registration.getNotifications({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
+  if (notifications.length === 0) return
+  await registration.showNotification(SLEEP_TIMER_TITLE, sleepTimerNotificationOptions(babyName, startedAt, now, entryId))
 }
 
 export async function closeSleepTimerNotification(): Promise<void> {

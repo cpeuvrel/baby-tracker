@@ -1,7 +1,9 @@
-import { saveFcmToken } from '../repositories/fcmTokens'
+import { clearSleepTimerMute, saveFcmToken } from '../repositories/fcmTokens'
 import { requestNotificationToken } from './messaging'
+import { savePushIdentity } from './pushIdentity'
 
 let registeredUid: string | null = null
+let registeredToken: string | null = null
 
 /**
  * Registers this device for the server's pushes: the sleep timer ones, which
@@ -16,4 +18,13 @@ export async function registerPush(uid: string): Promise<void> {
   if (!token) return
   await saveFcmToken(uid, token)
   registeredUid = uid
+  registeredToken = token
+  await savePushIdentity({ uid, token }).catch(() => {})
+}
+
+/** Opening the app brings back a sleep timer notification swiped away on this device. */
+export async function unmuteSleepTimer(uid: string): Promise<void> {
+  await registerPush(uid)
+  if (registeredUid !== uid || registeredToken == null) return
+  await clearSleepTimerMute(uid, registeredToken)
 }

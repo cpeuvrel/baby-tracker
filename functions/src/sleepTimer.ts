@@ -1,6 +1,7 @@
 import { getFirestore, type DocumentSnapshot } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
+import { onRequest } from 'firebase-functions/v2/https'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
 import { sendToHousehold } from './push'
 
@@ -43,8 +44,10 @@ async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
   const babyName = ((await babyRef.get()).data()?.name as string | undefined) ?? 'Baby'
   await sendToHousehold(
     householdRef,
-    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString() },
+    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString(), entryId: entry.id },
     TICK_TTL_SECONDS,
+    // Swiped away on that device: it stays away until the app is opened there again.
+    (token) => token.mutedSleepEntryId === entry.id,
   )
 }
 
@@ -84,3 +87,33 @@ export const onSleepEntryWritten = onDocumentWritten(
     }
   },
 )
+
+function isDocumentId(value: unknown): value is string {
+  return typeof value === 'string' && value !== '' && !value.includes('/')
+}
+
+/**
+ * Called by the service worker when the running sleep's notification is swiped
+ * away: stops refreshing it on that device, for that sleep. The app clears the
+ * mute when it is opened again (src/repositories/fcmTokens.ts). The device's
+ * own FCM token, unguessable, stands for its signed-in user.
+ */
+export const muteSleepTimer = onRequest({ cors: true }, async (request, response) => {
+  if (request.method !== 'POST') {
+    response.status(405).end()
+    return
+  }
+  const { uid, token, entryId } = (request.body ?? {}) as Record<string, unknown>
+  if (!isDocumentId(uid) || !isDocumentId(token) || !isDocumentId(entryId)) {
+    response.status(400).end()
+    return
+  }
+
+  const tokenRef = getFirestore().collection('users').doc(uid).collection('fcmTokens').doc(token)
+  if (!(await tokenRef.get()).exists) {
+    response.status(404).end()
+    return
+  }
+  await tokenRef.update({ mutedSleepEntryId: entryId })
+  response.status(204).end()
+})

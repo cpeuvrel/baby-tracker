@@ -1,17 +1,18 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   closeSleepTimerNotification,
+  refreshSleepTimerNotification,
   showSleepTimerNotification,
   SLEEP_TIMER_NOTIFICATION_TAG,
   SLEEP_TIMER_URL,
   sleepTimerNotificationBody,
 } from './sleepTimerNotification'
 
-function stubNotifications(permission: NotificationPermission) {
+function stubNotifications(permission: NotificationPermission, shown = true) {
   const close = vi.fn()
   const registration = {
     showNotification: vi.fn().mockResolvedValue(undefined),
-    getNotifications: vi.fn().mockResolvedValue([{ close }]),
+    getNotifications: vi.fn().mockResolvedValue(shown ? [{ close }] : []),
   }
   vi.stubGlobal('Notification', { permission })
   Object.defineProperty(navigator, 'serviceWorker', {
@@ -39,7 +40,7 @@ describe('showSleepTimerNotification', () => {
     const { registration } = stubNotifications('granted')
     const startedAt = new Date('2026-03-05T20:00:00Z')
 
-    await showSleepTimerNotification('Léo', startedAt, new Date('2026-03-05T20:10:00Z'))
+    await showSleepTimerNotification('Léo', startedAt, new Date('2026-03-05T20:10:00Z'), 'sleep1')
 
     expect(registration.showNotification).toHaveBeenCalledWith(
       'Sleep Timer',
@@ -48,7 +49,7 @@ describe('showSleepTimerNotification', () => {
         silent: true,
         requireInteraction: true,
         timestamp: startedAt.getTime(),
-        data: { url: SLEEP_TIMER_URL },
+        data: { url: SLEEP_TIMER_URL, entryId: 'sleep1' },
       }),
     )
   })
@@ -56,8 +57,27 @@ describe('showSleepTimerNotification', () => {
   it('does nothing without permission', async () => {
     const { registration } = stubNotifications('denied')
 
-    await showSleepTimerNotification('Léo', new Date(), new Date())
+    await showSleepTimerNotification('Léo', new Date(), new Date(), 'sleep1')
 
+    expect(registration.showNotification).not.toHaveBeenCalled()
+  })
+})
+
+describe('refreshSleepTimerNotification', () => {
+  it('updates the notification still on screen', async () => {
+    const { registration } = stubNotifications('granted')
+
+    await refreshSleepTimerNotification('Léo', new Date(), new Date(), 'sleep1')
+
+    expect(registration.showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it('leaves a swiped-away notification away', async () => {
+    const { registration } = stubNotifications('granted', false)
+
+    await refreshSleepTimerNotification('Léo', new Date(), new Date(), 'sleep1')
+
+    expect(registration.getNotifications).toHaveBeenCalledWith({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
     expect(registration.showNotification).not.toHaveBeenCalled()
   })
 })

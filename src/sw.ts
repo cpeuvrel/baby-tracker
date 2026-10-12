@@ -8,12 +8,15 @@ import { initializeApp } from 'firebase/app'
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
+import { readPushIdentity } from './lib/pushIdentity'
 import {
+  MUTE_SLEEP_TIMER_FUNCTION,
   SLEEP_TIMER_NOTIFICATION_TAG,
   SLEEP_TIMER_PUSH,
   SLEEP_TIMER_STOP_PUSH,
   SLEEP_TIMER_TITLE,
   sleepTimerNotificationOptions,
+  type SleepTimerNotificationData,
 } from './lib/sleepTimerNotification'
 import {
   VACCINE_BOUGHT_ACTION,
@@ -31,10 +34,12 @@ precacheAndRoute(self.__WB_MANIFEST)
 self.skipWaiting()
 clientsClaim()
 
+const PROJECT_ID = 'baby-tracker-c8fd2'
+
 const app = initializeApp({
   apiKey: 'AIzaSyBzK1s_hGiGWTKTshq9aeA4n666h4BNsTM',
   authDomain: 'baby-tracker-c8fd2.firebaseapp.com',
-  projectId: 'baby-tracker-c8fd2',
+  projectId: PROJECT_ID,
   storageBucket: 'baby-tracker-c8fd2.firebasestorage.app',
   messagingSenderId: '190686938915',
   appId: '1:190686938915:web:408311f3102c5fe8f52e96',
@@ -47,10 +52,10 @@ onBackgroundMessage(messaging, async (payload) => {
   // minute while a sleep runs, so the elapsed time stays current with the app
   // in the background. The text is computed here, so a late push is still right.
   const data = payload.data ?? {}
-  if (data.type === SLEEP_TIMER_PUSH && data.babyName && data.startedAt) {
+  if (data.type === SLEEP_TIMER_PUSH && data.babyName && data.startedAt && data.entryId) {
     await self.registration.showNotification(
       SLEEP_TIMER_TITLE,
-      sleepTimerNotificationOptions(data.babyName, new Date(data.startedAt), new Date()),
+      sleepTimerNotificationOptions(data.babyName, new Date(data.startedAt), new Date(), data.entryId),
     )
     return
   }
@@ -80,9 +85,9 @@ onBackgroundMessage(messaging, async (payload) => {
 
 // A tap on a notification (the running sleep timer, a vaccine reminder) opens
 // its screen in the app: an open window is focused and routes there itself (no
-// reload), else the app launches on it. The timer notification stays until the
-// timer stops. On the vaccine question, "No" only dismisses it (it comes back
-// tomorrow) and "Yes" opens the visit, which records the purchase.
+// reload), else the app launches on it. A tap leaves the timer notification up.
+// On the vaccine question, "No" only dismisses it (it comes back tomorrow) and
+// "Yes" opens the visit, which records the purchase.
 self.addEventListener('notificationclick', (event) => {
   const data = event.notification.data as Partial<VaccineNotificationData> | null
   if (event.notification.tag !== SLEEP_TIMER_NOTIFICATION_TAG) event.notification.close()
@@ -99,5 +104,25 @@ self.addEventListener('notificationclick', (event) => {
       }
       await self.clients.openWindow(url)
     })(),
+  )
+})
+
+// The sleep timer notification swiped away: the server stops refreshing it on
+// this device for that sleep (functions/src/sleepTimer.ts), so it doesn't come
+// back every minute. Opening the app shows it again.
+self.addEventListener('notificationclose', (event) => {
+  if (event.notification.tag !== SLEEP_TIMER_NOTIFICATION_TAG) return
+  const entryId = (event.notification.data as Partial<SleepTimerNotificationData> | null)?.entryId
+  if (!entryId) return
+  event.waitUntil(
+    (async () => {
+      const identity = await readPushIdentity()
+      if (!identity) return
+      await fetch(`https://us-central1-${PROJECT_ID}.cloudfunctions.net/${MUTE_SLEEP_TIMER_FUNCTION}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...identity, entryId }),
+      })
+    })().catch(() => {}),
   )
 })

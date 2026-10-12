@@ -1,4 +1,4 @@
-import { doc, setDoc, Timestamp } from 'firebase/firestore'
+import { deleteField, doc, setDoc, Timestamp, updateDoc } from 'firebase/firestore'
 import { fcmTokensCollection } from '../lib/paths'
 
 export async function saveFcmToken(uid: string, token: string): Promise<void> {
@@ -6,4 +6,9 @@ export async function saveFcmToken(uid: string, token: string): Promise<void> {
     token,
     createdAt: Timestamp.now(),
   })
+}
+
+/** The running sleep's notification was swiped away on this device: the server refreshes it again. */
+export async function clearSleepTimerMute(uid: string, token: string): Promise<void> {
+  await updateDoc(doc(fcmTokensCollection(uid), token), { mutedSleepEntryId: deleteField() })
 }
