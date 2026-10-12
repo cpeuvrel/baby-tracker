@@ -7,7 +7,7 @@ import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import type { SleepEntry } from '../types/models'
 import { SleepTimerModal } from './SleepTimerModal'
-import { dateTimeValue, setDateTime } from '../test/timeFields'
+import { dateTimeValue, setDateTime, setTime } from '../test/timeFields'
 
 const startSleep = vi.fn()
 const stopSleep = vi.fn()
@@ -293,6 +293,37 @@ describe('SleepTimerModal', () => {
       })
 
       expect(screen.getByLabelText('Start Time')).toHaveAttribute('max', '2026-03-06')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps the end at the stop time when the start is corrected after a stop', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-06T03:50:00+01:00'))
+    try {
+      const activeEntry: SleepEntry = {
+        id: 'sleep1',
+        startedAt: '2026-03-06T01:00:00.000Z',
+        endedAt: null,
+        durationSeconds: null,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: '2026-03-06T01:00:00.000Z',
+      }
+      const spy = vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
+
+      const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+      fireEvent.click(screen.getByRole('button', { name: 'Stop Timer' }))
+      spy.mockReturnValue(null)
+      rerender(<SleepTimerModal onClose={vi.fn()} />)
+      expect(dateTimeValue('End Time')).toBe('2026-03-06T03:50')
+
+      setTime('Start Time', '02:40')
+
+      expect(dateTimeValue('End Time')).toBe('2026-03-06T03:50')
+      expect(screen.getByLabelText('Hours')).toHaveValue(1)
+      expect(screen.getByLabelText('Minutes')).toHaveValue(10)
     } finally {
       vi.useRealTimers()
     }
