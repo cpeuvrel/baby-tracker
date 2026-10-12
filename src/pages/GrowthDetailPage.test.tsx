@@ -1,11 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { GrowthEntry } from '../types/models'
 import { GrowthDetailPage } from './GrowthDetailPage'
 
@@ -42,7 +40,6 @@ vi.mock('../components/charts/GrowthPercentileChart', () => ({
   ),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const babyGirl = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: 'female' as const }
 const babyNoSex = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: null }
 
@@ -82,23 +79,8 @@ function renderPage(metric = 'weight') {
 
 describe('GrowthDetailPage', () => {
   beforeEach(() => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [babyGirl],
-      loading: false,
-      error: null,
-      selectedBaby: babyGirl,
-      selectBaby: vi.fn(),
-    })
+    mockAuth()
+    mockHousehold({ babies: [babyGirl], selectedBaby: babyGirl })
     vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue(entries)
   })
 
@@ -251,14 +233,7 @@ describe('GrowthDetailPage', () => {
   })
 
   it('prompts to set the sex on the child screen when unknown, and still allows the list view', async () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [babyNoSex],
-      loading: false,
-      error: null,
-      selectedBaby: babyNoSex,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ babies: [babyNoSex], selectedBaby: babyNoSex })
     const user = userEvent.setup()
 
     renderPage('weight')

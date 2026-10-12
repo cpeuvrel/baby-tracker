@@ -2,8 +2,8 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import { ChildPage } from './ChildPage'
+import { defaultBaby, mockHousehold } from '../test/mockContexts'
 
 const updateBaby = vi.fn()
 const exportBabyData = vi.fn()
@@ -34,19 +34,10 @@ vi.mock('../contexts/AuthContext', () => ({
   }),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 const sister = { id: 'b2', name: 'Mia', birthDate: '2024-01-01', sex: null }
 
-function mockBabies(babies: (typeof baby)[]) {
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies,
-    loading: false,
-    error: null,
-    selectedBaby: babies[0] ?? null,
-    selectBaby: vi.fn(),
-  })
+function mockBabies(babies: (typeof defaultBaby)[]) {
+  mockHousehold({ babies, selectedBaby: babies[0] ?? null })
 }
 
 function page(babyId = 'b1') {
@@ -70,14 +61,7 @@ describe('ChildPage', () => {
     updateBaby.mockReset().mockResolvedValue(undefined)
     deleteBabyWithData.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   afterEach(() => {
@@ -159,14 +143,14 @@ describe('ChildPage', () => {
     await user.clear(screen.getByLabelText('First Name'))
     await user.type(screen.getByLabelText('First Name'), 'Léon')
 
-    mockBabies([{ ...baby, photoDataUrl: 'data:image/jpeg;base64,AAA' } as typeof baby])
+    mockBabies([{ ...defaultBaby, photoDataUrl: 'data:image/jpeg;base64,AAA' } as typeof defaultBaby])
     rerender(page())
 
     expect(screen.getByLabelText('First Name')).toHaveValue('Léon')
   })
 
   it('shows the profile of another child when the address changes', async () => {
-    mockBabies([baby, sister])
+    mockBabies([defaultBaby, sister])
     const user = userEvent.setup()
     render(
       <MemoryRouter initialEntries={['/account/family/b1']}>
@@ -207,14 +191,7 @@ describe('ChildPage', () => {
   })
 
   it('shows a customized Nighttime Hours range', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [{ ...baby, nighttimeHours: { start: '21:00', end: '06:30' } }],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ babies: [{ ...defaultBaby, nighttimeHours: { start: '21:00', end: '06:30' } }] })
 
     renderPage()
 
@@ -244,7 +221,7 @@ describe('ChildPage', () => {
   })
 
   it('deletes the child after a confirmation naming them', async () => {
-    mockBabies([baby, sister])
+    mockBabies([defaultBaby, sister])
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderPage()

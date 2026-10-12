@@ -1,11 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { EditActivitiesPage } from './EditActivitiesPage'
-
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
+import { mockHousehold } from '../test/mockContexts'
 
 function renderPage(babyId = 'b1') {
   return render(
@@ -21,14 +19,7 @@ function renderPage(babyId = 'b1') {
 describe('EditActivitiesPage', () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: { id: 'h1', name: 'Famille Test', memberUids: [] },
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   it('redirects to the children list when the baby cannot be found', () => {

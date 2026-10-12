@@ -2,7 +2,7 @@ import { renderHook } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockHousehold } from '../test/mockContexts'
 import type { SleepEntry } from '../types/models'
 import { CLOSE_DELAY_MS, useSleepTimerBabyParam, useSleepTimerNotification } from './useSleepTimerNotification'
 
@@ -106,14 +106,11 @@ describe('useSleepTimerBabyParam', () => {
   const selectBaby = vi.fn()
 
   function renderAt(url: string, selectedBaby = leo) {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: { id: 'h1', name: 'Famille Test', memberUids: [] },
+    mockHousehold({
       babies: [
         { ...leo, birthDate: '2025-06-01', sex: null },
         { ...maelys, birthDate: '2023-01-01', sex: null },
       ],
-      loading: false,
-      error: null,
       selectedBaby: { ...selectedBaby, birthDate: '2025-06-01', sex: null },
       selectBaby,
     })

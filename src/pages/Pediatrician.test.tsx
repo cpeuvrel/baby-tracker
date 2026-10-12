@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockHousehold } from '../test/mockContexts'
 import type { PediatricianVisit } from '../types/models'
 import { PediatricianHistoryPage } from './PediatricianHistoryPage'
 import { PediatricianPage } from './PediatricianPage'
@@ -41,7 +41,6 @@ vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => ({ user: { uid: 'uid1' } }),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const leo = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 const mia = { id: 'b2', name: 'Mia', birthDate: '2024-01-01', sex: null }
 
@@ -62,14 +61,7 @@ function visit(overrides: Partial<PediatricianVisit>): PediatricianVisit {
 const selectBabyMock = vi.fn()
 
 function selectBaby(baby: typeof leo) {
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [leo, mia],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: selectBabyMock,
-  })
+  mockHousehold({ babies: [leo, mia], selectedBaby: baby, selectBaby: selectBabyMock })
 }
 
 /**

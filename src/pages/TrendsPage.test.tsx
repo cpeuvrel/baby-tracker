@@ -2,14 +2,11 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
+import { mockHousehold } from '../test/mockContexts'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import { dayKey } from '../lib/timeline'
 import { TrendsPage } from './TrendsPage'
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const now = new Date()
 
@@ -57,26 +54,12 @@ function renderPage() {
 
 describe('TrendsPage', () => {
   beforeEach(() => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({ feeding, sleep, diaper, medication: [], bath: [] })
   })
 
   it('renders nothing without a resolved household and baby', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household: null, babies: [], selectedBaby: null })
 
     const { container } = renderPage()
 

@@ -1,11 +1,8 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { zonedTime } from '../lib/appTime'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
 import * as useRecentBathEntriesModule from '../hooks/useRecentBathEntries'
@@ -14,6 +11,7 @@ import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
 import type { EntriesInRangeState } from '../hooks/useEntriesInRange'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
 
@@ -75,9 +73,6 @@ vi.mock('../repositories/growthEntries', () => ({
   addGrowthEntry: (...args: unknown[]) => addGrowthEntry(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 function stateOf<T>(entries: T[], loading = false, error: Error | null = null) {
   return { entries, loading, error }
 }
@@ -110,23 +105,8 @@ function setupHooks(
     error,
   }
   const latest = <T,>(entries: T[] | undefined) => stateOf(entries?.slice(0, 1) ?? [], loading)
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-    user: { uid: 'uid1' } as User,
-    loading: false,
-    error: null,
-    devLoginAvailable: false,
-    loginWithGoogle: vi.fn(),
-    loginWithPassword: vi.fn(),
-    logout: vi.fn(),
-  })
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
+  mockAuth()
+  mockHousehold()
   // The sleep modals read the running sleep and the latest one through these.
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeSleepEntry)
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue(activeSleepEntry ? [activeSleepEntry] : [])

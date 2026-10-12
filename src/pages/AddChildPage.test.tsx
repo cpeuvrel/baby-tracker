@@ -2,16 +2,14 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import { AddChildPage } from './AddChildPage'
+import { mockHousehold } from '../test/mockContexts'
 
 const addBaby = vi.fn()
 
 vi.mock('../repositories/babies', () => ({
   addBaby: (...args: unknown[]) => addBaby(...args),
 }))
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 
 function renderPage() {
   return render(
@@ -28,14 +26,7 @@ describe('AddChildPage', () => {
   beforeEach(() => {
     addBaby.mockReset()
     addBaby.mockResolvedValue(undefined)
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ babies: [], selectedBaby: null })
   })
 
   afterEach(() => {
@@ -43,14 +34,7 @@ describe('AddChildPage', () => {
   })
 
   it('renders nothing without a resolved household', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household: null, babies: [], selectedBaby: null })
 
     const { container } = renderPage()
 
