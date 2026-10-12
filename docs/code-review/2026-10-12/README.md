@@ -120,6 +120,44 @@ Trois vagues ; chaque lot tourne dans son propre worktree puis est fusionné sur
 | 2 | **5 Shell, compte, pédiatre** (`App.tsx`, `Layout`, `ChildPage`, `AddChildPage`, `FamilyPage`, `EditActivitiesPage`, `ChildPhotoEditor`, `PhotoCropModal`, pages `Pediatrician*`, `Visit*`, `NewVisitModal`, `VisitItemEditorModal`, `visitItems`, `visitDate`) | Opus | APP-02, APP-04, APP-06, APP-07, APP-08, APP-11, APP-12, APP-16(wheel), APP-19, APP-20(a,b), APP-03 (pages), SEC-21(e,f) |
 | 3 | **6 Tests & outillage** (`vitest.config.ts`, `src/test/**`, `.oxlintrc.json`, tests manquants, lint `--deny-warnings`) | Sonnet ×2 | TEST-03, TEST-04, TEST-06, TEST-08, TEST-10, TEST-16, TEST-18, UI-14/TEST-11, UI-15, UI-16, UI-17, UI-18, FN-13, LIB-04, DATA-14, PAGE-18, APP-17 |
 
+## Bilan d'implémentation (2026-10-12)
+
+Les 7 lots ont été implémentés par des agents en worktrees isolés puis fusionnés sur `claude/modest-brown-eqp4xe`, chaque fusion vérifiée par lint, typecheck et suite complète. **Tous les findings `[x]` et `[~]` sont implémentés** (la partie retenue pour les `[~]`), à l'exception de TEST-17 partiel (voir écarts).
+
+| Vérification | Avant | Après |
+|---|---|---|
+| `npm run lint` | 0 erreur, 26 warnings (non bloquants) | `oxlint --deny-warnings`, 0 warning, plugins import/vitest/jsx-a11y + `react/exhaustive-deps` |
+| `tsc -b --noEmit` | OK (sw.ts exclu) | OK, `src/sw.ts` inclus via `tsconfig.sw.json` ; tests functions type-checkés |
+| Tests app | 86 fichiers, 587 tests | 106 fichiers, 988 tests |
+| Tests functions | 3 fichiers, 20 tests | 7 fichiers, 54 tests (faux Firestore injecté) |
+| Tests de règles Firestore | aucun | 70 tests sur l'émulateur (`npm run test:rules`), joués en CI et avant chaque déploiement des règles |
+| Couverture (lignes / branches) | 92,2 % / 82,5 % | 95,5 % / 88,8 % ; seuils 80 % appliqués en CI |
+| `vite build` | OK | OK, `dist/sw.js` sans `import.meta.env` résiduel ni clé en dur |
+
+### Écarts par rapport aux solutions proposées (à connaître)
+
+- **FN-01** : résolu sans index composite (requête `givenAt >= startOfDay` + filtre préfixe en mémoire, = FN-11). `firestore.indexes.json` reste vide et est désormais déployé par la CI.
+- **FN-03** : rappel idempotent via `lastSentOn` ; limite documentée : avec un tick toutes les 15 min, un rappel réglé entre 23:46 et 23:59 n'est jamais atteint.
+- **APP-03** : édition/suppression d'une remarque en transaction (`mutateVisitItems`) ; **l'ajout** passe par `arrayUnion` (`appendVisitItem`) pour rester possible hors ligne (une transaction échoue sans réseau).
+- **APP-05** : pas de `writeBatch` (les règles vérifient le foyer par `get()`, invisible dans le même batch) : création séquentielle avec suppression du foyer si l'ajout de l'enfant échoue.
+- **APP-06** : `useAsyncAction` attend l'acquittement serveur : hors ligne, Save reste en attente sur AddChild/Child/NighttimeHours (avant, l'écran ne réagissait pas non plus).
+- **APP-10** : le menu photo reste une action sheet (focus initial, Escape, restitution du focus) au lieu de migrer vers `Modal`.
+- **DATA-15** : l'id du reminder n'est ré-encodé que s'il est invalide comme id Firestore (`/`, vide, `.`), pour ne pas renommer le document « Vitamin D » existant.
+- **PAGE-05** : la vitamine est trouvée en filtrant la plage « depuis hier soir » (pas de requête préfixe : elle exigerait un index) : la ligne affiche « Not yet » si aucune dose depuis le début de la fenêtre.
+- **PAGE-15** : l'arrondi aux jours calendaires est fait dans `trendFetchRange`, pas dans la page.
+- **SEC-06** : en plus du périmètre validé, les écritures sous un bébé sont limitées aux collections connues (le wildcard reste ouvert en lecture).
+- **TEST-03** : la garde anti-Firebase de `src/test/setup.ts` laisse passer le vrai module pour `src/repositories/*` (leurs tests construisent de vraies références).
+- **TEST-04** : règles `vitest/require-mock-type-parameters` et `jsx-a11y/prefer-tag-over-role` désactivées (trop opinionnées) ; `react/exhaustive-deps` n'a rien signalé.
+- **TEST-17** : `noUncheckedIndexedAccess` non activé dans functions (6 erreurs) ; `strict` explicite partout.
+- **TEST-18** : `// @vitest-environment node` sur 22 des 31 tests de `src/lib`.
+- Les commits des agents portent `Co-Authored-By: Claude Opus 5.5` (modèle d'implémentation), ceux du consolidateur `Claude Fable 5.1`.
+
+### À faire côté propriétaire après fusion
+
+1. **Secrets / CI** : le nouveau workflow `deploy-firestore.yml` utilise `FIREBASE_SERVICE_ACCOUNT` ; le premier déploiement des règles mettra en prod `email_verified`, la validation des champs et l'immutabilité de `memberUids` : relire `firestore.rules` et `docs/firestore-rules.md` avant.
+2. **Comportements changés à valider en usage** : total de sommeil History aligné sur Trends (jour du réveil) ; sommeil en cours compté dans naps / wake window ; âge en mois calendaires ; percentiles WHO recalculés (mois de 30,44 jours, courbes dérivées des LMS) ; rappel médicament data-only (une seule notification) ; déconnexion qui désinscrit le téléphone des pushes et vide le cache local.
+3. **Actions manuelles** listées plus haut (WIF, fournisseur Email/Password, clé API, protection de branche, Vercel).
+
 ## Tableau de validation
 
 Légende : **Fix** = complexité (S < 30 min local, M quelques fichiers, L transverse) ; **Conf.** = confiance de l'agent (H/M/B) ; **Modèle** = suggestion pour l'implémentation ; **Doublons fusionnés** = IDs des autres rapports décrivant le même problème (leur détail peut compléter la solution).
