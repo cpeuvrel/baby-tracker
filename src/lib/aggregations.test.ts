@@ -1,26 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { FeedingEntry, SleepEntry } from '../types/models'
+import type { FeedingEntry } from '../types/models'
 import {
   computeDelta,
   computeFeedingStats,
-  computeSleepStats,
   DEFAULT_NIGHTTIME_HOURS,
   isDuringNight,
   nightClocks,
 } from './aggregations'
-
-function sleepEntry(overrides: Partial<SleepEntry>): SleepEntry {
-  return {
-    id: 's1',
-    startedAt: '2026-03-05T10:00:00.000Z',
-    endedAt: '2026-03-05T11:00:00.000Z',
-    durationSeconds: 3600,
-    notes: '',
-    createdBy: 'uid1',
-    createdAt: '2026-03-05T10:00:00.000Z',
-    ...overrides,
-  }
-}
 
 function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
   return {
@@ -35,40 +21,6 @@ function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
     ...overrides,
   }
 }
-
-describe('computeSleepStats', () => {
-  it('sums durations and averages over the given day count', () => {
-    const entries = [
-      sleepEntry({ durationSeconds: 3600, startedAt: '2026-03-05T14:00:00.000Z' }),
-      sleepEntry({ durationSeconds: 1800, startedAt: '2026-03-06T14:00:00.000Z' }),
-    ]
-
-    const stats = computeSleepStats(entries, 2)
-
-    expect(stats.totalSeconds).toBe(5400)
-    expect(stats.averageSecondsPerDay).toBe(2700)
-  })
-
-  it('treats an in-progress entry (null duration) as zero', () => {
-    const stats = computeSleepStats([sleepEntry({ durationSeconds: null })], 1)
-
-    expect(stats.totalSeconds).toBe(0)
-  })
-
-  it('counts entries starting at night or before the morning cutoff as night wakings', () => {
-    const entries = [
-      sleepEntry({ startedAt: '2026-03-05T21:00:00.000Z' }), // 21:00 -> night
-      sleepEntry({ startedAt: '2026-03-05T02:00:00.000Z' }), // 02:00 -> night
-      sleepEntry({ startedAt: '2026-03-05T14:00:00.000Z' }), // 14:00 -> day nap
-    ]
-
-    expect(computeSleepStats(entries, 1).nightWakings).toBe(2)
-  })
-
-  it('returns a zero average when there are no days in range', () => {
-    expect(computeSleepStats([], 0).averageSecondsPerDay).toBe(0)
-  })
-})
 
 describe('computeFeedingStats', () => {
   it('separates bottle and solid counts and sums bottle volume', () => {

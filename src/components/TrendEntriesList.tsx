@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { formatDate, formatTime } from '../lib/appTime'
 import { formatDuration } from '../lib/duration'
+import { sleepDurationSeconds } from '../lib/entrySummary'
 import { dayKey, parseDayKey } from '../lib/timeline'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import { DiaperIcon, FeedIcon, SleepIcon } from './icons'
@@ -60,7 +61,7 @@ function toItems(props: TrendEntriesListProps): ListItem[] {
       }))
     }
     case 'sleep': {
-      const max = Math.max(0, ...props.entries.map((entry) => entry.durationSeconds ?? 0))
+      const max = Math.max(0, ...props.entries.map(sleepDurationSeconds))
       return props.entries.map((entry) => ({
         id: entry.id,
         at: entry.startedAt,
@@ -68,8 +69,8 @@ function toItems(props: TrendEntriesListProps): ListItem[] {
           ? { label: 'Sleeping', value: 'In progress' }
           : {
               label: `– ${formatClock(entry.endedAt)}`,
-              value: formatDuration(entry.durationSeconds ?? 0),
-              barFraction: fraction(entry.durationSeconds ?? 0, max),
+              value: formatDuration(sleepDurationSeconds(entry)),
+              barFraction: fraction(sleepDurationSeconds(entry), max),
             }),
         onClick: () => props.onSelect(entry),
       }))

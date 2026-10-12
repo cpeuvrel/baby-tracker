@@ -1,5 +1,5 @@
 import { parseClock, zonedParts, type ClockTime } from './appTime'
-import type { FeedingEntry, NighttimeHours, SleepEntry } from '../types/models'
+import type { FeedingEntry, NighttimeHours } from '../types/models'
 
 export const DEFAULT_NIGHTTIME_HOURS: NighttimeHours = { start: '20:00', end: '08:00' }
 
@@ -31,27 +31,6 @@ export function isDuringNight(date: Date, nightRange: NighttimeHours): boolean {
 /** Whether `startedAt` falls in the nighttime hours. */
 export function startsDuringNight(startedAt: string, nightRange: NighttimeHours): boolean {
   return isDuringNight(new Date(startedAt), nightRange)
-}
-
-export interface SleepStats {
-  totalSeconds: number
-  averageSecondsPerDay: number
-  nightWakings: number
-}
-
-export function computeSleepStats(
-  entries: SleepEntry[],
-  dayCount: number,
-  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
-): SleepStats {
-  const totalSeconds = entries.reduce((sum, entry) => sum + (entry.durationSeconds ?? 0), 0)
-  const nightWakings = entries.filter((entry) => startsDuringNight(entry.startedAt, nightRange)).length
-
-  return {
-    totalSeconds,
-    averageSecondsPerDay: dayCount > 0 ? totalSeconds / dayCount : 0,
-    nightWakings,
-  }
 }
 
 export interface FeedingStats {

@@ -1,5 +1,5 @@
 import { formatDate, formatTime } from './appTime'
-import { formatDuration, formatRelativeTime } from './duration'
+import { formatDuration, formatRelativeTime, secondsBetween } from './duration'
 import { isToday, isYesterday } from './timeline'
 import type {
   BathEntry,
@@ -49,8 +49,17 @@ export function summarizeFeedingPrimary(entry: FeedingEntry, now: Date): Primary
   return { label: entry.foodType ? entry.foodType : 'Last meal', meta }
 }
 
+/**
+ * A finished sleep's length: its recorded duration, else from its start and end (imported
+ * sleeps can lack `durationSeconds`). 0 for a running sleep.
+ */
+export function sleepDurationSeconds(entry: SleepEntry): number {
+  if (entry.durationSeconds != null) return entry.durationSeconds
+  return entry.endedAt ? secondsBetween(new Date(entry.startedAt), new Date(entry.endedAt)) : 0
+}
+
 export function summarizeSleepPrimary(entry: SleepEntry, now: Date): PrimarySummary {
-  if (entry.durationSeconds != null && entry.endedAt != null) {
+  if (entry.endedAt != null) {
     return { label: 'Woke up', meta: formatRelativeTime(new Date(entry.endedAt), now) }
   }
   const meta = formatRelativeTime(new Date(entry.startedAt), now)
@@ -89,7 +98,7 @@ export function summarizeSleepRow(entry: SleepEntry, now: Date, maxDurationSecon
     : isToday(entry.startedAt, now)
       ? ''
       : `${formatShortDate(entry.startedAt)} `
-  const duration = entry.durationSeconds ?? 0
+  const duration = sleepDurationSeconds(entry)
 
   return {
     title: `${prefix}${startTime} – ${formatClock(entry.endedAt)}`,

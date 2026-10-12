@@ -2,7 +2,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { zonedTime } from '../lib/appTime'
-import type { FeedingEntry } from '../types/models'
+import type { FeedingEntry, SleepEntry } from '../types/models'
 import { TrendEntriesList } from './TrendEntriesList'
 
 function bottle(id: string, occurredAt: string, volumeMl: number | null): FeedingEntry {
@@ -45,6 +45,21 @@ describe('TrendEntriesList', () => {
     await user.click(screen.getByRole('button', { name: /08:33/ }))
 
     expect(onSelect).toHaveBeenCalledWith(entries[0])
+  })
+
+  it('shows the real length of a finished sleep without a recorded duration', () => {
+    const sleep: SleepEntry = {
+      id: 's1',
+      startedAt: zonedTime(2026, 9, 23, 13, 0).toISOString(),
+      endedAt: zonedTime(2026, 9, 23, 14, 30).toISOString(),
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: zonedTime(2026, 9, 23, 13, 0).toISOString(),
+    }
+    render(<TrendEntriesList kind="sleep" colorVar="--category-sleep" entries={[sleep]} onSelect={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: /13:00/ })).toHaveTextContent('1h 30m')
   })
 
   it('shows an empty state', () => {
