@@ -1,44 +1,46 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChildPhotoEditor } from '../components/ChildPhotoEditor'
 import { ExportImportSection } from '../components/ExportImportSection'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { formatAge } from '../lib/age'
 import { deleteBabyWithData } from '../lib/babyExport'
 import { updateBaby } from '../repositories/babies'
-import type { BabySex } from '../types/models'
+import type { Baby, BabySex } from '../types/models'
 
 export function ChildPage() {
   const { babyId } = useParams<{ babyId: string }>()
-  const navigate = useNavigate()
   const { household, babies } = useHousehold()
   const baby = babies.find((candidate) => candidate.id === babyId)
 
-  const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('')
-  const [sex, setSex] = useState<BabySex | null>(null)
+  if (!household) return null
+  // Unknown child: a stale link, or deleted (from here or on the other phone). Without children
+  // left, adding one is all the Family screens can offer.
+  if (!baby) return <Navigate to={babies.length === 0 ? '/account/family/add' : '/account/family'} replace />
+
+  // Keyed by child: the form starts from that child's profile, and a later snapshot (photo
+  // saved, the other phone editing) leaves what is being typed alone.
+  return <ChildProfile key={baby.id} householdId={household.id} baby={baby} lastChild={babies.length === 1} />
+}
+
+function ChildProfile({ householdId, baby, lastChild }: { householdId: string; baby: Baby; lastChild: boolean }) {
+  const navigate = useNavigate()
+  const [name, setName] = useState(baby.name)
+  const [birthDate, setBirthDate] = useState(baby.birthDate)
+  const [sex, setSex] = useState<BabySex | null>(baby.sex)
+  const save = useAsyncAction()
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState(false)
-
-  useEffect(() => {
-    if (baby) {
-      setName(baby.name)
-      setBirthDate(baby.birthDate)
-      setSex(baby.sex)
-    }
-  }, [baby])
-
-  // Without children left, adding one is all the Family screens can offer.
-  const familyPath = babies.length === 0 ? '/account/family/add' : '/account/family'
-  if (!household) return null
-  // Unknown child: a stale link, or deleted (from here or on the other phone).
-  if (!baby) return <Navigate to={familyPath} replace />
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (name.trim() === '' || birthDate.trim() === '') return
-    void updateBaby(household.id, baby.id, name.trim(), birthDate, sex)
+    void save.run(async () => {
+      await updateBaby(householdId, baby.id, name.trim(), birthDate, sex)
+      navigate('/account/family')
+    })
   }
 
   const handleDeleteChild = () => {
@@ -50,8 +52,7 @@ export function ChildPage() {
       return
     setDeleting(true)
     setDeleteError(false)
-    const lastChild = babies.length === 1
-    deleteBabyWithData(household.id, baby.id)
+    deleteBabyWithData(householdId, baby.id)
       .then(() => navigate(lastChild ? '/account/family/add' : '/account/family', { replace: true }))
       .catch((error: unknown) => {
         console.error('[child] delete failed', error)
@@ -68,10 +69,11 @@ export function ChildPage() {
             ‹
           </button>
           <h2>Child</h2>
-          <button type="submit" className="modal-header-action">
+          <button type="submit" className="modal-header-action" disabled={save.pending}>
             Save
           </button>
         </div>
+        {save.error && <p role="alert">{save.error}</p>}
 
         <div className="child-name-row">
           <div>
@@ -84,7 +86,7 @@ export function ChildPage() {
               onChange={(event) => setName(event.target.value)}
             />
           </div>
-          <ChildPhotoEditor householdId={household.id} baby={baby} />
+          <ChildPhotoEditor householdId={householdId} baby={baby} />
         </div>
 
         <div role="group" aria-label="Sex" className="segmented-control">
@@ -143,7 +145,7 @@ export function ChildPage() {
         </ul>
       </section>
 
-      <ExportImportSection householdId={household.id} baby={baby} />
+      <ExportImportSection householdId={householdId} baby={baby} />
 
       <button
         type="button"

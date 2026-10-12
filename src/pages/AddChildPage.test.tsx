@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import { AddChildPage } from './AddChildPage'
 
@@ -15,8 +15,11 @@ const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 
 function renderPage() {
   return render(
-    <MemoryRouter>
-      <AddChildPage />
+    <MemoryRouter initialEntries={['/account/family/add']}>
+      <Routes>
+        <Route path="/account/family/add" element={<AddChildPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
+      </Routes>
     </MemoryRouter>,
   )
 }
@@ -33,6 +36,10 @@ describe('AddChildPage', () => {
       selectedBaby: null,
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('renders nothing without a resolved household', () => {
@@ -66,6 +73,42 @@ describe('AddChildPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(addBaby).toHaveBeenCalledWith('h1', 'Nina', '2026-01-15', 'female')
+    expect(await screen.findByText('Children list')).toBeInTheDocument()
+  })
+
+  async function fillForm(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('First Name'), 'Nina')
+    await user.click(screen.getByRole('button', { name: 'Girl' }))
+    await user.type(screen.getByLabelText('Birthdate'), '2026-01-15')
+  }
+
+  it('creates the child once on a double tap', async () => {
+    let finish!: () => void
+    addBaby.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)))
+    const user = userEvent.setup()
+    renderPage()
+    await fillForm(user)
+
+    await user.dblClick(screen.getByRole('button', { name: 'Save' }))
+
+    expect(addBaby).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    finish()
+    expect(await screen.findByText('Children list')).toBeInTheDocument()
+  })
+
+  it('stays on the form and says so when the child cannot be added', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    addBaby.mockRejectedValue(new Error('permission-denied'))
+    const user = userEvent.setup()
+    renderPage()
+    await fillForm(user)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not add the child.')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+    expect(screen.getByLabelText('First Name')).toHaveValue('Nina')
   })
 
   it('does not submit without a sex selected', async () => {

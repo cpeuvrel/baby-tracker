@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChildPhotoEditor } from './ChildPhotoEditor'
 
 const updateBabyPhoto = vi.fn()
@@ -29,6 +29,36 @@ describe('ChildPhotoEditor', () => {
     exportCroppedPhoto.mockReset()
     URL.createObjectURL = vi.fn(() => 'blob:photo')
     URL.revokeObjectURL = vi.fn()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('focuses the first choice of the menu, and closes it with Escape', async () => {
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={baby} />)
+
+    await user.click(screen.getByRole('button', { name: 'Change Child Photo' }))
+    expect(screen.getByRole('button', { name: 'Choose From Library' })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change Child Photo' })).toHaveFocus()
+  })
+
+  it('says so when the photo cannot be saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateBabyPhoto.mockRejectedValue(new Error('too large'))
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={{ ...baby, photoDataUrl: 'data:image/jpeg;base64,AAA' }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Change Child Photo' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Photo' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the photo.')
+    expect(screen.getByRole('button', { name: 'Change Child Photo' })).toBeEnabled()
   })
 
   it('offers library and camera, and Delete only when there is a photo', async () => {

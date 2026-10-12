@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import { NighttimeHoursPage } from './NighttimeHoursPage'
 import { timeValue } from '../test/timeFields'
@@ -21,6 +21,7 @@ function renderPage(babyId = 'b1') {
       <Routes>
         <Route path="/account/family/:babyId/nighttime-hours" element={<NighttimeHoursPage />} />
         <Route path="/account/family" element={<p>Children list</p>} />
+        <Route path="/account/family/:babyId" element={<p>Child screen</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -37,6 +38,10 @@ describe('NighttimeHoursPage', () => {
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('redirects to the children list when the baby cannot be found', () => {
@@ -78,6 +83,20 @@ describe('NighttimeHoursPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateNighttimeHours).toHaveBeenCalledWith('h1', 'b1', { start: '21:30', end: '08:00' })
+    expect(await screen.findByText('Child screen')).toBeInTheDocument()
+  })
+
+  it('stays on the screen and says so when the range cannot be saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateNighttimeHours.mockRejectedValue(new Error('permission-denied'))
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save. Try again.')
+    expect(screen.queryByText('Child screen')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
   })
 
   it('refuses a night that starts and ends at the same time', async () => {

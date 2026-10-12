@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { updateNighttimeHours } from '../repositories/babies'
 import { TimeSelect } from '../components/TimeSelect'
@@ -13,6 +14,7 @@ export function NighttimeHoursPage() {
   const current = baby?.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
   const [start, setStart] = useState(current.start)
   const [end, setEnd] = useState(current.end)
+  const { run, pending, error } = useAsyncAction()
 
   if (!household) return null
   if (!baby) return <Navigate to="/account/family" replace />
@@ -24,7 +26,10 @@ export function NighttimeHoursPage() {
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (sameTime) return
-    void updateNighttimeHours(household.id, baby.id, { start, end }).then(() => navigate(backTo))
+    void run(async () => {
+      await updateNighttimeHours(household.id, baby.id, { start, end })
+      navigate(backTo)
+    })
   }
 
   return (
@@ -34,7 +39,7 @@ export function NighttimeHoursPage() {
           ‹
         </button>
         <h2>Nighttime Hours</h2>
-        <button type="submit" className="modal-header-action" disabled={sameTime}>
+        <button type="submit" className="modal-header-action" disabled={sameTime || pending}>
           Save
         </button>
       </div>
@@ -48,6 +53,7 @@ export function NighttimeHoursPage() {
         <TimeSelect label="To" value={end} onChange={setEnd} />
       </div>
       {sameTime && <p role="alert">From and To must be different times.</p>}
+      {error && <p role="alert">{error}</p>}
     </form>
   )
 }
