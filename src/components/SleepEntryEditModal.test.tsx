@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
@@ -6,10 +6,10 @@ import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import type { SleepEntry } from '../types/models'
 import { SleepEntryEditModal } from './SleepEntryEditModal'
-import { dateTimeValue } from '../test/timeFields'
+import { dateTimeValue, setDateTime } from '../test/timeFields'
 
 const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
-const deleteSleepEntry = vi.fn()
+const deleteSleepEntry = vi.fn().mockResolvedValue(undefined)
 const resumeSleep = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../repositories/sleepEntries', () => ({
@@ -34,7 +34,7 @@ const entry: SleepEntry = {
 describe('SleepEntryEditModal', () => {
   beforeEach(() => {
     updateSleepEntry.mockReset().mockResolvedValue(undefined)
-    deleteSleepEntry.mockReset()
+    deleteSleepEntry.mockReset().mockResolvedValue(undefined)
     resumeSleep.mockReset().mockResolvedValue(undefined)
     vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
     vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue([entry])
@@ -46,6 +46,10 @@ describe('SleepEntryEditModal', () => {
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('prefills the total time from the existing entry', () => {
@@ -111,6 +115,61 @@ describe('SleepEntryEditModal', () => {
     expect(deleteSleepEntry).not.toHaveBeenCalled()
   })
 
+  it('refuses to save an old sleep without an end, which would restart it', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<SleepEntryEditModal entry={entry} onClose={onClose} />)
+
+    fireEvent.change(screen.getByLabelText('End Time'), { target: { value: '' } })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Set an end time to save this sleep.')
+    const save = screen.getByRole('button', { name: 'Save' })
+    expect(save).toBeDisabled()
+    await user.click(save)
+    expect(updateSleepEntry).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('refuses an end before the start', async () => {
+    const user = userEvent.setup()
+    render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+    setDateTime('End Time', '2026-03-05T19:30')
+
+    expect(screen.getByRole('alert')).toHaveTextContent('End time must be after start time.')
+    expect(screen.queryByText(/^-/)).not.toBeInTheDocument()
+    const save = screen.getByRole('button', { name: 'Save' })
+    expect(save).toBeDisabled()
+    await user.click(save)
+    expect(updateSleepEntry).not.toHaveBeenCalled()
+  })
+
+  it('reports a failed save with the generic message when the end is set (no lock involved)', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateSleepEntry.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save this sleep. Please try again.'))
+    expect(alert).not.toHaveBeenCalledWith('Another sleep timer is already running.')
+  })
+
+  it('reports a refused delete', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteSleepEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+    render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete the sleep. Please try again.'))
+  })
+
   describe('Start Timer', () => {
     beforeEach(() => {
       // 10 minutes after the entry ended (21:30 Paris).
@@ -130,9 +189,44 @@ describe('SleepEntryEditModal', () => {
 
       await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
-      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt))
-      expect(onResumed).toHaveBeenCalled()
+      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt), 'nap')
+      await vi.waitFor(() => expect(onResumed).toHaveBeenCalled())
       expect(onClose).not.toHaveBeenCalled()
+    })
+
+    it('keeps notes edited just before Start Timer', async () => {
+      const user = userEvent.setup()
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} onResumed={vi.fn()} />)
+
+      await user.clear(screen.getByLabelText('Notes (optional)'))
+      await user.type(screen.getByLabelText('Notes (optional)'), 'fell back asleep')
+      await user.click(screen.getByRole('button', { name: 'Start Timer' }))
+
+      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt), 'fell back asleep')
+    })
+
+    it('stays open and says why when the resume is refused', async () => {
+      const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+      resumeSleep.mockRejectedValue({ code: 'permission-denied' })
+      const user = userEvent.setup()
+      const onResumed = vi.fn()
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} onResumed={onResumed} />)
+
+      await user.click(screen.getByRole('button', { name: 'Start Timer' }))
+
+      await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Another sleep timer is already running.'))
+      expect(onResumed).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'Start Timer' })).toBeEnabled()
+    })
+
+    it('resumes the sleep on Save when the end is cleared within the hour', async () => {
+      const user = userEvent.setup()
+      render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} />)
+
+      fireEvent.change(screen.getByLabelText('End Time'), { target: { value: '' } })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
+
+      expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 's1', expect.objectContaining({ endedAt: null }))
     })
 
     it('just closes when there is no running-timer view to hand over to', async () => {
@@ -143,7 +237,7 @@ describe('SleepEntryEditModal', () => {
       await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
       expect(resumeSleep).toHaveBeenCalled()
-      expect(onClose).toHaveBeenCalled()
+      await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
     })
 
     it('is not offered once the sleep ended more than an hour ago', () => {

@@ -4,7 +4,8 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
-import { alertSleepAlreadyRunning } from '../lib/sleepAlreadyRunning'
+import { reportWriteError } from '../lib/reportWriteError'
+import { alertSleepWriteFailed } from '../lib/sleepAlreadyRunning'
 import { deleteSleepEntry, resumeSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
 import { DurationInput } from './DurationInput'
@@ -13,6 +14,7 @@ import { DateTimeField } from './DateTimeField'
 
 /** A stopped sleep can only be continued within this long after it ended. */
 const RESUME_WINDOW_MS = 60 * 60 * 1000
+const FORM_ID = 'sleep-edit-form'
 
 interface SleepEntryEditModalProps {
   entry: SleepEntry
@@ -28,6 +30,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
   )
   const [notes, setNotes] = useState(entry.notes)
+  const [resuming, setResuming] = useState(false)
   const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
 
@@ -43,42 +46,56 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     latestSleep?.id === entry.id
 
   const durationMinutes =
-    endedAt !== ''
+    endedAt !== '' && startedAt !== ''
       ? Math.round((fromDatetimeLocalValue(endedAt).getTime() - fromDatetimeLocalValue(startedAt).getTime()) / 60000)
       : null
+
+  // Without an end the sleep would run again: only allowed where Start Timer is (canStart).
+  const error = !startedAt
+    ? 'Set a start time.'
+    : durationMinutes != null && durationMinutes < 0
+      ? 'End time must be after start time.'
+      : endedAt === '' && !canStart
+        ? 'Set an end time to save this sleep.'
+        : null
 
   const handleDurationChange = (minutes: number | null) => {
     if (minutes == null) {
       setEndedAt('')
       return
     }
+    if (!startedAt) return
     setEndedAt(toDatetimeLocalValue(new Date(fromDatetimeLocalValue(startedAt).getTime() + minutes * 60000)))
-  }
-
-  const submit = () => {
-    // Without an end time the sleep runs again: refused if another one runs.
-    updateSleepEntry(household.id, selectedBaby.id, entry.id, {
-      startedAt: fromDatetimeLocalValue(startedAt),
-      endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
-      notes,
-    }).catch(alertSleepAlreadyRunning)
-    onClose()
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    submit()
+    if (error) return
+    // Without an end time the sleep runs again: refused if another one runs.
+    const lockInvolved = endedAt === ''
+    updateSleepEntry(household.id, selectedBaby.id, entry.id, {
+      startedAt: fromDatetimeLocalValue(startedAt),
+      endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
+      notes,
+    }).catch((writeError: unknown) => alertSleepWriteFailed(writeError, lockInvolved))
+    onClose()
   }
 
   const handleStart = () => {
-    resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt)).catch(alertSleepAlreadyRunning)
-    if (onResumed) onResumed()
-    else onClose()
+    if (!startedAt) return
+    setResuming(true)
+    // The running timer shows only once the resume is accepted: refused if another sleep runs.
+    resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt), notes)
+      .then(() => (onResumed ? onResumed() : onClose()))
+      .catch((writeError: unknown) => {
+        setResuming(false)
+        alertSleepWriteFailed(writeError, true)
+      })
   }
 
   const handleDelete = () => {
     if (!window.confirm('Delete this entry?')) return
-    void deleteSleepEntry(household.id, selectedBaby.id, entry.id)
+    deleteSleepEntry(household.id, selectedBaby.id, entry.id).catch(reportWriteError('delete the sleep'))
     onClose()
   }
 
@@ -87,21 +104,31 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
       title="Sleep"
       bandColorVar="--category-sleep"
       onClose={onClose}
-      headerAction={{ label: 'Save', onClick: submit }}
+      headerAction={{ label: 'Save', formId: FORM_ID, disabled: error != null }}
     >
-      <form onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         <p className="modal-field-label">Total Time</p>
         <p className="modal-counter">
-          {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
+          {durationMinutes != null && durationMinutes >= 0 ? formatDuration(durationMinutes * 60) : '—'}
         </p>
         {canStart && (
-          <button type="button" className="button-action button-timer-start button-start-again" onClick={handleStart}>
+          <button
+            type="button"
+            className="button-action button-timer-start button-start-again"
+            onClick={handleStart}
+            disabled={resuming}
+          >
             Start Timer
           </button>
         )}
         <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
         <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={setStartedAt} />
         <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={setEndedAt} />
+        {error && (
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+        )}
         <div>
           <label htmlFor="sleep-notes">Notes (optional)</label>
           <input

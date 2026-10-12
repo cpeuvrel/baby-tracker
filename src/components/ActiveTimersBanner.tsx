@@ -1,10 +1,12 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useActiveSleepEntries } from '../hooks/useActiveSleepEntry'
+import { useActiveSleepEntriesState } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { useSleepTimerNotification } from '../hooks/useSleepTimerNotification'
 import { formatElapsed } from '../lib/duration'
+import { alertSleepWriteFailed } from '../lib/sleepAlreadyRunning'
 import { SLEEP_TIMER_URL } from '../lib/sleepTimerNotification'
 import { stopSleep } from '../repositories/sleepEntries'
 
@@ -12,33 +14,58 @@ export function ActiveTimersBanner() {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const navigate = useNavigate()
-  const sleepEntries = useActiveSleepEntries(household?.id ?? null, selectedBaby?.id ?? null)
+  const { entries: sleepEntries, loading } = useActiveSleepEntriesState(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+  )
   const sleepEntry = sleepEntries[0] ?? null
   const sleepElapsed = useElapsedSeconds(sleepEntry?.startedAt ?? null)
   useSleepTimerNotification(user?.uid ?? null, selectedBaby ?? null, sleepEntry)
+  // Screen readers hear when a sleep starts or stops, not the elapsed time's every second.
+  const running = sleepEntry != null
+  const [announcedRunning, setAnnouncedRunning] = useState<boolean | null>(null)
+  const [announcement, setAnnouncement] = useState('')
+  if (!loading && announcedRunning !== running) {
+    if (announcedRunning !== null) setAnnouncement(running ? 'Sleep timer started.' : 'Sleep timer stopped.')
+    setAnnouncedRunning(running)
+  }
 
-  if (!household || !selectedBaby || !sleepEntry) return null
+  if (!household || !selectedBaby) return null
 
   return (
-    <div role="status" aria-live="polite">
-      <p>
-        <button type="button" className="link-button" onClick={() => navigate(SLEEP_TIMER_URL)}>
-          Sleep in progress for {formatElapsed(sleepElapsed)}
-        </button>{' '}
-        <button
-          type="button"
-          onClick={() => {
-            for (const entry of sleepEntries) {
-              void stopSleep(household.id, selectedBaby.id, entry.id, new Date(entry.startedAt))
-            }
-          }}
-        >
-          {sleepEntries.length > 1 ? 'Stop all' : 'Stop'}
-        </button>
+    <>
+      <p role="status" className="visually-hidden">
+        {announcement}
       </p>
-      {sleepEntries.length > 1 && (
-        <p>{sleepEntries.length} sleep timers were started at the same time: Stop all ends them.</p>
+      {sleepEntry && (
+        <div className="active-timers-banner">
+          <p>
+            <button
+              type="button"
+              className="link-button"
+              aria-label="Sleep in progress, open the timer"
+              onClick={() => navigate(SLEEP_TIMER_URL)}
+            >
+              Sleep in progress for <span aria-hidden="true">{formatElapsed(sleepElapsed)}</span>
+            </button>{' '}
+            <button
+              type="button"
+              onClick={() => {
+                for (const entry of sleepEntries) {
+                  stopSleep(household.id, selectedBaby.id, entry.id, new Date(entry.startedAt)).catch(
+                    (error: unknown) => alertSleepWriteFailed(error, false),
+                  )
+                }
+              }}
+            >
+              {sleepEntries.length > 1 ? 'Stop all' : 'Stop'}
+            </button>
+          </p>
+          {sleepEntries.length > 1 && (
+            <p>{sleepEntries.length} sleep timers were started at the same time: Stop all ends them.</p>
+          )}
+        </div>
       )}
-    </div>
+    </>
   )
 }

@@ -98,6 +98,11 @@ function setupHooks(
   })
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeSleepEntry)
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue(activeSleepEntry ? [activeSleepEntry] : [])
+  vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntriesState').mockReturnValue({
+    entries: activeSleepEntry ? [activeSleepEntry] : [],
+    loading: false,
+    error: null,
+  })
   vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue(
     options.recentSleep ?? [],
   )
