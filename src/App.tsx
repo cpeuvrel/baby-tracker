@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { HouseholdProvider, useHousehold } from './contexts/HouseholdContext'
@@ -116,7 +117,9 @@ function AppShell() {
 function App() {
   return (
     <AuthProvider>
-      <AppShell />
+      <AppErrorBoundary fullPage>
+        <AppShell />
+      </AppErrorBoundary>
     </AuthProvider>
   )
 }

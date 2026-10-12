@@ -24,6 +24,10 @@ function mockHousehold(selectedBaby: Baby) {
   })
 }
 
+function BrokenScreen(): never {
+  throw new Error('boom')
+}
+
 function renderLayout(path = '/') {
   return render(
     <MemoryRouter initialEntries={[path]}>
@@ -31,6 +35,7 @@ function renderLayout(path = '/') {
         <Route path="/" element={<Layout />}>
           <Route index element={<p>Contenu</p>} />
           <Route path="history" element={<p>History screen</p>} />
+          <Route path="trends" element={<BrokenScreen />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -47,6 +52,7 @@ function stubServiceWorker() {
 describe('Layout', () => {
   afterEach(() => {
     Reflect.deleteProperty(navigator, 'serviceWorker')
+    vi.restoreAllMocks()
   })
 
   beforeEach(() => {
@@ -123,4 +129,19 @@ describe('Layout', () => {
       expect(screen.queryByText('History screen')).not.toBeInTheDocument()
     },
   )
+
+  it('keeps the header and tab bar when a screen fails, and lets another tab load', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockHousehold(baby)
+    const user = userEvent.setup()
+    renderLayout('/trends')
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong.')
+    expect(screen.getByText('Maëlys')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('link', { name: 'History' }))
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('History screen')).toBeInTheDocument()
+  })
 })

@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockAuth } from './test/mockAuthState'
 
 const mockAuth = createMockAuth()
@@ -28,12 +28,29 @@ vi.mock('./repositories/babies', () => ({
   addBaby: vi.fn(),
 }))
 
+// Lets a test make the login screen throw while rendering.
+let loginPageThrows = false
+vi.mock('./pages/LoginPage', async (importOriginal) => {
+  const { LoginPage } = await importOriginal<typeof import('./pages/LoginPage')>()
+  return {
+    LoginPage: () => {
+      if (loginPageThrows) throw new Error('boom')
+      return <LoginPage />
+    },
+  }
+})
+
 const { default: App } = await import('./App')
 
 describe('App', () => {
   beforeEach(() => {
     subscribeToHouseholdForUser.mockReset()
     subscribeToBabies.mockReset()
+    loginPageThrows = false
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('shows a loading state before the auth listener resolves', () => {
@@ -50,6 +67,17 @@ describe('App', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Sign in with Google' })).toBeInTheDocument(),
     )
+  })
+
+  it('shows a Reload button instead of a blank page when a screen throws', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    loginPageThrows = true
+    render(<App />)
+
+    mockAuth.emit(null)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong.')
+    expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument()
   })
 
   it('offers to create a family when signed in with no household yet', async () => {

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useMatch, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatDate } from '../lib/appTime'
 import { routeForegroundPushes } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
+import { AppErrorBoundary } from './AppErrorBoundary'
 import { BabySelector } from './BabySelector'
 import { BabyAvatarIcon, MoreIcon } from './icons'
 import { SummarySheet } from './SummarySheet'
@@ -21,6 +22,7 @@ export function Layout() {
   const onActivityScreen = useMatch({ path: '/', end: true }) != null
   const [summaryOpen, setSummaryOpen] = useState(false)
   const navigate = useNavigate()
+  const { pathname } = useLocation()
 
   // The service worker forwards notification taps here (see sw.ts).
   useEffect(() => {
@@ -73,7 +75,10 @@ export function Layout() {
       </header>
       <ActiveTimersBanner />
       <main className="app-content">
-        <Outlet />
+        {/* A screen that fails keeps the header and tab bar: another tab gets a fresh try. */}
+        <AppErrorBoundary resetKey={pathname}>
+          <Outlet />
+        </AppErrorBoundary>
       </main>
       <TabBar />
       {summaryOpen && <SummarySheet onClose={() => setSummaryOpen(false)} />}
