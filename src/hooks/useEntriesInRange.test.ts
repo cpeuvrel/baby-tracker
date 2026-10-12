@@ -228,4 +228,75 @@ describe('useEntriesInRange', () => {
       expect(result.current.feeding).toEqual([])
     })
   })
+
+  describe('range changes', () => {
+    const subscribers = [
+      subscribeToFeedingEntriesInRange,
+      subscribeToSleepEntriesInRange,
+      subscribeToDiaperEntriesInRange,
+      subscribeToMedicationEntriesInRange,
+      subscribeToBathEntriesInRange,
+    ]
+    let unsubscribes: ReturnType<typeof vi.fn>[]
+
+    beforeEach(() => {
+      unsubscribes = []
+      for (const subscriber of subscribers) {
+        subscriber.mockImplementation(() => {
+          const unsubscribe = vi.fn()
+          unsubscribes.push(unsubscribe)
+          return unsubscribe
+        })
+      }
+    })
+
+    it('re-subscribes every collection to the new range, after unsubscribing from the old one', () => {
+      const nextRange = dayRange(new Date('2026-03-06T12:00:00.000Z'))
+      const { rerender } = renderHook(({ current }) => useEntriesInRange('h1', 'b1', current), {
+        initialProps: { current: range },
+      })
+      expect(unsubscribes).toHaveLength(5)
+      for (const subscriber of subscribers) expect(subscriber).toHaveBeenCalledTimes(1)
+
+      rerender({ current: nextRange })
+
+      for (const unsubscribe of unsubscribes.slice(0, 5)) expect(unsubscribe).toHaveBeenCalledTimes(1)
+      for (const subscriber of subscribers) {
+        expect(subscriber).toHaveBeenCalledTimes(2)
+        expect(subscriber).toHaveBeenLastCalledWith('h1', 'b1', nextRange, expect.any(Function), expect.any(Function))
+      }
+      // The new subscriptions are still alive.
+      for (const unsubscribe of unsubscribes.slice(5)) expect(unsubscribe).not.toHaveBeenCalled()
+    })
+
+    it('keeps its subscriptions when the range is a new object with the same bounds', () => {
+      const { rerender } = renderHook(({ current }) => useEntriesInRange('h1', 'b1', current), {
+        initialProps: { current: range },
+      })
+
+      rerender({ current: { start: new Date(range.start), end: new Date(range.end) } })
+
+      for (const subscriber of subscribers) expect(subscriber).toHaveBeenCalledTimes(1)
+      for (const unsubscribe of unsubscribes) expect(unsubscribe).not.toHaveBeenCalled()
+    })
+
+    it('shows the loading state again until the new range answers', () => {
+      const nextRange = dayRange(new Date('2026-03-06T12:00:00.000Z'))
+      for (const subscriber of subscribers) {
+        subscriber.mockImplementation((_h, _b, _r, onChange) => {
+          onChange([])
+          return vi.fn()
+        })
+      }
+      const { result, rerender } = renderHook(({ current }) => useEntriesInRangeState('h1', 'b1', current), {
+        initialProps: { current: range },
+      })
+      expect(result.current.loading).toBe(false)
+
+      for (const subscriber of subscribers) subscriber.mockImplementation(() => vi.fn())
+      rerender({ current: nextRange })
+
+      expect(result.current.loading).toBe(true)
+    })
+  })
 })
