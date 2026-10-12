@@ -6,7 +6,6 @@ import { NewVisitButton } from '../components/NewVisitButton'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
 import { registerPush } from '../lib/pushRegistration'
-import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { VACCINE_BOUGHT_PARAM } from '../lib/vaccineNotification'
 import { formatVisitDate } from '../lib/visitDate'
 import { deletePediatricianVisit, updatePediatricianVisit } from '../repositories/pediatricianVisits'
@@ -34,9 +33,7 @@ export function PediatricianVisitPage() {
     void updatePediatricianVisit(household.id, baby.id, visit.id, { vaccinated })
     // The vaccine reminders come as notifications; this tap is the gesture asking needs.
     if (vaccinated && user) {
-      void requestSleepTimerNotificationPermission()
-        .then(() => registerPush(user.uid))
-        .catch(() => {})
+      void registerPush(user.uid).catch(() => {})
     }
   }
 

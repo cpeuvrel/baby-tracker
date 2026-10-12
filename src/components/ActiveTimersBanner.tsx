@@ -15,7 +15,7 @@ export function ActiveTimersBanner() {
   const sleepEntries = useActiveSleepEntries(household?.id ?? null, selectedBaby?.id ?? null)
   const sleepEntry = sleepEntries[0] ?? null
   const sleepElapsed = useElapsedSeconds(sleepEntry?.startedAt ?? null)
-  useSleepTimerNotification(user?.uid ?? null, selectedBaby?.name ?? null, sleepEntry)
+  useSleepTimerNotification(user?.uid ?? null, selectedBaby ?? null, sleepEntry)
 
   if (!household || !selectedBaby || !sleepEntry) return null
 
