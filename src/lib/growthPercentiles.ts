@@ -25,16 +25,15 @@ function interpolateLms(rows: LmsRow[], ageMonths: number): LmsRow {
     L: lower.L + t * (upper.L - lower.L),
     M: lower.M + t * (upper.M - lower.M),
     S: lower.S + t * (upper.S - lower.S),
-    p: lower.p.map((value, index) => value + t * (upper.p[index] - value)),
   }
 }
 
 /** WHO Child Growth Standards cover birth to 24 months; ages outside that range have no reference. */
-export function isWithinWhoRange(ageMonths: number): boolean {
+function isWithinWhoRange(ageMonths: number): boolean {
   return ageMonths >= 0 && ageMonths <= MAX_AGE_MONTHS
 }
 
-export function getLmsAt(metric: GrowthMetric, sex: Sex, ageMonths: number): LmsRow | undefined {
+function getLmsAt(metric: GrowthMetric, sex: Sex, ageMonths: number): LmsRow | undefined {
   if (!isWithinWhoRange(ageMonths)) return undefined
   const rows = WHO_GROWTH_TABLES[metric][sex]
   return interpolateLms(rows, ageMonths)
@@ -60,6 +59,31 @@ function normalCdf(z: number): number {
   const y = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x)
   return 0.5 * (1 + sign * y)
 }
+
+/**
+ * Inverse of the standard normal CDF (Acklam's rational approximation, relative error
+ * below 1.2e-9): the z-score of the `p`-th quantile, 0 < p < 1.
+ */
+function inverseNormal(p: number): number {
+  const a = [-3.969683028665376e1, 2.209460984245205e2, -2.759285104469687e2, 1.38357751867269e2, -3.066479806614716e1, 2.506628277459239]
+  const b = [-5.447609879822406e1, 1.615858368580409e2, -1.556989798598866e2, 6.680131188771972e1, -1.328068155288572e1]
+  const c = [-7.784894002430293e-3, -3.223964580411365e-1, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783]
+  const d = [7.784695709041462e-3, 3.224671290700398e-1, 2.445134137142996, 3.754408661907416]
+  const low = 0.02425
+  if (p < low) {
+    const q = Math.sqrt(-2 * Math.log(p))
+    return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) /
+      ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1)
+  }
+  if (p > 1 - low) return -inverseNormal(1 - p)
+  const q = p - 0.5
+  const r = q * q
+  return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q /
+    (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1)
+}
+
+/** z-score of each of REFERENCE_PERCENTILES. */
+const REFERENCE_Z_SCORES = REFERENCE_PERCENTILES.map((percentile) => inverseNormal(percentile / 100))
 
 /** Inverse of zScore: the measurement sitting at `z` standard deviations for these LMS parameters. */
 function valueForZ(lms: LmsRow, z: number): number {
@@ -102,7 +126,13 @@ export interface ReferenceCurvePoint {
   values: number[]
 }
 
-/** One point per WHO age row (0-24 months), with a value for each of REFERENCE_PERCENTILES. */
+/**
+ * One point per WHO age row (0-24 months), with the value at each of REFERENCE_PERCENTILES,
+ * derived from the row's LMS parameters (so a point drawn on the "2" curve is at the 2nd percentile).
+ */
 export function referenceCurves(metric: GrowthMetric, sex: Sex): ReferenceCurvePoint[] {
-  return WHO_GROWTH_TABLES[metric][sex].map((row) => ({ ageMonths: row.ageMonths, values: row.p }))
+  return WHO_GROWTH_TABLES[metric][sex].map((row) => ({
+    ageMonths: row.ageMonths,
+    values: REFERENCE_Z_SCORES.map((z) => valueForZ(row, z)),
+  }))
 }
