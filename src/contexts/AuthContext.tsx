@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (cause) {
       if (DISMISSED_POPUP_CODES.has((cause as { code?: string } | null)?.code ?? '')) return
       console.error('[auth] signInWithPopup failed', cause)
-      setError('Unable to sign in with Google.')
+      setError(describeError('Unable to sign in with Google.', cause))
     }
   }
 

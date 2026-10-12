@@ -171,7 +171,7 @@ describe('AuthContext', () => {
     await user.click(screen.getByRole('button', { name: 'login' }))
 
     await waitFor(() =>
-      expect(screen.getByText('Unable to sign in with Google.')).toBeInTheDocument(),
+      expect(screen.getByText('Unable to sign in with Google. (auth/network-request-failed)')).toBeInTheDocument(),
     )
   })
 
