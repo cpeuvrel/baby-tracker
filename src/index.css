@@ -8,6 +8,9 @@
   --accent-contrast: #ffffff;
   --action: #f2703b;
   --action-contrast: #ffffff;
+  /* Timer button: green to start, red to stop (white text reads on both, in light and dark). */
+  --timer-start: #2e7d32;
+  --timer-stop: #c62828;
   --button-add: #4a6fa5;
   --button-add-contrast: #ffffff;
   --danger: #b3261e;
@@ -182,6 +185,20 @@ button:disabled {
 .button-action {
   background: var(--action);
   color: var(--action-contrast);
+}
+
+.button-timer-start,
+.button-timer-stop {
+  color: #ffffff;
+  transition: background-color 0.2s;
+}
+
+.button-timer-start {
+  background: var(--timer-start);
+}
+
+.button-timer-stop {
+  background: var(--timer-stop);
 }
 
 .link-button {

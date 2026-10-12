@@ -68,7 +68,7 @@ describe('SleepTimerModal', () => {
 
     expect(screen.getByLabelText('Start Time')).toBeInTheDocument()
     expect(screen.getByLabelText('End Time')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start Timer' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start Timer' })).toHaveClass('button-timer-start')
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
   })
 
@@ -100,6 +100,7 @@ describe('SleepTimerModal', () => {
     const user = userEvent.setup()
 
     render(<SleepTimerModal onClose={onClose} />)
+    expect(screen.getByRole('button', { name: 'Stop Timer' })).toHaveClass('button-timer-stop')
     await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
 
     expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))

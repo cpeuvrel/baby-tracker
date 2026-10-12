@@ -93,7 +93,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
           {durationMinutes != null ? formatDuration(durationMinutes * 60) : '—'}
         </p>
         {canStart && (
-          <button type="button" className="button-action button-start-again" onClick={handleStart}>
+          <button type="button" className="button-action button-timer-start button-start-again" onClick={handleStart}>
             Start Timer
           </button>
         )}
