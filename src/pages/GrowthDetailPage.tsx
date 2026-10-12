@@ -11,7 +11,7 @@ import { useHousehold } from '../contexts/HouseholdContext'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { formatDate } from '../lib/appTime'
-import { ageInMonths, formatAge } from '../lib/age'
+import { ageInMonths, DAYS_PER_WHO_MONTH, formatAge } from '../lib/age'
 import {
   formatGrowthValue,
   GROWTH_METRIC_FIELD,
@@ -24,7 +24,7 @@ import type { GrowthEntry } from '../types/models'
 const METRICS: GrowthMetric[] = ['weight', 'height', 'headCircumference']
 
 /** Below about a week since the last measurement, a projection to today would sit on top of it. */
-const MIN_PROJECTION_GAP_MONTHS = 7 / 30
+const MIN_PROJECTION_GAP_MONTHS = 7 / DAYS_PER_WHO_MONTH
 
 type ViewMode = 'chart' | 'list'
 
