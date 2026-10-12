@@ -38,6 +38,20 @@ describe('GrowthPercentileChart', () => {
     expect(pointCircles(container)).toHaveLength(2)
   })
 
+  it('leaves out measurements after 24 months, past the WHO curves', () => {
+    const { container } = render(
+      <GrowthPercentileChart
+        metric="weight"
+        sex="female"
+        unit="metric"
+        childPoints={[points[0], { id: 'c', ageMonths: 30, value: 13000 }]}
+        onSelectPoint={vi.fn()}
+      />,
+    )
+
+    expect(pointCircles(container)).toHaveLength(1)
+  })
+
   it('selects the measurement nearest to a tap', () => {
     const onSelectPoint = vi.fn()
     const { container, svg } = renderChart(onSelectPoint)

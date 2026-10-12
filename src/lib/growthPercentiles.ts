@@ -5,7 +5,8 @@ export type { Sex }
 
 export const REFERENCE_PERCENTILES = [2, 5, 10, 25, 50, 75, 90, 95, 98] as const
 
-const MAX_AGE_MONTHS = 24
+/** Oldest age (months) the WHO growth standards cover. */
+export const WHO_MAX_AGE_MONTHS = 24
 
 function interpolateLms(rows: LmsRow[], ageMonths: number): LmsRow {
   const clamped = Math.max(rows[0].ageMonths, Math.min(ageMonths, rows[rows.length - 1].ageMonths))
@@ -30,7 +31,7 @@ function interpolateLms(rows: LmsRow[], ageMonths: number): LmsRow {
 
 /** WHO Child Growth Standards cover birth to 24 months; ages outside that range have no reference. */
 function isWithinWhoRange(ageMonths: number): boolean {
-  return ageMonths >= 0 && ageMonths <= MAX_AGE_MONTHS
+  return ageMonths >= 0 && ageMonths <= WHO_MAX_AGE_MONTHS
 }
 
 function getLmsAt(metric: GrowthMetric, sex: Sex, ageMonths: number): LmsRow | undefined {
