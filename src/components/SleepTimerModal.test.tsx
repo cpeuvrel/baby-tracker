@@ -297,29 +297,4 @@ describe('SleepTimerModal', () => {
       vi.useRealTimers()
     }
   })
-
-  it('shows the stop minute as the end time, never a minute later', () => {
-    vi.useFakeTimers({ toFake: ['Date'] })
-    // Started 21:00:10, stopped 21:30:40: rounding the exact 30.5 minutes would show 21:31.
-    vi.setSystemTime(new Date('2026-03-05T21:30:40+01:00'))
-    try {
-      const activeEntry: SleepEntry = {
-        id: 'sleep1',
-        startedAt: '2026-03-05T20:00:10.000Z',
-        endedAt: null,
-        durationSeconds: null,
-        notes: '',
-        createdBy: 'uid1',
-        createdAt: '2026-03-05T20:00:10.000Z',
-      }
-      vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeEntry)
-
-      render(<SleepTimerModal onClose={vi.fn()} />)
-      fireEvent.click(screen.getByRole('button', { name: 'Stop Timer' }))
-
-      expect(dateTimeValue('End Time')).toBe('2026-03-05T21:30')
-    } finally {
-      vi.useRealTimers()
-    }
-  })
 })

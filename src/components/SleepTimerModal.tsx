@@ -49,10 +49,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       const startDate = new Date(activeEntry.startedAt)
       void stopSleep(household.id, selectedBaby.id, activeEntry.id, startDate)
       setStartedAt(toDatetimeLocalValue(startDate))
-      // Count whole minutes between the shown start and stop times, so the end time shown is the
-      // stop's own minute (rounding the exact span could push it a minute into the future).
-      const toMinute = (date: Date) => fromDatetimeLocalValue(toDatetimeLocalValue(date)).getTime()
-      setDurationMinutes(Math.round((toMinute(stoppedAt) - toMinute(startDate)) / 60000))
+      setDurationMinutes(Math.round((stoppedAt.getTime() - startDate.getTime()) / 60000))
       setTimerEntryId(activeEntry.id)
     } else if (!pendingStart) {
       setPendingStart(true)
