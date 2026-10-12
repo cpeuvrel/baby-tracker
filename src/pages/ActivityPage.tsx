@@ -35,6 +35,7 @@ import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
 import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
 import { useRecentMedicationEntries } from '../hooks/useRecentMedicationEntries'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
+import { useSleepTimerBabyParam } from '../hooks/useSleepTimerNotification'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
   latestGrowthEntryWithField,
@@ -112,6 +113,7 @@ export function ActivityPage() {
   // "?timer=sleep" (the sleep timer notification, the timer banner) opens the running timer.
   const [searchParams, setSearchParams] = useSearchParams()
   const sleepTimerRequested = searchParams.get('timer') === 'sleep'
+  useSleepTimerBabyParam()
   const [unit] = useUnitPreference()
   const { isVisible } = useActivityVisibility()
   // Keeps "… ago" labels and the recent-entries window current without a reload.

@@ -1,26 +1,22 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useReminderModule from '../hooks/useReminder'
 import type { Reminder } from '../types/models'
-import { ReminderSettingsModal } from './ReminderSettingsModal'
+import { ReminderSettingsModal, TIME_SAVE_DELAY_MS } from './ReminderSettingsModal'
 import { setTime, timeValue } from '../test/timeFields'
 
 const setReminder = vi.fn()
-const requestNotificationToken = vi.fn()
-const saveFcmToken = vi.fn()
+const registerPush = vi.fn()
 
 vi.mock('../repositories/reminders', () => ({
   setReminder: (...args: unknown[]) => setReminder(...args),
 }))
-vi.mock('../lib/messaging', () => ({
-  requestNotificationToken: (...args: unknown[]) => requestNotificationToken(...args),
-}))
-vi.mock('../repositories/fcmTokens', () => ({
-  saveFcmToken: (...args: unknown[]) => saveFcmToken(...args),
+vi.mock('../lib/pushRegistration', () => ({
+  registerPush: (...args: unknown[]) => registerPush(...args),
 }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
@@ -29,8 +25,7 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 describe('ReminderSettingsModal', () => {
   beforeEach(() => {
     setReminder.mockReset()
-    requestNotificationToken.mockReset()
-    saveFcmToken.mockReset()
+    registerPush.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -48,6 +43,11 @@ describe('ReminderSettingsModal', () => {
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.unstubAllGlobals()
   })
 
   it('defaults to an inactive reminder at 09:00 when none exists yet', () => {
@@ -84,18 +84,35 @@ describe('ReminderSettingsModal', () => {
     expect(setReminder).toHaveBeenCalledWith('h1', 'b1', 'Vitamine D', '09:00', true)
   })
 
-  it('saves the reminder when the time changes', () => {
+  it('saves the time once the user settles on it, not at every digit', () => {
+    vi.useFakeTimers()
     vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
     setTime('Reminder time', '08:30')
 
-    expect(setReminder).toHaveBeenLastCalledWith('h1', 'b1', 'Vitamine D', '08:30', false)
+    expect(setReminder).not.toHaveBeenCalled()
+    act(() => vi.advanceTimersByTime(TIME_SAVE_DELAY_MS))
+    expect(setReminder).toHaveBeenCalledTimes(1)
+    expect(setReminder).toHaveBeenCalledWith('h1', 'b1', 'Vitamine D', '08:30', false)
   })
 
-  it('enables notifications and saves the token on success', async () => {
+  it('saves a time still waiting when the modal closes', () => {
+    vi.useFakeTimers()
     vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
-    requestNotificationToken.mockResolvedValue('the-token')
+
+    const { unmount } = render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
+    setTime('Reminder time', '08:30')
+    unmount()
+
+    expect(setReminder).toHaveBeenCalledTimes(1)
+    expect(setReminder).toHaveBeenCalledWith('h1', 'b1', 'Vitamine D', '08:30', false)
+  })
+
+  it('enables notifications on success', async () => {
+    vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
+    vi.stubGlobal('Notification', { permission: 'default' })
+    registerPush.mockResolvedValue(true)
     const user = userEvent.setup()
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
@@ -104,18 +121,54 @@ describe('ReminderSettingsModal', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Notifications enabled' })).toBeDisabled(),
     )
-    expect(saveFcmToken).toHaveBeenCalledWith('uid1', 'the-token')
+    expect(registerPush).toHaveBeenCalledWith('uid1')
   })
 
-  it('shows an error when notifications cannot be enabled', async () => {
+  it('shows an error when notifications cannot be enabled, and lets the user retry', async () => {
     vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
-    requestNotificationToken.mockResolvedValue(null)
+    vi.stubGlobal('Notification', { permission: 'default' })
+    registerPush.mockResolvedValue(false)
     const user = userEvent.setup()
 
     render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Enable notifications' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Notifications denied')
-    expect(saveFcmToken).not.toHaveBeenCalled()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not enable notifications')
+    expect(screen.getByRole('button', { name: 'Enable notifications' })).toBeEnabled()
+  })
+
+  it('recovers when saving the token fails', async () => {
+    vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
+    vi.stubGlobal('Notification', { permission: 'default' })
+    registerPush.mockRejectedValue(new Error('offline'))
+    const user = userEvent.setup()
+
+    render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Enable notifications' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not enable notifications')
+    expect(screen.getByRole('button', { name: 'Enable notifications' })).toBeEnabled()
+  })
+
+  it('shows notifications already allowed as enabled, and keeps the token on file', async () => {
+    vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
+    vi.stubGlobal('Notification', { permission: 'granted' })
+    registerPush.mockResolvedValue(true)
+
+    render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Notifications enabled' })).toBeDisabled()
+    await waitFor(() => expect(registerPush).toHaveBeenCalledWith('uid1'))
+  })
+
+  it('explains notifications blocked in the browser', () => {
+    vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
+    vi.stubGlobal('Notification', { permission: 'denied' })
+
+    render(<ReminderSettingsModal medicationName="Vitamine D" onClose={vi.fn()} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('blocked')
+    expect(screen.getByRole('button', { name: 'Enable notifications' })).toBeDisabled()
+    expect(registerPush).not.toHaveBeenCalled()
   })
 })

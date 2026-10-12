@@ -49,3 +49,10 @@ export function startOfParisDay(date: Date): Date {
   const asUtc = Date.UTC(p.year, p.month - 1, p.day)
   return new Date(asUtc - offsetAt(asUtc - offsetAt(asUtc)))
 }
+
+/** Today's Paris calendar day as "YYYY-MM-DD" (the visits' `date`, the reminders' `lastSentOn`). */
+export function parisDateValue(now: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const p = zonedParts(now)
+  return `${p.year}-${pad(p.month)}-${pad(p.day)}`
+}

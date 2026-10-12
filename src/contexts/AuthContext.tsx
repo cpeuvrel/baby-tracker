@@ -8,7 +8,8 @@ import {
   type User,
 } from 'firebase/auth'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { auth, usingEmulators } from '../lib/firebase'
+import { auth, clearLocalDataAndReload, usingEmulators } from '../lib/firebase'
+import { unregisterPush } from '../lib/pushRegistration'
 
 interface AuthContextValue {
   user: User | null
@@ -26,6 +27,9 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 const googleProvider = new GoogleAuthProvider()
 
 const ALLOWED_EMAILS = ['amandineandcorentin@gmail.com']
+
+// The user closed the popup, or a second click replaced it: not an error to show.
+const DISMISSED_POPUP_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request'])
 
 function describeError(fallback: string, cause: unknown): string {
   const code = (cause as { code?: string } | null)?.code
@@ -55,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setError(`${nextUser.email ?? 'This Google account'} is not authorized.`)
           setUser(null)
           setLoading(false)
-          void signOut(auth)
+          void signOut(auth).catch((cause: unknown) => console.error('[auth] signOut failed', cause))
           return
         }
         setUser(nextUser)
@@ -76,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await signInWithPopup(auth, googleProvider)
     } catch (cause) {
+      if (DISMISSED_POPUP_CODES.has((cause as { code?: string } | null)?.code ?? '')) return
       console.error('[auth] signInWithPopup failed', cause)
       setError('Unable to sign in with Google.')
     }
@@ -105,8 +110,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Unregisters this device from the household's pushes (while still signed
+   * in: only the owner may delete its token), signs out, then clears the data
+   * cached on this device and reloads.
+   */
   const logout = async () => {
-    await signOut(auth)
+    setError(null)
+    try {
+      if (user) await unregisterPush(user.uid)
+      await signOut(auth)
+    } catch (cause) {
+      console.error('[auth] signOut failed', cause)
+      setError(describeError('Unable to sign out.', cause))
+      return
+    }
+    await clearLocalDataAndReload()
   }
 
   return (

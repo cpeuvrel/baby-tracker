@@ -6,7 +6,6 @@ import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { useNow } from '../hooks/useNow'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration, formatElapsed } from '../lib/duration'
-import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { registerPush } from '../lib/pushRegistration'
 import { alertSleepAlreadyRunning } from '../lib/sleepAlreadyRunning'
 import { logSleep, resumeSleep, startSleep, stopSleep, updateSleepEntry, updateSleepStart } from '../repositories/sleepEntries'
@@ -60,9 +59,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setPendingStart(true)
       // The running timer shows as a notification; this tap is the gesture asking needs.
       // Then this device gets the server's pushes that keep its elapsed time current.
-      void requestSleepTimerNotificationPermission()
-        .then(() => registerPush(user.uid))
-        .catch(() => {})
+      void registerPush(user.uid).catch(() => {})
       // Refused when another device started a sleep this one did not see yet: it shows up instead.
       const onRefused = () => {
         setPendingStart(false)
