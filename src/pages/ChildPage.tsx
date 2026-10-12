@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ChildPhotoEditor } from '../components/ChildPhotoEditor'
 import { ExportImportSection } from '../components/ExportImportSection'
 import { useHousehold } from '../contexts/HouseholdContext'
@@ -29,7 +29,11 @@ export function ChildPage() {
     }
   }, [baby])
 
-  if (!household || !baby) return null
+  // Without children left, adding one is all the Family screens can offer.
+  const familyPath = babies.length === 0 ? '/account/family/add' : '/account/family'
+  if (!household) return null
+  // Unknown child: a stale link, or deleted (from here or on the other phone).
+  if (!baby) return <Navigate to={familyPath} replace />
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -46,8 +50,9 @@ export function ChildPage() {
       return
     setDeleting(true)
     setDeleteError(false)
+    const lastChild = babies.length === 1
     deleteBabyWithData(household.id, baby.id)
-      .then(() => navigate('/account/family', { replace: true }))
+      .then(() => navigate(lastChild ? '/account/family/add' : '/account/family', { replace: true }))
       .catch((error: unknown) => {
         console.error('[child] delete failed', error)
         setDeleting(false)

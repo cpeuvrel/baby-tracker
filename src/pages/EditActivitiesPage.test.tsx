@@ -1,14 +1,18 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as HouseholdContext from '../contexts/HouseholdContext'
 import { EditActivitiesPage } from './EditActivitiesPage'
 
-function renderPage() {
+const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
+
+function renderPage(babyId = 'b1') {
   return render(
-    <MemoryRouter initialEntries={['/account/family/b1/activities']}>
+    <MemoryRouter initialEntries={[`/account/family/${babyId}/activities`]}>
       <Routes>
         <Route path="/account/family/:babyId/activities" element={<EditActivitiesPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -17,6 +21,20 @@ function renderPage() {
 describe('EditActivitiesPage', () => {
   beforeEach(() => {
     localStorage.clear()
+    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+      household: { id: 'h1', name: 'Famille Test', memberUids: [] },
+      babies: [baby],
+      loading: false,
+      error: null,
+      selectedBaby: baby,
+      selectBaby: vi.fn(),
+    })
+  })
+
+  it('redirects to the children list when the baby cannot be found', () => {
+    renderPage('unknown')
+
+    expect(screen.getByText('Children list')).toBeInTheDocument()
   })
 
   it('lists only the categories tracked by this app, all checked by default', () => {

@@ -40,6 +40,10 @@ vi.mock('./pages/LoginPage', async (importOriginal) => {
   }
 })
 
+// The tracking screens' own data hooks are beside the point here.
+vi.mock('./pages/ActivityPage', () => ({ ActivityPage: () => <p>Activity screen</p> }))
+vi.mock('./components/ActiveTimersBanner', () => ({ ActiveTimersBanner: () => null }))
+
 const { default: App } = await import('./App')
 
 describe('App', () => {
@@ -51,7 +55,21 @@ describe('App', () => {
 
   afterEach(() => {
     vi.restoreAllMocks()
+    window.history.replaceState({}, '', '/')
   })
+
+  function signInToFamily(babies: { id: string; name: string; birthDate: string; sex: null }[] = []) {
+    subscribeToHouseholdForUser.mockImplementation((_uid, onChange) => {
+      onChange({ id: 'h1', name: 'Famille Test', memberUids: ['uid1'] })
+      return vi.fn()
+    })
+    subscribeToBabies.mockImplementation((_householdId, onChange) => {
+      onChange(babies)
+      return vi.fn()
+    })
+    render(<App />)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
+  }
 
   it('shows a loading state before the auth listener resolves', () => {
     render(<App />)
@@ -109,5 +127,14 @@ describe('App', () => {
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()
+  })
+
+  it('sends an unknown address to the home screen', async () => {
+    window.history.replaceState({}, '', '/no-such-screen')
+
+    signInToFamily([{ id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }])
+
+    expect(await screen.findByText('Activity screen')).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
   })
 })

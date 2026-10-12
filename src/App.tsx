@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AppErrorBoundary } from './components/AppErrorBoundary'
 import { Layout } from './components/Layout'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
@@ -94,6 +94,8 @@ function AuthenticatedApp() {
           <Route path="account/pediatrician/visits/:visitId" element={<PediatricianVisitPage />} />
           <Route path="account/pediatrician/visits/:visitId/remarks" element={<VisitRemarksPage />} />
           <Route path="account/pediatrician/visits/:visitId/discussion" element={<VisitDiscussionPage />} />
+          {/* A stale link or a typo lands on the home screen rather than on an empty page. */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
     </BrowserRouter>

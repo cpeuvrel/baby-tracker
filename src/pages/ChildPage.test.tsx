@@ -36,6 +36,18 @@ vi.mock('../contexts/AuthContext', () => ({
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
+const sister = { id: 'b2', name: 'Mia', birthDate: '2024-01-01', sex: null }
+
+function mockBabies(babies: (typeof baby)[]) {
+  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
+    household,
+    babies,
+    loading: false,
+    error: null,
+    selectedBaby: babies[0] ?? null,
+    selectBaby: vi.fn(),
+  })
+}
 
 function renderPage(babyId = 'b1') {
   return render(
@@ -43,6 +55,7 @@ function renderPage(babyId = 'b1') {
       <Routes>
         <Route path="/account/family/:babyId" element={<ChildPage />} />
         <Route path="/account/family" element={<p>Children list</p>} />
+        <Route path="/account/family/add" element={<p>Add child screen</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -63,10 +76,18 @@ describe('ChildPage', () => {
     })
   })
 
-  it('renders nothing when the baby cannot be found', () => {
-    const { container } = renderPage('unknown')
+  it('redirects to the children list when the baby cannot be found', () => {
+    renderPage('unknown')
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Children list')).toBeInTheDocument()
+  })
+
+  it('redirects to Add Child when no child is left', () => {
+    mockBabies([])
+
+    renderPage()
+
+    expect(screen.getByText('Add child screen')).toBeInTheDocument()
   })
 
   it('pre-fills the profile form with the baby and shows its computed age', () => {
@@ -144,6 +165,7 @@ describe('ChildPage', () => {
   })
 
   it('deletes the child after a confirmation naming them', async () => {
+    mockBabies([baby, sister])
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderPage()
@@ -153,6 +175,17 @@ describe('ChildPage', () => {
     expect(confirm).toHaveBeenCalledWith(expect.stringContaining('Delete Léo?'))
     expect(deleteBabyWithData).toHaveBeenCalledWith('h1', 'b1')
     expect(await screen.findByText('Children list')).toBeInTheDocument()
+  })
+
+  it('opens Add Child after deleting the last child', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Delete Child' }))
+
+    expect(deleteBabyWithData).toHaveBeenCalledWith('h1', 'b1')
+    expect(await screen.findByText('Add child screen')).toBeInTheDocument()
   })
 
   it('keeps the child when the confirmation is cancelled', async () => {

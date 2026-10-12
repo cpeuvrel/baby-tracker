@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom'
+import { Link, Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatDate } from '../lib/appTime'
 import { routeForegroundPushes } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { BabySelector } from './BabySelector'
+import { EmptyState } from './EmptyState'
 import { BabyAvatarIcon, MoreIcon } from './icons'
 import { SummarySheet } from './SummarySheet'
 import { TabBar } from './TabBar'
@@ -18,11 +19,15 @@ function formatHeaderDate(date: Date): string {
 }
 
 export function Layout() {
-  const { selectedBaby } = useHousehold()
+  const { babies, selectedBaby } = useHousehold()
   const onActivityScreen = useMatch({ path: '/', end: true }) != null
   const [summaryOpen, setSummaryOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // Without a child (e.g. the last one was deleted) the tracking screens have nothing to show;
+  // the Family screens stay reachable to add one.
+  const onAccountScreens = pathname === '/account' || pathname.startsWith('/account/')
+  const noChildYet = babies.length === 0 && !onAccountScreens
 
   // The service worker forwards notification taps here (see sw.ts).
   useEffect(() => {
@@ -77,7 +82,13 @@ export function Layout() {
       <main className="app-content">
         {/* A screen that fails keeps the header and tab bar: another tab gets a fresh try. */}
         <AppErrorBoundary resetKey={pathname}>
-          <Outlet />
+          {noChildYet ? (
+            <EmptyState colorVar="--category-feeding" icon={<BabyAvatarIcon />}>
+              No child yet. <Link to="/account/family/add">Add a child</Link>
+            </EmptyState>
+          ) : (
+            <Outlet />
+          )}
         </AppErrorBoundary>
       </main>
       <TabBar />

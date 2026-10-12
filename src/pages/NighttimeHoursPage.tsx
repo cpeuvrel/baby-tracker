@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { updateNighttimeHours } from '../repositories/babies'
@@ -14,7 +14,8 @@ export function NighttimeHoursPage() {
   const [start, setStart] = useState(current.start)
   const [end, setEnd] = useState(current.end)
 
-  if (!household || !baby) return null
+  if (!household) return null
+  if (!baby) return <Navigate to="/account/family" replace />
 
   const backTo = `/account/family/${baby.id}`
   // A night starting and ending at the same time would be no night at all.

@@ -1,10 +1,15 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useHousehold } from '../contexts/HouseholdContext'
 import { ACTIVITY_CATEGORIES, useActivityVisibility } from '../hooks/useActivityVisibility'
 
 export function EditActivitiesPage() {
   const { babyId } = useParams<{ babyId: string }>()
   const navigate = useNavigate()
+  const { babies } = useHousehold()
   const { isVisible, toggle } = useActivityVisibility()
+
+  // Unknown child (deleted, stale link): its Back button would lead nowhere.
+  if (!babies.some((baby) => baby.id === babyId)) return <Navigate to="/account/family" replace />
 
   return (
     <div>

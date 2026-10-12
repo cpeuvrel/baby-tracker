@@ -13,10 +13,10 @@ vi.mock('../lib/foregroundPush', () => ({ routeForegroundPushes: vi.fn().mockRes
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby: Baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 
-function mockHousehold(selectedBaby: Baby) {
+function mockHousehold(selectedBaby: Baby | null) {
   vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
     household,
-    babies: [selectedBaby],
+    babies: selectedBaby ? [selectedBaby] : [],
     loading: false,
     error: null,
     selectedBaby,
@@ -36,6 +36,7 @@ function renderLayout(path = '/') {
           <Route index element={<p>Contenu</p>} />
           <Route path="history" element={<p>History screen</p>} />
           <Route path="trends" element={<BrokenScreen />} />
+          <Route path="account" element={<p>Family screen</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -143,5 +144,24 @@ describe('Layout', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('History screen')).toBeInTheDocument()
+  })
+
+  it('invites to add a child when the family has none', () => {
+    mockHousehold(null)
+
+    renderLayout('/history')
+
+    expect(screen.getByText(/No child yet/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Add a child' })).toHaveAttribute('href', '/account/family/add')
+    expect(screen.queryByText('History screen')).not.toBeInTheDocument()
+  })
+
+  it('keeps the Family screens reachable without a child', () => {
+    mockHousehold(null)
+
+    renderLayout('/account')
+
+    expect(screen.getByText('Family screen')).toBeInTheDocument()
+    expect(screen.queryByText(/No child yet/)).not.toBeInTheDocument()
   })
 })

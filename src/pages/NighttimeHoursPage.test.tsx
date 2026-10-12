@@ -20,6 +20,7 @@ function renderPage(babyId = 'b1') {
     <MemoryRouter initialEntries={[`/account/family/${babyId}/nighttime-hours`]}>
       <Routes>
         <Route path="/account/family/:babyId/nighttime-hours" element={<NighttimeHoursPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -38,10 +39,10 @@ describe('NighttimeHoursPage', () => {
     })
   })
 
-  it('renders nothing when the baby cannot be found', () => {
-    const { container } = renderPage('unknown')
+  it('redirects to the children list when the baby cannot be found', () => {
+    renderPage('unknown')
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Children list')).toBeInTheDocument()
   })
 
   it('defaults to 20:00–08:00 when the baby has no setting yet', () => {
