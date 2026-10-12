@@ -24,7 +24,8 @@ describe('reminders repository', () => {
     await setReminder('h1', 'b1', 'Vitamine D', '09:00', true)
 
     expect(setDocMock).toHaveBeenCalledTimes(1)
-    const [, payload] = setDocMock.mock.calls[0]
+    const [ref, payload] = setDocMock.mock.calls[0]
+    expect((ref as { path: string }).path).toBe('households/h1/babies/b1/reminders/Vitamine D')
     expect(payload).toEqual({ medicationName: 'Vitamine D', timeOfDay: '09:00', active: true })
   })
 
@@ -43,6 +44,8 @@ describe('reminders repository', () => {
 
     subscribeToReminder('h1', 'b1', 'Vitamine D', onChange)
 
+    const [ref] = onSnapshotMock.mock.calls[0]
+    expect((ref as unknown as { path: string }).path).toBe('households/h1/babies/b1/reminders/Vitamine D')
     expect(onChange).toHaveBeenCalledWith({
       id: 'Vitamine D',
       medicationName: 'Vitamine D',

@@ -27,6 +27,8 @@ describe('fcmTokens repository', () => {
 
     await saveFcmToken('uid1', 'token-abc')
 
+    expect(getDocMock).toHaveBeenCalledTimes(1)
+    expect((getDocMock.mock.calls[0][0] as { path: string }).path).toBe('users/uid1/fcmTokens/token-abc')
     expect(setDocMock).toHaveBeenCalledTimes(1)
     const [ref, payload, options] = setDocMock.mock.calls[0] as unknown as [{ path: string }, Record<string, unknown>, unknown]
     expect(ref.path).toBe('users/uid1/fcmTokens/token-abc')
@@ -41,7 +43,8 @@ describe('fcmTokens repository', () => {
 
     await saveFcmToken('uid1', 'token-abc')
 
-    const [, payload] = setDocMock.mock.calls[0] as unknown as [unknown, Record<string, unknown>]
+    const [ref, payload] = setDocMock.mock.calls[0] as unknown as [{ path: string }, Record<string, unknown>]
+    expect(ref.path).toBe('users/uid1/fcmTokens/token-abc')
     expect(payload).not.toHaveProperty('createdAt')
     expect(payload.lastSeenAt).toBeDefined()
   })
