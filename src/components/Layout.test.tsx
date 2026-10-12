@@ -1,13 +1,14 @@
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { Baby } from '../types/models'
 import { Layout } from './Layout'
 
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: { uid: 'uid1' } }) }))
+vi.mock('../lib/foregroundPush', () => ({ routeForegroundPushes: vi.fn().mockResolvedValue(() => {}) }))
 
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby: Baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
@@ -29,14 +30,25 @@ function renderLayout(path = '/') {
       <Routes>
         <Route path="/" element={<Layout />}>
           <Route index element={<p>Contenu</p>} />
-          <Route path="history" element={<p>History</p>} />
+          <Route path="history" element={<p>History screen</p>} />
         </Route>
       </Routes>
     </MemoryRouter>,
   )
 }
 
+/** Stands in for the service worker container, which forwards notification taps as messages. */
+function stubServiceWorker() {
+  const container = new EventTarget()
+  Object.defineProperty(navigator, 'serviceWorker', { configurable: true, value: container })
+  return (data: unknown) => act(() => void container.dispatchEvent(new MessageEvent('message', { data })))
+}
+
 describe('Layout', () => {
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'serviceWorker')
+  })
+
   beforeEach(() => {
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
       feeding: [],
@@ -87,4 +99,28 @@ describe('Layout', () => {
 
     expect(screen.queryByRole('button', { name: 'Summary' })).not.toBeInTheDocument()
   })
+
+  it('opens the screen a notification tap names', () => {
+    mockHousehold(baby)
+    const postFromServiceWorker = stubServiceWorker()
+    renderLayout()
+
+    postFromServiceWorker({ type: 'navigate', url: '/history' })
+
+    expect(screen.getByText('History screen')).toBeInTheDocument()
+  })
+
+  it.each(['https://evil.example/history', '//evil.example/history', '/\\evil.example/history'])(
+    'ignores a notification URL that leaves the app: %s',
+    (url) => {
+      mockHousehold(baby)
+      const postFromServiceWorker = stubServiceWorker()
+      renderLayout()
+
+      postFromServiceWorker({ type: 'navigate', url })
+
+      expect(screen.getByText('Contenu')).toBeInTheDocument()
+      expect(screen.queryByText('History screen')).not.toBeInTheDocument()
+    },
+  )
 })

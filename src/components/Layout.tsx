@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react'
 import { Outlet, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { formatDate } from '../lib/appTime'
-import { showVaccinePushesInForeground } from '../lib/foregroundPush'
+import { routeForegroundPushes } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 import { BabySelector } from './BabySelector'
 import { BabyAvatarIcon, MoreIcon } from './icons'
 import { SummarySheet } from './SummarySheet'
 import { TabBar } from './TabBar'
+
+// A path on this origin: "//host" and "/\host" would be read as another site.
+const SAME_ORIGIN_PATH = /^\/(?![/\\])/
 
 function formatHeaderDate(date: Date): string {
   return formatDate(date, { weekday: 'short', month: 'short', day: 'numeric' })
@@ -22,18 +25,21 @@ export function Layout() {
   // The service worker forwards notification taps here (see sw.ts).
   useEffect(() => {
     if (!('serviceWorker' in navigator)) return
+    const serviceWorker = navigator.serviceWorker
     const onMessage = (event: MessageEvent) => {
       const data = event.data as { type?: string; url?: string } | null
-      if (data?.type === 'navigate' && typeof data.url === 'string' && data.url.startsWith('/')) navigate(data.url)
+      if (data?.type === 'navigate' && typeof data.url === 'string' && SAME_ORIGIN_PATH.test(data.url)) {
+        navigate(data.url)
+      }
     }
-    navigator.serviceWorker.addEventListener('message', onMessage)
-    return () => navigator.serviceWorker.removeEventListener('message', onMessage)
+    serviceWorker.addEventListener('message', onMessage)
+    return () => serviceWorker.removeEventListener('message', onMessage)
   }, [navigate])
 
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
     let cancelled = false
-    void showVaccinePushesInForeground()
+    void routeForegroundPushes()
       .then((stop) => (cancelled ? stop() : (unsubscribe = stop)))
       .catch(() => {})
     return () => {

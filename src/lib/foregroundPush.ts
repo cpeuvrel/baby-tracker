@@ -8,7 +8,7 @@ import { app } from './firebase'
  * worker would (sleep timers of every baby, medication and vaccine reminders).
  * Returns an unsubscribe function.
  */
-export async function showVaccinePushesInForeground(): Promise<() => void> {
+export async function routeForegroundPushes(): Promise<() => void> {
   if (!('serviceWorker' in navigator) || !(await isSupported())) return () => {}
   return onMessage(getMessaging(app), (payload) => {
     if (!payload.data || typeof Notification === 'undefined' || Notification.permission !== 'granted') return
