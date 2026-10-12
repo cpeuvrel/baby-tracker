@@ -86,4 +86,42 @@ describe('Modal', () => {
     await user.click(overlay)
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it('keeps focus on the field being edited when the parent re-renders with a new onClose', () => {
+    const { rerender } = render(
+      <Modal title="Sommeil" bandColorVar="--category-sleep" onClose={() => {}}>
+        <input aria-label="Champ" />
+      </Modal>,
+    )
+    const field = screen.getByLabelText('Champ')
+    field.focus()
+
+    rerender(
+      <Modal title="Sommeil" bandColorVar="--category-sleep" onClose={() => {}}>
+        <input aria-label="Champ" />
+      </Modal>,
+    )
+
+    expect(field).toHaveFocus()
+  })
+
+  it('calls the latest onClose on Escape', async () => {
+    const first = vi.fn()
+    const latest = vi.fn()
+    const user = userEvent.setup()
+    const { rerender } = render(
+      <Modal title="Sommeil" bandColorVar="--category-sleep" onClose={first}>
+        <p>Contenu</p>
+      </Modal>,
+    )
+    rerender(
+      <Modal title="Sommeil" bandColorVar="--category-sleep" onClose={latest}>
+        <p>Contenu</p>
+      </Modal>,
+    )
+    await user.keyboard('{Escape}')
+
+    expect(first).not.toHaveBeenCalled()
+    expect(latest).toHaveBeenCalledTimes(1)
+  })
 })

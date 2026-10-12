@@ -28,14 +28,22 @@ export function Modal({
   // Only a press that both starts and ends on the overlay closes it (not a drag out of the dialog).
   const pressStartedOnOverlay = useRef(false)
 
+  // Parents pass a new onClose on every render: read it from a ref so the effect below runs once.
+  const onCloseRef = useRef(onClose)
   useEffect(() => {
+    onCloseRef.current = onClose
+  }, [onClose])
+
+  useEffect(() => {
+    // Focus the dialog on open only: refocusing on a parent re-render would steal focus from
+    // the field being edited and shut its picker.
     dialogRef.current?.focus()
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') onCloseRef.current()
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [])
 
   return (
     <div
