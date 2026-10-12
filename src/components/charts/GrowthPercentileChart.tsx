@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef, useState, type PointerEvent } from 'react'
 import type { UnitSystem } from '../../hooks/useUnitPreference'
 import { GRAMS_PER_POUND, MM_PER_INCH, type GrowthMetric } from '../../lib/growthMetrics'
-import { referenceCurves, REFERENCE_PERCENTILES, type Sex } from '../../lib/growthPercentiles'
+import { referenceCurves, REFERENCE_PERCENTILES, WHO_MAX_AGE_MONTHS, type Sex } from '../../lib/growthPercentiles'
 
 export interface GrowthChildPoint {
   id: string
@@ -37,7 +37,7 @@ const HIT_RADIUS = 28
 function ageAxis(childPoints: GrowthChildPoint[]): { max: number; ticks: number[] } {
   const oldest = Math.max(0, ...childPoints.map((point) => point.ageMonths))
   if (oldest <= 11) return { max: 11, ticks: Array.from({ length: 12 }, (_, month) => month) }
-  return { max: 24, ticks: [0, 3, 6, 9, 12, 15, 18, 21, 24] }
+  return { max: WHO_MAX_AGE_MONTHS, ticks: [0, 3, 6, 9, 12, 15, 18, 21, 24] }
 }
 
 /** Internal units (g / mm) → the unit shown on the axis, with its suffix. */

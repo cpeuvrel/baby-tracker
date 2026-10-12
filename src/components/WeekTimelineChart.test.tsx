@@ -1,9 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
-import { dayKey } from '../lib/timeline'
+import { formatDate } from '../lib/appTime'
+import { dayKey, parseDayKey } from '../lib/timeline'
 import type { SleepEntry } from '../types/models'
 import { nightFractions } from '../lib/weekTimeline'
 import { WeekTimelineChart } from './WeekTimelineChart'
@@ -136,6 +137,23 @@ describe('WeekTimelineChart', () => {
       'Sep',
       'Oct',
     ])
+  })
+
+  it('moves on to the new week at midnight between Sunday and Monday', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-04T23:59:00+02:00')) // Sunday 23:59
+    mockNoEntries()
+    render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
+    const today = () => document.querySelector('.timeline-grid-day-header.is-today')
+    expect(today()).toHaveAccessibleName(`See details for ${formatDate(parseDayKey('2026-10-04'))}`)
+
+    act(() => {
+      vi.advanceTimersByTime(2 * 60_000)
+    })
+
+    expect(today()).toHaveAccessibleName(`See details for ${formatDate(parseDayKey('2026-10-05'))}`)
+    const lastRange = vi.mocked(useEntriesInRangeModule.useEntriesInRange).mock.lastCall?.[2]
+    expect(lastRange?.end).toEqual(parseDayKey('2026-10-12'))
   })
 
   it('snaps on each Monday so a swipe moves one week at most', () => {

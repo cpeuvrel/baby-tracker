@@ -1,8 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useDayTimelineModule from '../hooks/useDayTimeline'
+import type { DayTimeline } from '../hooks/useDayTimeline'
 import type { EntryKind } from '../lib/historyFilters'
 import type { TimelineEntry } from '../lib/timeline'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
@@ -22,6 +23,14 @@ vi.mock('../repositories/sleepEntries', () => ({
   subscribeToRecentSleepEntries: () => () => {},
 }))
 
+/** What useDayTimeline returns: the day's rows, and the sleeps loaded for its total (by default, the rows'). */
+function day(timeline: TimelineEntry[], sleep?: SleepEntry[]): DayTimeline {
+  return {
+    timeline,
+    sleep: sleep ?? timeline.flatMap((item) => (item.kind === 'sleep' ? [item.entry] : [])),
+  }
+}
+
 const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
@@ -40,7 +49,7 @@ describe('DailyTimeline', () => {
   })
 
   it('shows a placeholder when there are no entries today', () => {
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([])
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([]))
 
     render(<DailyTimeline />)
 
@@ -90,7 +99,7 @@ describe('DailyTimeline', () => {
       { kind: 'diaper', at: diaper.occurredAt, entry: diaper },
       { kind: 'medication', at: medication.givenAt, entry: medication },
     ]
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(timeline)
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day(timeline))
 
     render(<DailyTimeline />)
 
@@ -113,9 +122,9 @@ describe('DailyTimeline', () => {
       createdBy: 'uid1',
       createdAt: '2026-03-05T12:00:00.000Z',
     }
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([
       { kind: 'feeding', at: solid.occurredAt, entry: solid },
-    ])
+    ]))
 
     render(<DailyTimeline />)
 
@@ -140,10 +149,10 @@ describe('DailyTimeline', () => {
       createdBy: 'uid1',
       createdAt: '2026-03-05T17:00:00.000Z',
     }
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([
       { kind: 'sleep', at: sleep.startedAt, entry: sleep },
       { kind: 'diaper', at: diaper.occurredAt, entry: diaper },
-    ])
+    ]))
 
     render(<DailyTimeline visibleKinds={new Set<EntryKind>(['sleep'])} />)
 
@@ -161,9 +170,9 @@ describe('DailyTimeline', () => {
       createdBy: 'uid1',
       createdAt: '2026-03-05T20:00:00.000Z',
     }
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([
       { kind: 'sleep', at: sleep.startedAt, entry: sleep },
-    ])
+    ]))
     const user = userEvent.setup()
 
     render(<DailyTimeline />)
@@ -192,19 +201,82 @@ describe('DailyTimeline', () => {
       createdBy: 'uid1',
       createdAt: '2026-03-05T18:00:00.000Z',
     }
-    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([
+    vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([
       { kind: 'sleep', at: sleep.startedAt, entry: sleep },
       { kind: 'feeding', at: feeding.occurredAt, entry: feeding },
-    ])
+    ]))
 
-    render(<DailyTimeline />)
+    render(<DailyTimeline date={new Date('2026-03-05T12:00:00.000Z')} />)
 
     expect(screen.getByText('120 mL total')).toBeInTheDocument()
     expect(screen.getByText('1h 30m total sleep')).toBeInTheDocument()
   })
 
+  describe('total sleep', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('counts last night on the morning it ends and a running nap up to now', () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-03-06T11:00:00+01:00'))
+      // 21:00 the evening before → 06:00 (9h), then a nap running since 09:30 (1h 30m so far).
+      const night: SleepEntry = {
+        id: 'night',
+        startedAt: '2026-03-05T21:00:00+01:00',
+        endedAt: '2026-03-06T06:00:00+01:00',
+        durationSeconds: 9 * 3600,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: '2026-03-05T21:00:00+01:00',
+      }
+      const nap: SleepEntry = {
+        id: 'nap',
+        startedAt: '2026-03-06T09:30:00+01:00',
+        endedAt: null,
+        durationSeconds: null,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: '2026-03-06T09:30:00+01:00',
+      }
+      // Rows list sleeps on the day they start: only the nap; the total takes both.
+      vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(
+        day([{ kind: 'sleep', at: nap.startedAt, entry: nap }], [night, nap]),
+      )
+
+      render(<DailyTimeline />)
+
+      expect(screen.getByText('10h 30m total sleep')).toBeInTheDocument()
+      expect(screen.getByText(/Timer running/)).toBeInTheDocument()
+    })
+
+    it('leaves out a sleep that ends the next day', () => {
+      vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(
+        day([
+          {
+            kind: 'sleep',
+            at: '2026-03-05T21:00:00+01:00',
+            entry: {
+              id: 'night',
+              startedAt: '2026-03-05T21:00:00+01:00',
+              endedAt: '2026-03-06T06:00:00+01:00',
+              durationSeconds: 9 * 3600,
+              notes: '',
+              createdBy: 'uid1',
+              createdAt: '2026-03-05T21:00:00+01:00',
+            },
+          },
+        ]),
+      )
+
+      render(<DailyTimeline date={new Date('2026-03-05T12:00:00+01:00')} />)
+
+      expect(screen.getByText('0m total sleep')).toBeInTheDocument()
+    })
+  })
+
   it('accepts a custom title and date', () => {
-    const spy = vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue([])
+    const spy = vi.spyOn(useDayTimelineModule, 'useDayTimeline').mockReturnValue(day([]))
     const date = new Date('2026-03-04T00:00:00.000Z')
 
     render(<DailyTimeline date={date} title="Wed, Mar 4" />)

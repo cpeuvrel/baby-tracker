@@ -6,10 +6,10 @@ import {
   summarizeDiaperRow,
   summarizeFeedingPrimary,
   summarizeFeedingRow,
-  summarizeMedicationPrimary,
   summarizeMedicationRow,
   summarizeSleepPrimary,
   summarizeSleepRow,
+  sleepDurationSeconds,
 } from './entrySummary'
 
 const now = new Date('2026-03-05T12:00:00.000Z')
@@ -97,42 +97,6 @@ describe('summarizeDiaperPrimary', () => {
   })
 })
 
-describe('summarizeMedicationPrimary', () => {
-  it('includes the dose in the meta when present', () => {
-    const entry: MedicationEntry = {
-      id: 'm1',
-      name: 'Vitamin D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '2 drops',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamin D',
-      meta: '2 drops — 30m ago',
-    })
-  })
-
-  it('omits the dose from the meta when absent', () => {
-    const entry: MedicationEntry = {
-      id: 'm2',
-      name: 'Vitamin D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamin D',
-      meta: '30m ago',
-    })
-  })
-})
-
 function feedingEntry(overrides: Partial<FeedingEntry>): FeedingEntry {
   return {
     id: 'f1',
@@ -194,6 +158,17 @@ describe('summarizeSleepRow', () => {
     expect(row.title).toMatch(/–/)
     expect(row.value).toBe(formatDurationForTest(8100))
     expect(row.barFraction).toBe(1)
+  })
+
+  it('measures a finished sleep without a recorded duration from its start and end', () => {
+    // Imported sleeps can have an end but no durationSeconds: 06:00 → 08:15, not "0m".
+    const entry = sleepEntry({ durationSeconds: null })
+    const row = summarizeSleepRow(entry, now, 8100)
+
+    expect(row.value).toBe(formatDurationForTest(8100))
+    expect(row.barFraction).toBe(1)
+    expect(sleepDurationSeconds(entry)).toBe(8100)
+    expect(summarizeSleepPrimary(entry, now).label).toBe('Woke up')
   })
 
   it('shows a "Timer running" label without a bar for an active entry', () => {

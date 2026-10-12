@@ -132,10 +132,26 @@ describe('GrowthDetailPage', () => {
     })
   })
 
-  it('renders nothing for an unknown metric', () => {
-    const { container } = renderPage('not-a-metric')
+  it('goes back to the activity page for an unknown metric', () => {
+    renderPage('not-a-metric')
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Activity page')).toBeInTheDocument()
+  })
+
+  it('notes the measurements after 24 months that the chart leaves out', () => {
+    const later = (id: string, measuredAt: string): GrowthEntry => ({ ...entries[0], id, measuredAt, createdAt: measuredAt })
+    // Born 2026-03-01: 2028-09-01 is 30 months old.
+    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([
+      ...entries,
+      later('g3', '2028-09-01T09:00:00.000Z'),
+    ])
+    const { unmount } = renderPage('weight')
+    expect(screen.getByText('1 measurement after 24 months not shown (WHO range)')).toBeInTheDocument()
+    unmount()
+
+    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue(entries)
+    renderPage('weight')
+    expect(screen.queryByText(/after 24 months not shown/)).not.toBeInTheDocument()
   })
 
   it('shows only the chart until a point is tapped', () => {
@@ -234,7 +250,7 @@ describe('GrowthDetailPage', () => {
     expect(screen.getByLabelText('Weight (kg)')).toHaveValue(6.48)
   })
 
-  it('prompts to set the sex in settings when unknown, and still allows the list view', () => {
+  it('prompts to set the sex on the child screen when unknown, and still allows the list view', async () => {
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,
       babies: [babyNoSex],
@@ -243,9 +259,17 @@ describe('GrowthDetailPage', () => {
       selectedBaby: babyNoSex,
       selectBaby: vi.fn(),
     })
+    const user = userEvent.setup()
 
     renderPage('weight')
 
-    expect(screen.getByText(/Set the baby's sex in Settings/)).toBeInTheDocument()
+    expect(
+      screen.getByText("Set the baby's sex in Account › Family › Léo to see WHO percentile curves."),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Show list' }))
+    expect(screen.getByText('6.48 kg')).toBeInTheDocument()
+    // Without a sex, no percentile: no "Boys Percentile" either.
+    expect(screen.queryByText(/Percentile/)).not.toBeInTheDocument()
   })
 })

@@ -1,3 +1,4 @@
+import { DEFAULT_NIGHTTIME_HOURS, nightClocks } from './aggregations'
 import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
 import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 
@@ -98,20 +99,8 @@ export function framePeriod(frame: DayFrame, endKey: string, days: number): { ra
  */
 export function activityWindowStart(now: Date, nightStart: string): Date {
   const { year, month, day } = zonedParts(now)
-  const [hour, minute] = nightStart.split(':').map(Number)
+  const { hour, minute } = nightClocks({ ...DEFAULT_NIGHTTIME_HOURS, start: nightStart }).start
   return zonedTime(year, month, day - 1, hour, minute)
-}
-
-/**
- * Key of the "night day" containing `date`: a day that starts at the beginning of the
- * previous night (e.g. 20:00 the day before) and ends when that day's night begins,
- * so a night's sleep counts on the morning it ends, with the naps that follow.
- */
-export function nightDayKey(date: Date, nightStart: string): string {
-  const { year, month, day, hour, minute } = zonedParts(date)
-  const [startHour, startMinute] = nightStart.split(':').map(Number)
-  const afterNightStart = hour * 60 + minute >= startHour * 60 + startMinute
-  return afterNightStart ? dayKey(zonedTime(year, month, day + 1, 12)) : dayKey(date)
 }
 
 export function isToday(iso: string, now: Date): boolean {
@@ -120,13 +109,6 @@ export function isToday(iso: string, now: Date): boolean {
 
 export function isYesterday(iso: string, now: Date): boolean {
   return dayKey(new Date(iso)) === dayKey(addDays(now, -1))
-}
-
-export function lastNDayKeys(reference: Date, days: number): string[] {
-  const keys: string[] = []
-  const today = startOfDay(reference)
-  for (let i = days - 1; i >= 0; i -= 1) keys.push(dayKey(addDays(today, -i)))
-  return keys
 }
 
 /** Day keys for every calendar day touched by [range.start, range.end). */

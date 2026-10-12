@@ -87,10 +87,10 @@ describe('TrendsPage', () => {
     renderPage()
 
     const feedRow = screen.getByRole('link', { name: /Feed Sessions/ })
-    expect(feedRow).toHaveAttribute('href', '/trends/feedSessions')
+    expect(feedRow).toHaveAttribute('href', '/trends/feedSessions?days=7')
 
     const sleepRow = screen.getByRole('link', { name: /Total Sleep/ })
-    expect(sleepRow).toHaveAttribute('href', '/trends/sleepTotal')
+    expect(sleepRow).toHaveAttribute('href', '/trends/sleepTotal?days=7')
 
     expect(screen.getByRole('heading', { name: 'Feed' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Sleep' })).toBeInTheDocument()
@@ -117,7 +117,7 @@ describe('TrendsPage', () => {
     renderPage()
 
     const row = screen.getByRole('link', { name: /Longest Sleep/ })
-    expect(row).toHaveAttribute('href', `/trends/sleepLongest?day=${dayKey(wokeUp)}`)
+    expect(row).toHaveAttribute('href', `/trends/sleepLongest?days=7&day=${dayKey(wokeUp)}`)
     expect(row).toHaveTextContent('longest')
   })
 
@@ -132,6 +132,15 @@ describe('TrendsPage', () => {
       'b1',
       expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
     )
+  })
+
+  it('opens the detail on the period shown', async () => {
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: '14d' }))
+
+    expect(screen.getByRole('link', { name: /Feed Sessions/ })).toHaveAttribute('href', '/trends/feedSessions?days=14')
   })
 
   it('does not render the growth section', () => {

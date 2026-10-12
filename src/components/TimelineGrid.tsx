@@ -37,6 +37,9 @@ interface TimelineGridProps {
   todayKey: string
 }
 
+/** Width of the hour axis for `HH:mm` labels (the stylesheet's is for two digits). */
+const WIDE_AXIS_PX = 34
+
 interface MonthSegment {
   key: string
   label: string
@@ -94,6 +97,8 @@ export function TimelineGrid({
   const fromEnd = useRef(0)
   const [atEnd, setAtEnd] = useState(true)
   const firstKey = dayKeys[0]
+  /** First day for which earlier days were last asked for: once per first day, however many scroll events follow. */
+  const requestedFor = useRef<string | null>(null)
 
   useLayoutEffect(() => {
     const scroller = scrollerRef.current
@@ -106,7 +111,10 @@ export function TimelineGrid({
     if (!scroller) return
     fromEnd.current = scroller.scrollWidth - scroller.clientWidth - scroller.scrollLeft
     setAtEnd(fromEnd.current < 2)
-    if (scroller.scrollLeft < scroller.clientWidth) onReachStart?.()
+    if (onReachStart && scroller.scrollLeft < scroller.clientWidth && requestedFor.current !== firstKey) {
+      requestedFor.current = firstKey
+      onReachStart()
+    }
   }
 
   const scrollByPeriod = (direction: -1 | 1) => {
@@ -119,6 +127,7 @@ export function TimelineGrid({
   const goPrevious = () => (scrollable ? scrollByPeriod(-1) : onPrevious?.())
   const goNext = () => (scrollable ? scrollByPeriod(1) : onNext?.())
 
+  const wideAxis = axisLabels.some((label) => label.length > 2)
   const currentYear = zonedParts(new Date()).year
   const pressed = (key: string) => (pressable ? key === selectedKey : undefined)
   const background = (
@@ -142,7 +151,8 @@ export function TimelineGrid({
 
   return (
     <div className="timeline-grid">
-      <div className="timeline-grid-axis-side">
+      {/* "14:37" labels need a wider axis than "14". */}
+      <div className="timeline-grid-axis-side" style={wideAxis ? { width: WIDE_AXIS_PX } : undefined}>
         <div className="timeline-grid-months" />
         <div className="timeline-grid-days">
           {hasPrevious && (

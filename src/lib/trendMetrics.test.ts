@@ -1,10 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 import {
   computeAxisTicks,
   computeMetricBreakdown,
   computeMetricSeries,
   computeMetricSummary,
+  displayDelta,
+  elapsedPeriodDays,
   filterMetricEntries,
   formatMetricAxisValue,
   formatMetricDayHeadline,
@@ -15,9 +17,11 @@ import {
   isNightSleep,
   metricHeadlineDayKey,
   metricSleepSegments,
+  sleepSegments,
+  trendFetchRange,
 } from './trendMetrics'
 import { DEFAULT_NIGHTTIME_HOURS } from './aggregations'
-import { rollingDayFrame } from './timeline'
+import { parseDayKey, rollingDayFrame } from './timeline'
 
 const feeding: FeedingEntry = {
   id: 'f1',
@@ -102,6 +106,27 @@ describe('formatMetricDayHeadline', () => {
     expect(formatMetricDayHeadline('feedAvgVolume', 128)).toBe('128 mL average')
     expect(formatMetricDayHeadline('sleepLongest', 3 * 3600)).toBe(`${formatMetricValue('sleepLongest', 3 * 3600)} longest`)
   })
+
+  it('uses the singular for exactly one', () => {
+    expect(formatMetricDayHeadline('diaperCount', 1)).toBe('1 diaper')
+    expect(formatMetricDayHeadline('feedSessions', 1)).toBe('1 session')
+    expect(formatMetricDayHeadline('napCount', 1)).toBe('1 nap')
+    expect(formatMetricHeadline('napCount', 1)).toBe('1 nap per day')
+    expect(formatMetricHeadline('napCount', 1.5)).toBe('1.5 naps per day')
+  })
+})
+
+describe('displayDelta', () => {
+  it('is flat when the change rounds to nothing at the metric\'s precision', () => {
+    expect(displayDelta('feedVolume', { value: 0.3, direction: 'up' })).toEqual({ value: 0.3, direction: 'flat' })
+    expect(displayDelta('sleepTotal', { value: -20, direction: 'down' })).toEqual({ value: -20, direction: 'flat' })
+    expect(displayDelta('feedSessions', { value: 0.04, direction: 'up' }).direction).toBe('flat')
+  })
+
+  it('keeps a change that shows', () => {
+    expect(displayDelta('feedVolume', { value: 12, direction: 'up' })).toEqual({ value: 12, direction: 'up' })
+    expect(displayDelta('sleepTotal', { value: -600, direction: 'down' }).direction).toBe('down')
+  })
 })
 
 describe('computeAxisTicks', () => {
@@ -116,12 +141,23 @@ describe('computeAxisTicks', () => {
 
   it('steps sleep in whole hours', () => {
     expect(computeAxisTicks('sleepTotal', 14 * 3600)).toEqual([0, 5, 10, 15].map((h) => h * 3600))
-    expect(formatMetricAxisValue('sleepTotal', 5 * 3600)).toBe('5h')
+    expect(formatMetricAxisValue('sleepTotal', 5 * 3600, 14 * 3600)).toBe('5h')
   })
 
   it('steps short durations in minutes', () => {
     expect(computeAxisTicks('napLength', 50 * 60)).toEqual([0, 20, 40, 60].map((m) => m * 60))
-    expect(formatMetricAxisValue('napLength', 40 * 60)).toBe('40m')
+    expect(formatMetricAxisValue('napLength', 40 * 60, 50 * 60)).toBe('40m')
+  })
+
+  it('labels a whole axis in one unit, minutes past the hour included', () => {
+    const max = 80 * 60
+    expect(computeAxisTicks('napLength', max).map((value) => formatMetricAxisValue('napLength', value, max))).toEqual([
+      '0',
+      '20m',
+      '40m',
+      '60m',
+      '80m',
+    ])
   })
 })
 
@@ -199,10 +235,11 @@ describe('sleep metrics', () => {
     )
   })
 
-  it('counts and measures daytime naps', () => {
-    expect(values('napCount')).toEqual([2, 0])
-    expect(values('napLength')).toEqual([45 * 60, 0])
-    expect(computeMetricSummary('napCount', DAYS, bundle)).toBe(1)
+  it('counts and measures daytime naps, a running nap so far', () => {
+    expect(values('napCount')).toEqual([2, 1])
+    expect(values('napLength')).toEqual([45 * 60, 3 * 3600])
+    // 3 naps over the 1.5 days elapsed.
+    expect(computeMetricSummary('napCount', DAYS, bundle, undefined, NOW)).toBe(2)
   })
 
   it('counts each day\'s longest sleep on the morning it ends; the headline is the period\'s longest', () => {
@@ -217,10 +254,33 @@ describe('sleep metrics', () => {
     expect(metricHeadlineDayKey('sleepLongest', DAYS, { ...bundle, sleep: [] })).toBeNull()
   })
 
-  it('measures wake windows between completed sleeps, on the day each one ends', () => {
-    // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h), both on the 5th.
-    expect(values('wakeWindow')).toEqual([4.5 * 3600, 0])
-    expect(computeMetricSummary('wakeWindow', DAYS, bundle)).toBe(4.5 * 3600)
+  it('measures wake windows between sleeps, on the day each one ends', () => {
+    // 11:00 → 14:00 (3h) and 14:30 → 20:30 (6h) on the 5th; 06:30 → 09:00 (2h 30m) on the 6th,
+    // ended by the sleep still running.
+    expect(values('wakeWindow')).toEqual([4.5 * 3600, 2.5 * 3600])
+    expect(computeMetricSummary('wakeWindow', DAYS, bundle, undefined, NOW)).toBe(((3 + 6 + 2.5) / 3) * 3600)
+  })
+
+  it('measures a wake window from the latest end, ignoring a sleep inside another', () => {
+    // A night 20:00 → 06:00 with a duplicate 22:00 → 22:30 inside it, then a nap at 09:00.
+    const overlapping = [
+      sleepEntry('night', '2026-03-05T19:00:00.000Z', '2026-03-06T05:00:00.000Z'),
+      sleepEntry('dup', '2026-03-05T21:00:00.000Z', '2026-03-05T21:30:00.000Z'),
+      sleepEntry('nap', '2026-03-06T08:00:00.000Z', '2026-03-06T09:00:00.000Z'),
+    ]
+    const series = computeMetricSeries('wakeWindow', DAYS, { ...bundle, sleep: overlapping }, undefined, NOW)
+    expect(series.map((point) => point.value)).toEqual([0, 3 * 3600])
+  })
+
+  it('measures a finished sleep without a recorded duration from its start and end', () => {
+    // Imported sleeps can have an end but no durationSeconds.
+    const noDuration = { ...sleepEntry('imported', '2026-03-05T12:00:00.000Z', '2026-03-05T16:00:00.000Z'), durationSeconds: null }
+    const withImported = { ...bundle, sleep: [...sleeps, noDuration] }
+    const series = (id: Parameters<typeof computeMetricSeries>[0]) =>
+      computeMetricSeries(id, DAYS, withImported, undefined, NOW).map((point) => point.value)
+    expect(series('sleepLongest')).toEqual([4 * 3600, 10 * 3600])
+    expect(series('napCount')).toEqual([3, 1])
+    expect(series('napLength')).toEqual([((60 + 30 + 240) / 3) * 60, 3 * 3600])
   })
 })
 
@@ -254,6 +314,43 @@ describe('metricSleepSegments with a selected day', () => {
   })
 })
 
+describe('metricSleepSegments without a selected day', () => {
+  it('brings out only the sleeps counted in the period', () => {
+    // The night of the 5th ends on the 6th, after the period: its evening piece is drawn, faded.
+    const period = ['2026-03-04', '2026-03-05']
+    const later = new Date('2026-03-07T12:00:00.000Z')
+    for (const id of ['sleepTotal', 'sleepNight'] as const) {
+      const segments = metricSleepSegments(id, period, sleeps, undefined, later)
+      const night = segments.filter((segment) => segment.entry.id === 'night')
+      expect(night.map((segment) => segment.dayKey)).toEqual(['2026-03-05'])
+      expect(night.every((segment) => !segment.inMetric)).toBe(true)
+    }
+    expect(
+      metricSleepSegments('sleepTotal', period, sleeps, undefined, later)
+        .filter((segment) => segment.inMetric)
+        .map((segment) => segment.entry.id),
+    ).toEqual(['nap1', 'nap2'])
+  })
+
+  describe('with the clock past the time of the computation', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('decides night or day for a running sleep at `now`, not at the real time', () => {
+      vi.useFakeTimers()
+      // The real time is 21:00 (Paris): the nap started 18:30 would touch the night by now.
+      vi.setSystemTime(new Date('2026-03-05T20:00:00.000Z'))
+      const nap = sleepEntry('nap', '2026-03-05T17:30:00.000Z', null)
+      const computedAt = new Date('2026-03-05T18:50:00.000Z') // 19:50
+      const segments = metricSleepSegments('sleepDay', ['2026-03-05'], [nap], undefined, computedAt)
+      expect(segments).toHaveLength(1)
+      expect(segments[0].inMetric).toBe(true)
+      expect(metricSleepSegments('sleepNight', ['2026-03-05'], [nap], undefined, computedAt)[0].inMetric).toBe(false)
+    })
+  })
+})
+
 describe('isNightSleep', () => {
   // Paris is UTC+1 in March; nighttime 20:00 – 08:00.
   const at = (id: string, start: string, end: string) => isNightSleep(sleepEntry(id, start, end), DEFAULT_NIGHTTIME_HOURS)
@@ -267,6 +364,104 @@ describe('isNightSleep', () => {
   it('is a nap when the sleep stays outside the nighttime hours', () => {
     expect(at('14h-15h', '2026-03-05T13:00:00.000Z', '2026-03-05T14:00:00.000Z')).toBe(false)
     expect(at('8h30-9h30', '2026-03-05T07:30:00.000Z', '2026-03-05T08:30:00.000Z')).toBe(false)
+  })
+
+  it('handles a night that does not wrap past midnight', () => {
+    const night = { start: '00:00', end: '06:00' }
+    // 22:00 → 23:00: a nap; 23:00 → 05:00: asleep at midnight, a night.
+    expect(isNightSleep(sleepEntry('a', '2026-03-05T21:00:00.000Z', '2026-03-05T22:00:00.000Z'), night)).toBe(false)
+    expect(isNightSleep(sleepEntry('b', '2026-03-05T22:00:00.000Z', '2026-03-06T04:00:00.000Z'), night)).toBe(true)
+  })
+
+  it('has no night when the nighttime hours start and end at the same time', () => {
+    const none = { start: '20:00', end: '20:00' }
+    // 19:00 → 21:00 goes through 20:00, but there is no night to touch.
+    expect(isNightSleep(sleepEntry('a', '2026-03-05T18:00:00.000Z', '2026-03-05T20:00:00.000Z'), none)).toBe(false)
+    expect(
+      sleepSegments([sleepEntry('a', '2026-03-05T18:00:00.000Z', '2026-03-05T20:00:00.000Z')], none).every(
+        (segment) => !segment.night,
+      ),
+    ).toBe(true)
+  })
+})
+
+describe('sleepSegments', () => {
+  const pieces = (segments: ReturnType<typeof sleepSegments>) =>
+    segments.map((segment) => ({
+      id: segment.entry.id,
+      start: segment.start.toISOString(),
+      end: segment.end.toISOString(),
+      dayKey: segment.dayKey,
+      night: segment.night,
+    }))
+
+  it('cuts sleeps at midnight and at the start and end of the night', () => {
+    // 19:00 → 21:00 (5th): day until 20:00, then night. 23:00 (5th) → 09:00 (6th): night until
+    // midnight, night until 08:00 on the 6th, then day.
+    const entries = [
+      sleepEntry('evening', '2026-03-05T18:00:00.000Z', '2026-03-05T20:00:00.000Z'),
+      sleepEntry('night', '2026-03-05T22:00:00.000Z', '2026-03-06T08:00:00.000Z'),
+    ]
+    expect(pieces(sleepSegments(entries, DEFAULT_NIGHTTIME_HOURS, NOW))).toEqual([
+      { id: 'evening', start: '2026-03-05T18:00:00.000Z', end: '2026-03-05T19:00:00.000Z', dayKey: '2026-03-05', night: false },
+      { id: 'evening', start: '2026-03-05T19:00:00.000Z', end: '2026-03-05T20:00:00.000Z', dayKey: '2026-03-05', night: true },
+      { id: 'night', start: '2026-03-05T22:00:00.000Z', end: '2026-03-05T23:00:00.000Z', dayKey: '2026-03-05', night: true },
+      { id: 'night', start: '2026-03-05T23:00:00.000Z', end: '2026-03-06T07:00:00.000Z', dayKey: '2026-03-06', night: true },
+      { id: 'night', start: '2026-03-06T07:00:00.000Z', end: '2026-03-06T08:00:00.000Z', dayKey: '2026-03-06', night: false },
+    ])
+  })
+
+  it('cuts at the start of each rolling day instead of midnight, a running sleep up to now', () => {
+    // Windows ending at noon: the 6th's runs from noon on the 5th.
+    const frame = rollingDayFrame(NOW)
+    expect(pieces(sleepSegments(sleeps, DEFAULT_NIGHTTIME_HOURS, NOW, frame))).toEqual([
+      { id: 'nap1', start: '2026-03-05T09:00:00.000Z', end: '2026-03-05T10:00:00.000Z', dayKey: '2026-03-05', night: false },
+      { id: 'nap2', start: '2026-03-05T13:00:00.000Z', end: '2026-03-05T13:30:00.000Z', dayKey: '2026-03-06', night: false },
+      { id: 'night', start: '2026-03-05T19:30:00.000Z', end: '2026-03-06T05:30:00.000Z', dayKey: '2026-03-06', night: true },
+      { id: 'running', start: '2026-03-06T08:00:00.000Z', end: '2026-03-06T11:00:00.000Z', dayKey: '2026-03-06', night: false },
+    ])
+  })
+
+  it('measures a night across the spring change of time in real hours', () => {
+    // 21:00 (UTC+1) on 28 March → 07:00 (UTC+2) on the 29th: 9 hours, not 10.
+    const dst = sleepEntry('dst', '2026-03-28T20:00:00.000Z', '2026-03-29T05:00:00.000Z')
+    const segments = sleepSegments([dst], DEFAULT_NIGHTTIME_HOURS, NOW)
+    expect(pieces(segments)).toEqual([
+      { id: 'dst', start: '2026-03-28T20:00:00.000Z', end: '2026-03-28T23:00:00.000Z', dayKey: '2026-03-28', night: true },
+      { id: 'dst', start: '2026-03-28T23:00:00.000Z', end: '2026-03-29T05:00:00.000Z', dayKey: '2026-03-29', night: true },
+    ])
+    const later = new Date('2026-04-01T10:00:00.000Z')
+    expect(
+      computeMetricSeries('sleepTotal', ['2026-03-28', '2026-03-29'], { feeding: [], sleep: [dst], diaper: [] }, undefined, later)
+        .map((point) => point.value),
+    ).toEqual([0, 9 * 3600])
+  })
+})
+
+describe('elapsedPeriodDays', () => {
+  it('counts the elapsed part of a 23-hour day, at least one day', () => {
+    // 29 March 2026 lasts 23 hours in Paris; noon is 12 of them.
+    expect(elapsedPeriodDays(['2026-03-29'], new Date('2026-03-29T12:00:00+02:00'))).toBe(1)
+    expect(elapsedPeriodDays(['2026-03-29'], new Date('2026-03-30T00:00:00+02:00'))).toBe(1)
+    expect(elapsedPeriodDays(['2026-03-29', '2026-03-30'], new Date('2026-03-30T12:00:00+02:00'))).toBeCloseTo(1.5, 1)
+    expect(elapsedPeriodDays(['2026-03-29', '2026-03-30'], new Date('2026-04-02T12:00:00+02:00'))).toBe(2)
+  })
+})
+
+describe('trendFetchRange', () => {
+  it('loads a calendar period from the day before', () => {
+    const range = { start: parseDayKey('2026-03-05'), end: parseDayKey('2026-03-07') }
+    expect(trendFetchRange(range)).toEqual({ start: parseDayKey('2026-03-04'), end: parseDayKey('2026-03-07') })
+  })
+
+  it('widens a rolling period to whole calendar days, the same all day long', () => {
+    const fetched = (end: Date) => {
+      const frame = rollingDayFrame(end)
+      return trendFetchRange({ start: frame.startOf('2026-03-05'), end: frame.startOf('2026-03-07') })
+    }
+    const expected = { start: parseDayKey('2026-03-03'), end: parseDayKey('2026-03-07') }
+    expect(fetched(new Date('2026-03-06T10:37:12.000Z'))).toEqual(expected)
+    expect(fetched(new Date('2026-03-06T18:05:40.000Z'))).toEqual(expected)
   })
 })
 
@@ -307,6 +502,15 @@ describe('filterMetricEntries', () => {
     expect(filterMetricEntries('diaperNight', bundle).diaper.map((entry) => entry.id)).toEqual(['d2'])
     expect(filterMetricEntries('sleepTotal', bundle)).toBe(bundle)
   })
+
+  it('keeps the naps, a running one included, and every sleep for Longest Sleep without a period', () => {
+    expect(filterMetricEntries('napCount', bundle, undefined, undefined, NOW).sleep.map((entry) => entry.id)).toEqual([
+      'nap1',
+      'nap2',
+      'running',
+    ])
+    expect(filterMetricEntries('sleepLongest', bundle)).toBe(bundle)
+  })
 })
 
 describe('feed metrics', () => {
@@ -325,6 +529,12 @@ describe('feed metrics', () => {
       { label: 'Bottle Feed', colorVar: '--action', value: 1 },
       { label: 'Solids', colorVar: '--category-growth', value: 0.5 },
     ])
+  })
+
+  it('shows the bottle volume per day as the only part of the amount bottlefed', () => {
+    expect(computeMetricBreakdown('feedVolume', DAYS, bundle)).toEqual([{ label: 'Bottle', colorVar: '--action', value: 120 }])
+    expect(computeMetricBreakdown('feedVolume', DAYS, { ...bundle, feeding: [] })).toEqual([])
+    expect(computeMetricBreakdown('sleepTotal', DAYS, bundle)).toEqual([])
   })
 })
 

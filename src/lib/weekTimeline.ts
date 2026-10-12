@@ -1,4 +1,5 @@
-import { secondsIntoDay } from './appTime'
+import { nightClocks } from './aggregations'
+import { secondsIntoDay, type ClockTime } from './appTime'
 import { CALENDAR_DAYS, nextDayKey, type DayFrame } from './timeline'
 import type { NighttimeHours } from '../types/models'
 
@@ -72,9 +73,8 @@ export function buildWeekMarks(
   return result
 }
 
-/** Part of a day at which a `HH:MM` time falls, for a day starting `startSeconds` after midnight. */
-function minutesFraction(time: string, startSeconds = 0): number {
-  const [hour, minute] = time.split(':').map(Number)
+/** Part of a day at which a clock time falls, for a day starting `startSeconds` after midnight. */
+function minutesFraction({ hour, minute }: ClockTime, startSeconds = 0): number {
   return ((((hour * 3600 + minute * 60 - startSeconds) % 86400) + 86400) % 86400) / 86400
 }
 
@@ -83,8 +83,9 @@ function minutesFraction(time: string, startSeconds = 0): number {
  * day's start (midnight, or `startSeconds` after it for rolling days).
  */
 export function nightFractions(night: NighttimeHours, startSeconds = 0): { start: number; end: number }[] {
-  const start = minutesFraction(night.start, startSeconds)
-  const end = minutesFraction(night.end, startSeconds)
+  const clocks = nightClocks(night)
+  const start = minutesFraction(clocks.start, startSeconds)
+  const end = minutesFraction(clocks.end, startSeconds)
   if (start === end) return []
   if (start < end) return [{ start, end }]
   return [

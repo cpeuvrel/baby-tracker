@@ -93,7 +93,7 @@ export function MetricGraph({
   }
 
   return (
-    <div
+    <section
       className="metric-graph"
       aria-label="Metric graph"
       onPointerDown={handlePointerDown}
@@ -184,6 +184,6 @@ export function MetricGraph({
         <span>{selected ? formatLongDay(selected.dayKey) : seriesLabel}</span>
         <strong>{formatValue(selected ? selected.value : average)}</strong>
       </p>
-    </div>
+    </section>
   )
 }

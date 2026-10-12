@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useEntriesInRange } from '../hooks/useEntriesInRange'
+import { useNow } from '../hooks/useNow'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { addDays, formatDate, startOfDay, zonedParts } from '../lib/appTime'
 import { ALL_ENTRY_KINDS, type EntryKind } from '../lib/historyFilters'
@@ -42,7 +43,10 @@ export function WeekTimelineChart({
     [],
   )
 
-  const currentWeekStart = useMemo(() => startOfWeek(new Date()), [])
+  // The current week follows the clock: past midnight on Sunday, Monday starts a new one.
+  const now = useNow()
+  const todayKey = dayKey(now)
+  const currentWeekStart = useMemo(() => startOfWeek(parseDayKey(todayKey)), [todayKey])
   const range: DateRange = useMemo(
     () => ({ start: addDays(currentWeekStart, -(weeks - 1) * 7), end: addDays(currentWeekStart, 7) }),
     [currentWeekStart, weeks],
@@ -66,11 +70,11 @@ export function WeekTimelineChart({
           const start = new Date(entry.startedAt)
           const end = entry.endedAt
             ? new Date(entry.endedAt)
-            : new Date(Math.max(Date.now(), start.getTime() + MIN_VISIBLE_BLOCK_MS))
+            : new Date(Math.max(now.getTime(), start.getTime() + MIN_VISIBLE_BLOCK_MS))
           return { start, end }
         }),
       ),
-    [dayKeys, sleep],
+    [dayKeys, sleep, now],
   )
   const marksByKind = useMemo(
     () => ({
@@ -101,7 +105,7 @@ export function WeekTimelineChart({
         axisLabels={AXIS_LABELS}
         nightBands={nightFractions(selectedBaby.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS)}
         selectedKey={selectedDayKey}
-        todayKey={dayKey(new Date())}
+        todayKey={todayKey}
         onSelectDay={(key) => onSelectDay(parseDayKey(key))}
         dayLabel={(key) => `See details for ${formatDate(parseDayKey(key))}`}
         weekdayLabel={(key) => DAY_LABELS[(zonedParts(parseDayKey(key)).weekday + 6) % 7]}

@@ -57,29 +57,48 @@ describe('useDayTimeline', () => {
       sleep: [sleep],
       diaper: [diaper],
       medication: [medication],
+      bath: [],
     })
 
     const { result } = renderHook(() =>
       useDayTimeline('h1', 'b1', new Date('2026-03-05T12:00:00.000Z')),
     )
 
-    expect(result.current.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper', 'medication'])
+    expect(result.current.timeline.map((item) => item.kind)).toEqual(['sleep', 'feeding', 'diaper', 'medication'])
   })
 
-  it('requests the day range for the given reference date', () => {
-    useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [], medication: [] })
+  it('loads from the day before, listing only the day but keeping last night for the total', () => {
+    // 21:00 (Paris) on the 4th → 06:00 on the 5th, and a 21:00 bottle on the 4th.
+    const lastNight: SleepEntry = {
+      ...sleep,
+      id: 's0',
+      startedAt: '2026-03-04T20:00:00.000Z',
+      endedAt: '2026-03-05T05:00:00.000Z',
+    }
+    const eveningBottle: FeedingEntry = { ...feeding, id: 'f0', occurredAt: '2026-03-04T20:00:00.000Z' }
+    useEntriesInRange.mockReturnValue({
+      feeding: [eveningBottle, feeding],
+      sleep: [lastNight, sleep],
+      diaper: [],
+      medication: [],
+      bath: [],
+    })
+
+    const { result } = renderHook(() => useDayTimeline('h1', 'b1', new Date('2026-03-05T12:00:00.000Z')))
+
+    expect(result.current.timeline.map((item) => item.entry.id)).toEqual(['s1', 'f1'])
+    expect(result.current.sleep.map((entry) => entry.id)).toEqual(['s0', 's1'])
+  })
+
+  it('requests the reference day and the day before', () => {
+    useEntriesInRange.mockReturnValue({ feeding: [], sleep: [], diaper: [], medication: [], bath: [] })
     const reference = new Date('2026-03-04T15:00:00.000Z')
 
     renderHook(() => useDayTimeline('h1', 'b1', reference))
 
-    expect(useEntriesInRange).toHaveBeenCalledWith(
-      'h1',
-      'b1',
-      expect.objectContaining({ start: expect.any(Date), end: expect.any(Date) }),
-    )
     const rangeArg = useEntriesInRange.mock.calls[0][2]
-    // Paris day of 2026-03-04 16:00: from 2026-03-04 00:00 to 2026-03-05 00:00 (UTC+1)
-    expect(rangeArg.start.toISOString()).toBe('2026-03-03T23:00:00.000Z')
+    // Paris day of 2026-03-04 16:00 and the one before: from 2026-03-03 00:00 to 2026-03-05 00:00 (UTC+1)
+    expect(rangeArg.start.toISOString()).toBe('2026-03-02T23:00:00.000Z')
     expect(rangeArg.end.toISOString()).toBe('2026-03-04T23:00:00.000Z')
   })
 })

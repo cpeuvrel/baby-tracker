@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addDays, formatTime, secondsIntoDay, startOfDay, zonedParts, zonedTime } from './appTime'
+import { addDays, formatTime, parseClock, secondsIntoDay, startOfDay, zonedParts, zonedTime } from './appTime'
 
 describe('appTime (Europe/Paris, whatever the device zone)', () => {
   it('reads wall-clock fields in Paris, winter (UTC+1) and summer (UTC+2)', () => {
@@ -29,5 +29,20 @@ describe('appTime (Europe/Paris, whatever the device zone)', () => {
 
   it('formats times in Paris', () => {
     expect(formatTime(new Date('2026-03-05T18:00:00Z'), { hour: '2-digit', minute: '2-digit' }, 'en-GB')).toBe('19:00')
+  })
+})
+
+describe('parseClock', () => {
+  it('reads HH:mm clock times, a single-digit hour included', () => {
+    expect(parseClock('20:00')).toEqual({ hour: 20, minute: 0 })
+    expect(parseClock('8:00')).toEqual({ hour: 8, minute: 0 })
+    expect(parseClock('07:45')).toEqual({ hour: 7, minute: 45 })
+  })
+
+  it('rejects anything that is not a clock time', () => {
+    expect(parseClock('')).toBeNull()
+    expect(parseClock('20h00')).toBeNull()
+    expect(parseClock('24:00')).toBeNull()
+    expect(parseClock('12:60')).toBeNull()
   })
 })
