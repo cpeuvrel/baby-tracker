@@ -8,6 +8,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { isAllowedEmail } from '../lib/allowedEmails'
 import { auth, clearLocalDataAndReload, usingEmulators } from '../lib/firebase'
 import { unregisterPush } from '../lib/pushRegistration'
 
@@ -26,7 +27,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
 const googleProvider = new GoogleAuthProvider()
 
-const ALLOWED_EMAILS = ['amandineandcorentin@gmail.com']
 
 // The user closed the popup, or a second click replaced it: not an error to show.
 const DISMISSED_POPUP_CODES = new Set(['auth/popup-closed-by-user', 'auth/cancelled-popup-request'])
@@ -55,8 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(
       auth,
       (nextUser) => {
-        if (nextUser && !ALLOWED_EMAILS.includes(nextUser.email ?? '')) {
-          setError(`${nextUser.email ?? 'This Google account'} is not authorized.`)
+        // firestore.rules applies the same two checks (isAllowedEmail): keep them in sync.
+        if (nextUser && (!isAllowedEmail(nextUser.email) || !nextUser.emailVerified)) {
+          setError(
+            nextUser.emailVerified
+              ? `${nextUser.email ?? 'This Google account'} is not authorized.`
+              : `${nextUser.email ?? 'This Google account'} is not verified.`,
+          )
           setUser(null)
           setLoading(false)
           void signOut(auth).catch((cause: unknown) => console.error('[auth] signOut failed', cause))

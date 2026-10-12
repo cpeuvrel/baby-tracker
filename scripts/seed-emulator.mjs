@@ -16,6 +16,7 @@ if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_
 }
 
 const PROJECT_ID = 'baby-tracker-c8fd2'
+// Keep in sync with src/lib/allowedEmails.ts (plain Node cannot import the .ts module).
 const SHARED_ACCOUNT_EMAIL = 'amandineandcorentin@gmail.com'
 // Dev password, only valid in the Auth Emulator (never in prod).
 const DEV_PASSWORD = 'password123'

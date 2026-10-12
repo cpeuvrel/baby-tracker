@@ -59,7 +59,7 @@ describe('App', () => {
     })
 
     render(<App />)
-    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Add child' })).toBeInTheDocument(),
@@ -77,7 +77,7 @@ describe('App', () => {
     })
 
     render(<App />)
-    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
 
     await waitFor(() => expect(screen.getByRole('link', { name: 'Activity' })).toBeInTheDocument())
     expect(screen.getByRole('link', { name: 'Family' })).toBeInTheDocument()

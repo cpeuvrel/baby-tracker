@@ -95,7 +95,7 @@ describe('AuthContext', () => {
       </AuthProvider>,
     )
 
-    mockAuth.emit({ email: 'amandineandcorentin@gmail.com' } as User)
+    mockAuth.emit({ email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
 
     await waitFor(() =>
       expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument(),
@@ -109,10 +109,25 @@ describe('AuthContext', () => {
       </AuthProvider>,
     )
 
-    mockAuth.emit({ email: 'stranger@example.com' } as User)
+    mockAuth.emit({ email: 'stranger@example.com', emailVerified: true } as User)
 
     await waitFor(() =>
       expect(screen.getByText('stranger@example.com is not authorized.')).toBeInTheDocument(),
+    )
+    expect(signOut).toHaveBeenCalledWith({})
+  })
+
+  it('signs out an allowlisted account whose email is not verified', async () => {
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+
+    mockAuth.emit({ email: 'amandineandcorentin@gmail.com', emailVerified: false } as User)
+
+    await waitFor(() =>
+      expect(screen.getByText('amandineandcorentin@gmail.com is not verified.')).toBeInTheDocument(),
     )
     expect(signOut).toHaveBeenCalledWith({})
   })
@@ -179,7 +194,7 @@ describe('AuthContext', () => {
         <Probe />
       </AuthProvider>,
     )
-    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
     await waitFor(() => expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'logout' }))
@@ -199,7 +214,7 @@ describe('AuthContext', () => {
         <Probe />
       </AuthProvider>,
     )
-    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
     await waitFor(() => expect(screen.getByText('in:amandineandcorentin@gmail.com')).toBeInTheDocument())
 
     await user.click(screen.getByRole('button', { name: 'logout' }))
@@ -217,7 +232,7 @@ describe('AuthContext', () => {
       </AuthProvider>,
     )
 
-    mockAuth.emit({ email: 'stranger@example.com' } as User)
+    mockAuth.emit({ email: 'stranger@example.com', emailVerified: true } as User)
 
     await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
   })

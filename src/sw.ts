@@ -7,6 +7,7 @@ import { initializeApp } from 'firebase/app'
 import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
+import { registerNavigationFallback } from './lib/swNavigation'
 import { handleBackgroundPush } from './lib/backgroundPush'
 import { firebaseConfig } from './lib/firebaseConfig'
 import { isSleepTimerTag } from './lib/sleepTimerNotification'
@@ -19,6 +20,7 @@ import {
 declare let self: ServiceWorkerGlobalScope & { __WB_MANIFEST: Array<{ url: string; revision: string | null }> }
 
 precacheAndRoute(self.__WB_MANIFEST)
+registerNavigationFallback()
 self.skipWaiting()
 clientsClaim()
 

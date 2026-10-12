@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { ALLOWED_EMAILS } from '../lib/allowedEmails'
 
-const DEV_EMAIL = 'amandineandcorentin@gmail.com'
+const DEV_EMAIL = ALLOWED_EMAILS[0]
 const DEV_PASSWORD = 'password123'
 
 export function LoginPage() {
