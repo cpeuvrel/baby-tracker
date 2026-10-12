@@ -1,15 +1,20 @@
-import { getFirestore, type DocumentSnapshot } from 'firebase-admin/firestore'
+import { getFirestore, type DocumentReference, type DocumentSnapshot, type Firestore } from 'firebase-admin/firestore'
 import { logger } from 'firebase-functions'
 import { onDocumentWritten } from 'firebase-functions/v2/firestore'
 import { onSchedule } from 'firebase-functions/v2/scheduler'
-import { sendToHousehold } from './push'
+import { babyNameOf, forEachBaby } from './households'
+import { sendToHousehold, senderForRun, type HouseholdSender } from './push'
 
 // `data.type` the service worker reads (src/lib/sleepTimerNotification.ts).
 const SLEEP_TIMER_PUSH = 'sleep-timer'
 const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
 
 // A tick is worthless once the next one is due.
-const TICK_TTL_SECONDS = 60
+export const TICK_TTL_SECONDS = 60
+// The stop is not: without it the notification stays on a phone that was
+// offline at that moment. Closing it late is harmless (a sleep started since
+// shows again at the next tick).
+export const STOP_TTL_SECONDS = 24 * 60 * 60
 
 interface SleepFields {
   startedAt?: { toDate(): Date } | null
@@ -34,18 +39,56 @@ export function sleepChange(before: SleepFields | undefined, after: SleepFields 
   return null
 }
 
-async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
-  const babyRef = entry.ref.parent.parent
-  const householdRef = babyRef?.parent.parent
-  const startedAt = (entry.data() as SleepFields | undefined)?.startedAt?.toDate()
-  if (!babyRef || !householdRef || !startedAt) return
+/**
+ * Start of the sleep the baby's notification shows: the earliest running one,
+ * like the app (two devices may have started the same sleep). `null` when none runs.
+ */
+async function runningSleepStart(babyRef: DocumentReference): Promise<Date | null> {
+  const running = await babyRef.collection('sleepEntries').where('endedAt', '==', null).get()
+  let earliest: Date | null = null
+  for (const entry of running.docs) {
+    const startedAt = (entry.data() as SleepFields).startedAt?.toDate()
+    if (startedAt && (earliest == null || startedAt < earliest)) earliest = startedAt
+  }
+  return earliest
+}
 
-  const babyName = ((await babyRef.get()).data()?.name as string | undefined) ?? 'Baby'
-  await sendToHousehold(
-    householdRef,
-    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString() },
-    TICK_TTL_SECONDS,
-  )
+function runningTimerPush(babyId: string, babyName: string, startedAt: Date): Record<string, string> {
+  return { type: SLEEP_TIMER_PUSH, babyId, babyName, startedAt: startedAt.toISOString() }
+}
+
+/** One tick: one push per baby whose sleep runs, refreshing its notification's elapsed time. */
+export async function runSleepTick(db: Firestore, send: HouseholdSender): Promise<void> {
+  await forEachBaby(db, 'Sleep timer tick', async (household, baby) => {
+    const startedAt = await runningSleepStart(baby.ref)
+    if (startedAt == null) return
+    await send(household.ref, runningTimerPush(baby.id, babyNameOf(baby), startedAt), TICK_TTL_SECONDS)
+  })
+}
+
+/**
+ * A sleep entry was written: shows the baby's notification as soon as a sleep
+ * starts or moves, and clears it everywhere once none of the baby's sleeps runs.
+ */
+export async function handleSleepEntryWrite(
+  before: DocumentSnapshot,
+  after: DocumentSnapshot,
+  send: HouseholdSender,
+): Promise<void> {
+  const change = sleepChange(before.data() as SleepFields | undefined, after.data() as SleepFields | undefined)
+  if (change == null) return
+
+  const babyRef = after.ref.parent.parent!
+  const householdRef = babyRef.parent.parent!
+  const startedAt = await runningSleepStart(babyRef)
+  logger.info('Sleep timer notification', { change, babyId: babyRef.id, running: startedAt != null })
+  if (startedAt != null) {
+    // Started, moved, or stopped while another sleep of the baby still runs: show that one.
+    const babyName = babyNameOf(await babyRef.get())
+    await send(householdRef, runningTimerPush(babyRef.id, babyName, startedAt), TICK_TTL_SECONDS)
+  } else if (change === 'stopped') {
+    await send(householdRef, { type: SLEEP_TIMER_STOP_PUSH, babyId: babyRef.id }, STOP_TTL_SECONDS)
+  }
 }
 
 /** Every minute while a sleep runs: refreshes the elapsed time on the household's devices. */
@@ -54,33 +97,14 @@ export const tickSleepTimerNotifications = onSchedule(
   async () => {
     // Household by household, like the medication reminders: a collection
     // group query would need an extra index deployed by hand.
-    const households = await getFirestore().collection('households').get()
-    for (const household of households.docs) {
-      const babies = await household.ref.collection('babies').get()
-      for (const baby of babies.docs) {
-        const running = await baby.ref.collection('sleepEntries').where('endedAt', '==', null).get()
-        await Promise.all(running.docs.map((entry) => sendRunningTimer(entry)))
-      }
-    }
+    await runSleepTick(getFirestore(), senderForRun())
   },
 )
 
-/** Shows the notification as soon as a sleep starts or moves, and clears it everywhere when it stops. */
 export const onSleepEntryWritten = onDocumentWritten(
   'households/{householdId}/babies/{babyId}/sleepEntries/{entryId}',
   async (event) => {
-    const change = sleepChange(
-      event.data?.before.data() as SleepFields | undefined,
-      event.data?.after.data() as SleepFields | undefined,
-    )
-    if (change == null || !event.data) return
-
-    logger.info('Sleep timer notification', { change, ...event.params })
-    if (change === 'stopped') {
-      const householdRef = event.data.before.ref.parent.parent!.parent.parent!
-      await sendToHousehold(householdRef, { type: SLEEP_TIMER_STOP_PUSH }, TICK_TTL_SECONDS)
-    } else {
-      await sendRunningTimer(event.data.after)
-    }
+    if (!event.data) return
+    await handleSleepEntryWrite(event.data.before, event.data.after, sendToHousehold)
   },
 )
