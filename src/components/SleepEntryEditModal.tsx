@@ -30,7 +30,6 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   const [endedAt, setEndedAt] = useState(() =>
     entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
   )
-  const [notes, setNotes] = useState(entry.notes)
   const [resuming, setResuming] = useState(false)
   const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
@@ -78,7 +77,8 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     updateSleepEntry(household.id, selectedBaby.id, entry.id, {
       startedAt: fromDatetimeLocalValue(startedAt),
       endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
-      notes,
+      // Notes are no longer edited in this popup (main #56): existing ones are kept.
+      notes: entry.notes,
     }).catch((writeError: unknown) => alertSleepWriteFailed(writeError, lockInvolved))
     onClose()
   }
@@ -87,7 +87,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     if (!startedAt) return
     setResuming(true)
     // The running timer shows only once the resume is accepted: refused if another sleep runs.
-    resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt), notes)
+    resumeSleep(household.id, selectedBaby.id, entry.id, fromDatetimeLocalValue(startedAt), entry.notes)
       .then(() => (onResumed ? onResumed() : onClose()))
       .catch((writeError: unknown) => {
         setResuming(false)
@@ -131,15 +131,6 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
             {error}
           </p>
         )}
-        <div>
-          <label htmlFor="sleep-notes">Notes (optional)</label>
-          <input
-            id="sleep-notes"
-            type="text"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-          />
-        </div>
         <button type="button" className="button-delete" onClick={handleDelete}>
           Delete
         </button>

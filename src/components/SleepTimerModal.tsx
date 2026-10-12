@@ -14,7 +14,6 @@ import {
   startSleep,
   stopSleep,
   updateSleepEntry,
-  updateSleepNotes,
   updateSleepStart,
 } from '../repositories/sleepEntries'
 import { DurationInput } from './DurationInput'
@@ -48,9 +47,11 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   // Date picker bound, kept current past midnight; handleStartedAtChange still refuses any future time.
   const maxStart = toDatetimeLocalValue(useNow())
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
-  // Typed notes; until then, those of the running sleep (e.g. typed on the other phone).
-  const [notesDraft, setNotesDraft] = useState<string | null>(null)
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
+  // Notes are no longer edited in this popup (main #56): a running sleep keeps its own, and so
+  // does the one just stopped (its entry is no longer active while the form stays open).
+  const [stoppedNotes, setStoppedNotes] = useState('')
+  const notes = activeEntry?.notes ?? stoppedNotes
   const isActive = activeEntry != null
   // Announced once, when the timer starts or stops (not the counter's every second).
   const [announcedActive, setAnnouncedActive] = useState<boolean | null>(null)
@@ -64,8 +65,6 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   if (activeEntry && pendingStart) setPendingStart(false)
 
   if (!household || !selectedBaby || !user) return null
-
-  const notes = notesDraft ?? activeEntry?.notes ?? ''
 
   const endedAt =
     durationMinutes != null && startedAt !== ''
@@ -96,8 +95,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       setStartedAt(toDatetimeLocalValue(startDate))
       setDurationMinutes(Math.round((stoppedAt.getTime() - startDate.getTime()) / 60000))
       setTimerEntryId(activeEntry.id)
-      // The stopped sleep keeps its notes in the form.
-      setNotesDraft(notes)
+      setStoppedNotes(activeEntry.notes)
     } else if (!pendingStart) {
       setPendingStart(true)
       // The running timer shows as a notification; this tap is the gesture asking needs.
@@ -126,9 +124,6 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (endBeforeStart) return
     if (activeEntry) {
       commitStartDraft()
-      if (notes !== activeEntry.notes) {
-        updateSleepNotes(household.id, selectedBaby.id, activeEntry.id, notes).catch(reportFailure(false))
-      }
     } else if (timerEntryId) {
       // Without an end time the sleep runs again: refused if another one runs.
       const lockInvolved = endedAt === ''
@@ -225,15 +220,6 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
           End time must be after start time.
         </p>
       )}
-      <div>
-        <label htmlFor="sleep-notes">Notes (optional)</label>
-        <input
-          id="sleep-notes"
-          type="text"
-          value={notes}
-          onChange={(event) => setNotesDraft(event.target.value)}
-        />
-      </div>
     </Modal>
   )
 }

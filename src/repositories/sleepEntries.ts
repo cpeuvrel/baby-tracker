@@ -226,16 +226,6 @@ export async function resumeSleep(
   )
 }
 
-/** Changes only the notes of a sleep: allowed while it runs, the lock is not involved. */
-export async function updateSleepNotes(
-  householdId: string,
-  babyId: string,
-  entryId: string,
-  notes: string,
-): Promise<void> {
-  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), { notes })
-}
-
 /** Moves the start of a sleep in progress: its live timer follows. */
 export async function updateSleepStart(
   householdId: string,

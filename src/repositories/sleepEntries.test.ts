@@ -29,7 +29,6 @@ import {
   subscribeToRecentSleepEntries,
   subscribeToSleepEntriesInRange,
   updateSleepEntry,
-  updateSleepNotes,
 } from './sleepEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
@@ -161,16 +160,6 @@ describe('sleepEntries repository', () => {
 
     const [, payload] = batch.set.mock.calls[0]
     expect(payload).toMatchObject({ notes: 'nursed to sleep' })
-  })
-
-  it('updates only the notes of a sleep, without touching the lock', async () => {
-    await updateSleepNotes('h1', 'b1', 'entry1', 'woke once')
-
-    expect(updateDocMock).toHaveBeenCalledTimes(1)
-    const [entryRef, payload] = updateDocMock.mock.calls[0]
-    expect(pathOf(entryRef)).toBe('households/h1/babies/b1/sleepEntries/entry1')
-    expect(payload).toEqual({ notes: 'woke once' })
-    expect(writeBatchMock).not.toHaveBeenCalled()
   })
 
   it('updates a sleep entry, recomputing the duration from start/end', async () => {

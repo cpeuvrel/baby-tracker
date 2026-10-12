@@ -184,15 +184,14 @@ describe('SleepEntryEditModal', () => {
       expect(onClose).not.toHaveBeenCalled()
     })
 
-    it('keeps notes edited just before Start Timer', async () => {
+    it('keeps the entry notes on Start Timer (no notes field in this popup)', async () => {
       const user = userEvent.setup()
       render(<SleepEntryEditModal entry={entry} onClose={vi.fn()} onResumed={vi.fn()} />)
 
-      await user.clear(screen.getByLabelText('Notes (optional)'))
-      await user.type(screen.getByLabelText('Notes (optional)'), 'fell back asleep')
+      expect(screen.queryByLabelText('Notes (optional)')).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
-      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt), 'fell back asleep')
+      expect(resumeSleep).toHaveBeenCalledWith('h1', 'b1', 's1', new Date(entry.startedAt), 'nap')
     })
 
     it('stays open and says why when the resume is refused', async () => {

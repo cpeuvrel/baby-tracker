@@ -13,7 +13,6 @@ const logSleep = vi.fn().mockResolvedValue(undefined)
 const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
 const resumeSleep = vi.fn().mockResolvedValue(undefined)
 const updateSleepStart = vi.fn().mockResolvedValue(undefined)
-const updateSleepNotes = vi.fn().mockResolvedValue(undefined)
 
 const registerPush = vi.fn().mockResolvedValue(undefined)
 
@@ -28,7 +27,6 @@ vi.mock('../repositories/sleepEntries', () => ({
   logSleep: (...args: unknown[]) => logSleep(...args),
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
   updateSleepStart: (...args: unknown[]) => updateSleepStart(...args),
-  updateSleepNotes: (...args: unknown[]) => updateSleepNotes(...args),
 }))
 
 /** Mocks the running sleeps the modal sees; call the returned function to change them. */
@@ -57,7 +55,6 @@ describe('SleepTimerModal', () => {
     updateSleepEntry.mockReset().mockResolvedValue(undefined)
     resumeSleep.mockReset().mockResolvedValue(undefined)
     updateSleepStart.mockReset().mockResolvedValue(undefined)
-    updateSleepNotes.mockReset().mockResolvedValue(undefined)
     mockAuth()
     mockHousehold()
   })
@@ -116,41 +113,28 @@ describe('SleepTimerModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('saves the notes typed while a timer is active, without stopping it', async () => {
-    mockActiveSleeps([runningSleep])
-    const onClose = vi.fn()
+  it('has no notes field and keeps the notes of the running sleep when it is stopped and saved', async () => {
+    const setActive = mockActiveSleeps([{ ...runningSleep, notes: 'started on the other phone' }])
     const user = userEvent.setup()
 
-    render(<SleepTimerModal onClose={onClose} />)
-    await user.type(screen.getByLabelText('Notes (optional)'), 'nursed to sleep')
+    const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+    expect(screen.queryByLabelText('Notes (optional)')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+    setActive([])
+    rerender(<SleepTimerModal onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(updateSleepNotes).toHaveBeenCalledWith('h1', 'b1', 'sleep1', 'nursed to sleep')
-    expect(stopSleep).not.toHaveBeenCalled()
-    expect(logSleep).not.toHaveBeenCalled()
-    expect(onClose).toHaveBeenCalled()
+    expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', expect.objectContaining({ notes: 'started on the other phone' }))
   })
 
-  it('shows the notes of the running sleep and writes nothing when they are left unchanged', async () => {
-    mockActiveSleeps([{ ...runningSleep, notes: 'started on the other phone' }])
-    const user = userEvent.setup()
-
-    render(<SleepTimerModal onClose={vi.fn()} />)
-    expect(screen.getByLabelText('Notes (optional)')).toHaveValue('started on the other phone')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-
-    expect(updateSleepNotes).not.toHaveBeenCalled()
-  })
-
-  it('starts the sleep with the notes typed before Start Timer', async () => {
+  it('starts a sleep without notes', async () => {
     mockActiveSleeps([])
     const user = userEvent.setup()
 
     render(<SleepTimerModal onClose={vi.fn()} />)
-    await user.type(screen.getByLabelText('Notes (optional)'), 'in the stroller')
     await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
-    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', expect.any(Date), 'in the stroller')
+    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', expect.any(Date), '')
   })
 
   it('starts the timer at the tap, not when the modal opened', async () => {
