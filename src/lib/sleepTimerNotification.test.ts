@@ -4,6 +4,7 @@ import {
   showSleepTimerNotification,
   SLEEP_TIMER_NOTIFICATION_TAG,
   SLEEP_TIMER_URL,
+  isStaleSleepTimerPush,
   sleepTimerNotificationBody,
 } from './sleepTimerNotification'
 
@@ -70,5 +71,20 @@ describe('closeSleepTimerNotification', () => {
 
     expect(registration.getNotifications).toHaveBeenCalledWith({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
     expect(close).toHaveBeenCalled()
+  })
+})
+
+describe('isStaleSleepTimerPush', () => {
+  it('drops a tick read before the latest stop', () => {
+    expect(isStaleSleepTimerPush('1000', 2000)).toBe(true)
+  })
+
+  it('shows a tick read after the latest stop (the sleep went on or a new one started)', () => {
+    expect(isStaleSleepTimerPush('3000', 2000)).toBe(false)
+  })
+
+  it('shows a tick when no stop was seen, or from a server that sends no time', () => {
+    expect(isStaleSleepTimerPush('1000', null)).toBe(false)
+    expect(isStaleSleepTimerPush(undefined, 2000)).toBe(false)
   })
 })

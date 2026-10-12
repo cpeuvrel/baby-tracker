@@ -10,6 +10,8 @@ const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
 
 // A tick is worthless once the next one is due.
 const TICK_TTL_SECONDS = 60
+// The stop must still reach a phone in deep standby (e.g. at night), or its notification stays.
+const STOP_TTL_SECONDS = 24 * 60 * 60
 
 interface SleepFields {
   startedAt?: { toDate(): Date } | null
@@ -34,7 +36,11 @@ export function sleepChange(before: SleepFields | undefined, after: SleepFields 
   return null
 }
 
-async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
+/**
+ * `sentAt`: when the entry was read as running. The service worker drops a push read before
+ * the latest stop, which can be delivered after it.
+ */
+async function sendRunningTimer(entry: DocumentSnapshot, sentAt: number): Promise<void> {
   const babyRef = entry.ref.parent.parent
   const householdRef = babyRef?.parent.parent
   const startedAt = (entry.data() as SleepFields | undefined)?.startedAt?.toDate()
@@ -43,7 +49,7 @@ async function sendRunningTimer(entry: DocumentSnapshot): Promise<void> {
   const babyName = ((await babyRef.get()).data()?.name as string | undefined) ?? 'Baby'
   await sendToHousehold(
     householdRef,
-    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString() },
+    { type: SLEEP_TIMER_PUSH, babyName, startedAt: startedAt.toISOString(), sentAt: String(sentAt) },
     TICK_TTL_SECONDS,
   )
 }
@@ -58,8 +64,9 @@ export const tickSleepTimerNotifications = onSchedule(
     for (const household of households.docs) {
       const babies = await household.ref.collection('babies').get()
       for (const baby of babies.docs) {
+        const readAt = Date.now()
         const running = await baby.ref.collection('sleepEntries').where('endedAt', '==', null).get()
-        await Promise.all(running.docs.map((entry) => sendRunningTimer(entry)))
+        await Promise.all(running.docs.map((entry) => sendRunningTimer(entry, readAt)))
       }
     }
   },
@@ -78,9 +85,13 @@ export const onSleepEntryWritten = onDocumentWritten(
     logger.info('Sleep timer notification', { change, ...event.params })
     if (change === 'stopped') {
       const householdRef = event.data.before.ref.parent.parent!.parent.parent!
-      await sendToHousehold(householdRef, { type: SLEEP_TIMER_STOP_PUSH }, TICK_TTL_SECONDS)
+      await sendToHousehold(
+        householdRef,
+        { type: SLEEP_TIMER_STOP_PUSH, stoppedAt: String(Date.now()) },
+        STOP_TTL_SECONDS,
+      )
     } else {
-      await sendRunningTimer(event.data.after)
+      await sendRunningTimer(event.data.after, Date.now())
     }
   },
 )

@@ -13,6 +13,7 @@ import {
   SLEEP_TIMER_PUSH,
   SLEEP_TIMER_STOP_PUSH,
   SLEEP_TIMER_TITLE,
+  isStaleSleepTimerPush,
   sleepTimerNotificationOptions,
 } from './lib/sleepTimerNotification'
 import {
@@ -42,12 +43,37 @@ const app = initializeApp({
 
 const messaging = getMessaging(app)
 
+// Server time of the latest sleep timer stop this device got, kept across service worker restarts.
+const SLEEP_TIMER_CACHE = 'sleep-timer'
+const SLEEP_TIMER_STOPPED_AT_KEY = '/sleep-timer-stopped-at'
+
+async function readLastSleepStop(): Promise<number | null> {
+  try {
+    const response = await (await caches.open(SLEEP_TIMER_CACHE)).match(SLEEP_TIMER_STOPPED_AT_KEY)
+    return response ? Number(await response.text()) : null
+  } catch {
+    return null
+  }
+}
+
+async function recordSleepStop(stoppedAt: number): Promise<void> {
+  try {
+    const previous = await readLastSleepStop()
+    if (previous != null && previous >= stoppedAt) return
+    await (await caches.open(SLEEP_TIMER_CACHE)).put(SLEEP_TIMER_STOPPED_AT_KEY, new Response(String(stoppedAt)))
+  } catch {
+    // Without it, a late tick may bring the notification back until the next stop.
+  }
+}
+
 onBackgroundMessage(messaging, async (payload) => {
   // Sleep timer pushes (functions/src/sleepTimer.ts): the server sends one a
   // minute while a sleep runs, so the elapsed time stays current with the app
   // in the background. The text is computed here, so a late push is still right.
   const data = payload.data ?? {}
   if (data.type === SLEEP_TIMER_PUSH && data.babyName && data.startedAt) {
+    // A tick sent just before the timer stopped can arrive after the stop.
+    if (isStaleSleepTimerPush(data.sentAt, await readLastSleepStop())) return
     await self.registration.showNotification(
       SLEEP_TIMER_TITLE,
       sleepTimerNotificationOptions(data.babyName, new Date(data.startedAt), new Date()),
@@ -55,6 +81,7 @@ onBackgroundMessage(messaging, async (payload) => {
     return
   }
   if (data.type === SLEEP_TIMER_STOP_PUSH) {
+    if (data.stoppedAt) await recordSleepStop(Number(data.stoppedAt))
     const notifications = await self.registration.getNotifications({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
     notifications.forEach((notification) => notification.close())
     return

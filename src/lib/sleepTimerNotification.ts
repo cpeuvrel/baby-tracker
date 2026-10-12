@@ -16,6 +16,16 @@ export const SLEEP_TIMER_TITLE = 'Sleep Timer'
 export const SLEEP_TIMER_PUSH = 'sleep-timer'
 export const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
 
+/**
+ * Whether a running-timer push was read on the server before the latest stop the device got
+ * (pushes can arrive out of order): showing it would bring back the closed notification.
+ * Pushes from an older server carry no time and are shown.
+ */
+export function isStaleSleepTimerPush(sentAt: string | undefined, lastStoppedAt: number | null): boolean {
+  if (sentAt == null || lastStoppedAt == null) return false
+  return Number(sentAt) <= lastStoppedAt
+}
+
 /** Shared by the app and the service worker (server pushes while the app is in the background). */
 export function sleepTimerNotificationOptions(babyName: string, startedAt: Date, now: Date): NotificationOptions {
   return {
