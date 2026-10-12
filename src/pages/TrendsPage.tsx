@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { TrendMetricIcon } from '../components/TrendMetricIcon'
 import { TrendRow } from '../components/TrendRow'
 import { useHousehold } from '../contexts/HouseholdContext'
@@ -27,7 +27,8 @@ const SECTIONS = Array.from(new Set(TREND_METRICS.map((metric) => metric.section
 export function TrendsPage() {
   const { household, selectedBaby } = useHousehold()
   const [days, setDays] = useState(7)
-  const now = useMemo(() => new Date(), [])
+  // Fixed while the page is open: a moving range would re-subscribe to the entries on every tick.
+  const [now] = useState(() => new Date())
   const currentRange = days === 1 ? dayRange(now) : lastNDaysRange(now, days)
   const previousRange = precedingRange(currentRange)
 

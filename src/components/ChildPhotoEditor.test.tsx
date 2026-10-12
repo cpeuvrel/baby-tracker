@@ -17,7 +17,7 @@ vi.mock('../lib/photoExport', () => ({
 const baby = { id: 'b1', name: 'Maëlys', birthDate: '2026-01-11', sex: 'female' as const }
 
 function loadImage(width: number, height: number) {
-  const image = screen.getByAltText('Photo to crop')
+  const image = screen.getByAltText('Crop preview')
   Object.defineProperty(image, 'naturalWidth', { value: width })
   Object.defineProperty(image, 'naturalHeight', { value: height })
   fireEvent.load(image)
@@ -115,7 +115,7 @@ describe('ChildPhotoEditor', () => {
 
     await user.upload(screen.getByTestId('photo-library-input'), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
     loadImage(4000, 3000)
-    const viewport = screen.getByAltText('Photo to crop').parentElement as HTMLElement
+    const viewport = screen.getByAltText('Crop preview').parentElement as HTMLElement
     fireEvent.pointerDown(viewport, { pointerId: 1, clientX: 100, clientY: 100 })
     fireEvent.pointerMove(viewport, { pointerId: 1, clientX: 1000, clientY: 100 })
     fireEvent.pointerUp(viewport, { pointerId: 1 })
@@ -134,7 +134,7 @@ describe('ChildPhotoEditor', () => {
 
     await user.upload(screen.getByTestId('photo-library-input'), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
     loadImage(4000, 3000)
-    const viewport = screen.getByAltText('Photo to crop').parentElement as HTMLElement
+    const viewport = screen.getByAltText('Crop preview').parentElement as HTMLElement
     const zoomBefore = Number((screen.getByLabelText('Zoom') as HTMLInputElement).value)
 
     const notCancelled = fireEvent.wheel(viewport, { deltaY: -200, cancelable: true })

@@ -150,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// useAuth lives next to its provider: moving it would touch every importer.
+// oxlint-disable-next-line react/only-export-components
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {

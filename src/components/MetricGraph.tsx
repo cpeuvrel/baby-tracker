@@ -1,4 +1,5 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react'
+import { useNow } from '../hooks/useNow'
 import { formatDate } from '../lib/appTime'
 import type { DailyPoint } from '../lib/aggregations'
 import { dayKey, dayOfMonth, parseDayKey } from '../lib/timeline'
@@ -61,7 +62,7 @@ export function MetricGraph({
 }: MetricGraphProps) {
   const swipeStartX = useRef<number | null>(null)
   const swiped = useRef(false)
-  const todayKey = dayKey(new Date())
+  const todayKey = dayKey(useNow())
   const max = ticks[ticks.length - 1] || 1
   const percent = (value: number) => `${Math.min(value / max, 1) * 100}%`
   const color = `var(${colorVar})`

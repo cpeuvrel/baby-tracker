@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
+import { useNow } from '../hooks/useNow'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
@@ -33,6 +34,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   const [resuming, setResuming] = useState(false)
   const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
+  const now = useNow()
 
   if (!household || !selectedBaby) return null
 
@@ -41,7 +43,7 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   // overlapping, back-dated timer.
   const canStart =
     entry.endedAt != null &&
-    Date.now() - new Date(entry.endedAt).getTime() < RESUME_WINDOW_MS &&
+    now.getTime() - new Date(entry.endedAt).getTime() < RESUME_WINDOW_MS &&
     activeSleep == null &&
     latestSleep?.id === entry.id
 

@@ -10,7 +10,7 @@
     "dev": "vite",
     "dev:live": "vite --mode live",
     "build": "tsc -b && vite build",
-    "lint": "oxlint",
+    "lint": "oxlint --deny-warnings",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

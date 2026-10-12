@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useNow } from '../hooks/useNow'
 import { formatAge } from '../lib/age'
 
 export function FamilyPage() {
   const { user } = useAuth()
   const { household, babies } = useHousehold()
-  const now = new Date()
+  const now = useNow()
 
   if (!household) return null
 

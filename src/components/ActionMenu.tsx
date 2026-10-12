@@ -17,7 +17,9 @@ export function ActionMenu({ title, onClose, children }: ActionMenuProps) {
   useDialogBehavior(dialogRef, onClose)
 
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- tapping the dimmed area is a pointer shortcut: Escape and the buttons close it from the keyboard (useDialogBehavior)
     <div className="action-menu-overlay" onClick={onClose}>
+      {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only stops the tap reaching the overlay */}
       <div
         className="action-menu"
         role="dialog"

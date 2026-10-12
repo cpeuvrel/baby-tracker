@@ -30,19 +30,22 @@ export function ReminderSettingsModal({ medicationName, onClose }: ReminderSetti
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const reminder = useReminder(household?.id ?? null, selectedBaby?.id ?? null, medicationName)
-  const [timeOfDay, setTimeOfDay] = useState(DEFAULT_TIME_OF_DAY)
-  const [active, setActive] = useState(false)
+  const [timeOfDay, setTimeOfDay] = useState(reminder?.timeOfDay ?? DEFAULT_TIME_OF_DAY)
+  const [active, setActive] = useState(reminder?.active ?? false)
+  // Follows the stored reminder as it changes (e.g. edited on the other phone), without an extra render pass.
+  const [syncedReminder, setSyncedReminder] = useState(reminder)
   const [notificationStatus, setNotificationStatus] = useState<NotificationStatus>(initialNotificationStatus)
   const pendingSave = useRef<(() => void) | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const uid = user?.uid ?? null
 
-  useEffect(() => {
+  if (reminder !== syncedReminder) {
+    setSyncedReminder(reminder)
     if (reminder) {
       setTimeOfDay(reminder.timeOfDay)
       setActive(reminder.active)
     }
-  }, [reminder])
+  }
 
   const flushTimeSave = useCallback(() => {
     clearTimeout(saveTimer.current)

@@ -9,6 +9,7 @@ import { GrowthForm } from '../components/GrowthForm'
 import { LineChartIcon, MenuIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useNow } from '../hooks/useNow'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { formatDate } from '../lib/appTime'
 import { ageInMonths, DAYS_PER_WHO_MONTH, formatAge } from '../lib/age'
@@ -52,6 +53,7 @@ export function GrowthDetailPage() {
   const [view, setView] = useState<ViewMode>('chart')
   const [selectedId, setSelectedId] = useState<string | undefined>()
   const [editingEntry, setEditingEntry] = useState<GrowthEntry | undefined>()
+  const now = useNow()
 
   if (!isGrowthMetric(metricParam)) return <Navigate to="/" replace />
   if (!household || !selectedBaby) return null
@@ -79,7 +81,7 @@ export function GrowthDetailPage() {
 
   // Where the child would be today if they stayed on the last measurement's percentile.
   const lastPoint = points[points.length - 1]
-  const todayAgeMonths = ageInMonths(selectedBaby.birthDate, new Date())
+  const todayAgeMonths = ageInMonths(selectedBaby.birthDate, now)
   const projectedValue =
     sex && lastPoint && todayAgeMonths - lastPoint.ageMonths >= MIN_PROJECTION_GAP_MONTHS
       ? projectOnSamePercentile(metric, sex, lastPoint, todayAgeMonths)

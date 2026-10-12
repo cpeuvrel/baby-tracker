@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActiveSleepEntriesState } from '../hooks/useActiveSleepEntry'
@@ -60,9 +60,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     setAnnouncedActive(isActive)
   }
 
-  useEffect(() => {
-    if (activeEntry) setPendingStart(false)
-  }, [activeEntry])
+  // The sleep being on record ends the wait for its start to be written.
+  if (activeEntry && pendingStart) setPendingStart(false)
 
   if (!household || !selectedBaby || !user) return null
 

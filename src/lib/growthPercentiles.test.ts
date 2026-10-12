@@ -56,12 +56,14 @@ describe('referenceCurves', () => {
 
   it.each(TABLES)('increases with age and with the percentile (%s, %s)', (metric, sex) => {
     const curve = referenceCurves(metric, sex)
+    const violations: string[] = []
     curve.forEach((point, row) => {
       point.values.forEach((value, index) => {
-        if (index > 0) expect(value).toBeGreaterThan(point.values[index - 1])
-        if (row > 0) expect(value).toBeGreaterThan(curve[row - 1].values[index])
+        if (index > 0 && !(value > point.values[index - 1])) violations.push(`row ${row}: percentile ${index} does not rise`)
+        if (row > 0 && !(value > curve[row - 1].values[index])) violations.push(`row ${row}: percentile ${index} does not grow with age`)
       })
     })
+    expect(violations).toEqual([])
   })
 
   it.each(TABLES)('draws each curve exactly at its percentile, the outer ones included (%s, %s)', (metric, sex) => {
