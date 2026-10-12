@@ -12,6 +12,9 @@ vi.mock('firebase/firestore', async (importActual) => {
   return { ...actual, deleteDoc: (ref: DocumentReference) => deleteDocImpl(ref) }
 })
 
+// Builds real Firestore references (only deleteDoc and the batch helpers are replaced).
+vi.mock('./firebase', (importActual) => importActual())
+
 vi.mock('./firestoreBatch', () => ({
   batchInsert: vi.fn(),
   batchDeleteAll: async (ref: CollectionReference) => {
