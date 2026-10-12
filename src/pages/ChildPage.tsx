@@ -4,6 +4,7 @@ import { ChildPhotoEditor } from '../components/ChildPhotoEditor'
 import { ExportImportSection } from '../components/ExportImportSection'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useAsyncAction } from '../hooks/useAsyncAction'
+import { useNow } from '../hooks/useNow'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { formatAge } from '../lib/age'
 import { deleteBabyWithData } from '../lib/babyExport'
@@ -27,6 +28,7 @@ export function ChildPage() {
 
 function ChildProfile({ householdId, baby, lastChild }: { householdId: string; baby: Baby; lastChild: boolean }) {
   const navigate = useNavigate()
+  const now = useNow()
   const [name, setName] = useState(baby.name)
   const [birthDate, setBirthDate] = useState(baby.birthDate)
   const [sex, setSex] = useState<BabySex | null>(baby.sex)
@@ -112,7 +114,7 @@ function ChildProfile({ householdId, baby, lastChild }: { householdId: string; b
         <dl className="modal-fields">
           <div>
             <dt>Age</dt>
-            <dd>{formatAge(birthDate || baby.birthDate, new Date())}</dd>
+            <dd>{formatAge(birthDate || baby.birthDate, now)}</dd>
           </div>
         </dl>
       </form>

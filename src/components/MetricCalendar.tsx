@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useNow } from '../hooks/useNow'
 import { formatDate } from '../lib/appTime'
 import { CALENDAR_DAYS, dayKey, parseDayKey, type DayFrame } from '../lib/timeline'
 import { markForInstant, nightFractions, splitIntervalByDay, type DayBlock, type DayMark } from '../lib/weekTimeline'
@@ -74,13 +75,15 @@ export function MetricCalendar({
   blocks = [],
   marks = [],
   nightRange,
-  now = new Date(),
+  now: nowProp,
   frame = CALENDAR_DAYS,
   selectedKey,
   onSelectDay,
   onPrevious,
   onNext,
 }: MetricCalendarProps) {
+  const clock = useNow()
+  const now = nowProp ?? clock
   const blocksByDay = useMemo(
     () =>
       groupByDay<DayBlock & { faded: boolean }>(

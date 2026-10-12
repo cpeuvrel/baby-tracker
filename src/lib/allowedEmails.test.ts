@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import rules from '../../firestore.rules?raw'
 import { ALLOWED_EMAILS, isAllowedEmail } from './allowedEmails'

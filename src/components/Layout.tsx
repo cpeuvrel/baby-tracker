@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useMatch, useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useNow } from '../hooks/useNow'
 import { formatDate } from '../lib/appTime'
 import { routeForegroundPushes } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
@@ -24,6 +25,7 @@ export function Layout() {
   const [summaryOpen, setSummaryOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const now = useNow()
   // Without a child (e.g. the last one was deleted) the tracking screens have nothing to show;
   // the Family screens stay reachable to add one.
   const onAccountScreens = pathname === '/account' || pathname.startsWith('/account/')
@@ -64,7 +66,7 @@ export function Layout() {
           </span>
           <div className="app-header-identity">
             <BabySelector />
-            <p className="app-header-date">{formatHeaderDate(new Date())}</p>
+            <p className="app-header-date">{formatHeaderDate(now)}</p>
           </div>
         </div>
         {onActivityScreen && (

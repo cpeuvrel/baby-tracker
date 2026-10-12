@@ -1,6 +1,9 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useNow } from '../hooks/useNow'
 import { formatDate, zonedParts } from '../lib/appTime'
 import { dayOfMonth, parseDayKey } from '../lib/timeline'
+
+const HOUR_MS = 60 * 60 * 1000
 
 interface TimelineGridProps {
   dayKeys: string[]
@@ -92,6 +95,7 @@ export function TimelineGrid({
   nextLabel = 'Next',
   todayKey,
 }: TimelineGridProps) {
+  const now = useNow(HOUR_MS)
   const scrollerRef = useRef<HTMLDivElement>(null)
   /** Distance scrolled from the right end, kept when earlier days are added on the left. */
   const fromEnd = useRef(0)
@@ -128,7 +132,7 @@ export function TimelineGrid({
   const goNext = () => (scrollable ? scrollByPeriod(1) : onNext?.())
 
   const wideAxis = axisLabels.some((label) => label.length > 2)
-  const currentYear = zonedParts(new Date()).year
+  const currentYear = zonedParts(now).year
   const pressed = (key: string) => (pressable ? key === selectedKey : undefined)
   const background = (
     <>

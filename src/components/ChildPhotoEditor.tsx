@@ -90,7 +90,9 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
       />
 
       {menuOpen && (
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- tapping the dimmed area is a pointer shortcut: Escape and the buttons close it from the keyboard
         <div className="action-menu-overlay" onClick={closeMenu}>
+          {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only stops the tap reaching the overlay */}
           <div
             ref={menu}
             className="action-menu"

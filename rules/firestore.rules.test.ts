@@ -318,6 +318,8 @@ describe.each(ENTRY_SHAPES)('%s', (name, created, changes) => {
   })
 
   const timeField = TIME_FIELDS[name]
+  // Only the collections with a time field get this test (a table-driven registration).
+  // oxlint-disable-next-line vitest/no-conditional-tests
   if (timeField) {
     it(`refuses ${timeField} when it is not a timestamp`, async () => {
       const db = parent()

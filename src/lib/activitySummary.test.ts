@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { buildActivitySummary, buildTodayTotals } from './activitySummary'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'

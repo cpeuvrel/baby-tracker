@@ -35,6 +35,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!user) {
+      // oxlint-disable-next-line react/set-state-in-effect -- sign-out resets the state synchronously, before any stale household is shown
       setHousehold(null)
       setBabies([])
       setLoading(false)
@@ -101,6 +102,8 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// useHousehold lives next to its provider: moving it would touch every importer.
+// oxlint-disable-next-line react/only-export-components
 export function useHousehold() {
   const context = useContext(HouseholdContext)
   if (!context) {

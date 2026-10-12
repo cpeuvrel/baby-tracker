@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as HouseholdContext from '../contexts/HouseholdContext'
+import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import type { Baby } from '../types/models'
 import { Layout } from './Layout'
@@ -57,6 +58,13 @@ describe('Layout', () => {
   })
 
   beforeEach(() => {
+    // The header's active-timers banner subscribes to the running sleeps.
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue([])
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntriesState').mockReturnValue({
+      entries: [],
+      loading: false,
+      error: null,
+    })
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
       feeding: [],
       sleep: [],

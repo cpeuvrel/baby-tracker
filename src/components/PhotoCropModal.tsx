@@ -30,6 +30,7 @@ export function PhotoCropModal({ file, onCancel, onSave }: PhotoCropModalProps) 
   // Created in the effect (not in state init) so StrictMode's re-run gets a fresh, unrevoked URL.
   useEffect(() => {
     const url = URL.createObjectURL(file)
+    // oxlint-disable-next-line react/set-state-in-effect -- the object URL is an external resource: it is created, and revoked, with the effect
     setImageUrl(url)
     return () => URL.revokeObjectURL(url)
   }, [file])
@@ -126,7 +127,7 @@ export function PhotoCropModal({ file, onCancel, onSave }: PhotoCropModalProps) 
           <img
             ref={imageRef}
             src={imageUrl}
-            alt="Photo to crop"
+            alt="Crop preview"
             draggable={false}
             onLoad={(event) =>
               setImageSize({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight })

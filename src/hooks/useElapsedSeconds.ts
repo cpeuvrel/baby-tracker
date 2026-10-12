@@ -6,6 +6,7 @@ export function useElapsedSeconds(startedAt: string | null): number {
 
   useEffect(() => {
     if (!startedAt) {
+      // oxlint-disable-next-line react/set-state-in-effect -- resets the counter as soon as the timer stops, without a render showing the old value
       setElapsed(0)
       return
     }

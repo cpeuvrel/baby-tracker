@@ -1,3 +1,4 @@
+// @vitest-environment node
 import type { CollectionReference, DocumentReference } from 'firebase/firestore'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { deleteBabyWithData } from './babyExport'
@@ -11,6 +12,9 @@ vi.mock('firebase/firestore', async (importActual) => {
   const actual = await importActual<typeof import('firebase/firestore')>()
   return { ...actual, deleteDoc: (ref: DocumentReference) => deleteDocImpl(ref) }
 })
+
+// Builds real Firestore references (only deleteDoc and the batch helpers are replaced).
+vi.mock('./firebase', (importActual) => importActual())
 
 vi.mock('./firestoreBatch', () => ({
   batchInsert: vi.fn(),

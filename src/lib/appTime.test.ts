@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { addDays, formatTime, parseClock, secondsIntoDay, startOfDay, zonedParts, zonedTime } from './appTime'
 
