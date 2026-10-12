@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import type { BathEntry } from '../types/models'
@@ -28,9 +28,9 @@ const entry: BathEntry = {
 
 describe('BathForm', () => {
   beforeEach(() => {
-    logBath.mockReset()
-    updateBathEntry.mockReset()
-    deleteBathEntry.mockReset()
+    logBath.mockReset().mockResolvedValue(undefined)
+    updateBathEntry.mockReset().mockResolvedValue(undefined)
+    deleteBathEntry.mockReset().mockResolvedValue(undefined)
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -48,6 +48,10 @@ describe('BathForm', () => {
       selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('logs a new bath at the picked time with notes', async () => {
@@ -82,5 +86,43 @@ describe('BathForm', () => {
     render(<BathForm entry={entry} onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Delete' }))
     expect(deleteBathEntry).toHaveBeenCalledWith('h1', 'b1', 'd1')
+  })
+
+  it('tells the user when the save is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    logBath.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<BathForm onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save the bath. Please try again.'))
+  })
+
+  it('tells the user when the delete is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteBathEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<BathForm entry={entry} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete the bath. Please try again.'))
+  })
+
+  it('refuses to save without a date', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<BathForm onClose={onClose} />)
+
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(logBath).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Pick a date.')
   })
 })

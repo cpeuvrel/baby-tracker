@@ -30,14 +30,14 @@ function renderPage(initialEntry = '/') {
 
 const startSleep = vi.fn().mockResolvedValue(undefined)
 const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
-const deleteSleepEntry = vi.fn()
-const logFeeding = vi.fn()
-const updateFeedingEntry = vi.fn()
-const deleteFeedingEntry = vi.fn()
-const logDiaper = vi.fn()
-const logMedication = vi.fn()
-const setReminder = vi.fn()
-const addGrowthEntry = vi.fn()
+const deleteSleepEntry = vi.fn().mockResolvedValue(undefined)
+const logFeeding = vi.fn().mockResolvedValue(undefined)
+const updateFeedingEntry = vi.fn().mockResolvedValue(undefined)
+const deleteFeedingEntry = vi.fn().mockResolvedValue(undefined)
+const logDiaper = vi.fn().mockResolvedValue(undefined)
+const logMedication = vi.fn().mockResolvedValue(undefined)
+const setReminder = vi.fn().mockResolvedValue(undefined)
+const addGrowthEntry = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../repositories/sleepEntries', () => ({
   startSleep: (...args: unknown[]) => startSleep(...args),
@@ -116,11 +116,11 @@ function setupHooks(
 describe('ActivityPage', () => {
   beforeEach(() => {
     startSleep.mockReset().mockResolvedValue(undefined)
-    logFeeding.mockReset()
-    logDiaper.mockReset()
-    logMedication.mockReset()
-    setReminder.mockReset()
-    addGrowthEntry.mockReset()
+    logFeeding.mockReset().mockResolvedValue(undefined)
+    logDiaper.mockReset().mockResolvedValue(undefined)
+    logMedication.mockReset().mockResolvedValue(undefined)
+    setReminder.mockReset().mockResolvedValue(undefined)
+    addGrowthEntry.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
   })
 

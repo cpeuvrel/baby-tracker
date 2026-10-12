@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import type { DiaperEntry } from '../types/models'
@@ -28,9 +28,9 @@ const entry: DiaperEntry = {
 
 describe('DiaperForm', () => {
   beforeEach(() => {
-    logDiaper.mockReset()
-    updateDiaperEntry.mockReset()
-    deleteDiaperEntry.mockReset()
+    logDiaper.mockReset().mockResolvedValue(undefined)
+    updateDiaperEntry.mockReset().mockResolvedValue(undefined)
+    deleteDiaperEntry.mockReset().mockResolvedValue(undefined)
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
       loading: false,
@@ -48,6 +48,10 @@ describe('DiaperForm', () => {
       selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('logs a diaper change with the selected type and notes, then calls onClose', async () => {
@@ -114,5 +118,55 @@ describe('DiaperForm', () => {
 
     expect(deleteDiaperEntry).toHaveBeenCalledWith('h1', 'b1', 'd1')
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('tells the user when the log is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    logDiaper.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<DiaperForm onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Wet' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save the diaper change. Please try again.'))
+  })
+
+  it('tells the user when the save is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateDiaperEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<DiaperForm entry={entry} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save the diaper change. Please try again.'))
+  })
+
+  it('tells the user when the delete is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteDiaperEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<DiaperForm entry={entry} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete the diaper change. Please try again.'))
+  })
+
+  it('refuses to log without a date', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    render(<DiaperForm onClose={onClose} />)
+
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    await user.click(screen.getByRole('button', { name: 'Wet' }))
+
+    expect(logDiaper).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Pick a date.')
   })
 })

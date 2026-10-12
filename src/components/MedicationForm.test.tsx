@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import type { MedicationEntry } from '../types/models'
@@ -53,9 +53,13 @@ function renderMedicationForm(onClose = vi.fn(), medicationEntry?: MedicationEnt
 
 describe('MedicationForm', () => {
   beforeEach(() => {
-    logMedication.mockReset()
-    updateMedicationEntry.mockReset()
-    deleteMedicationEntry.mockReset()
+    logMedication.mockReset().mockResolvedValue(undefined)
+    updateMedicationEntry.mockReset().mockResolvedValue(undefined)
+    deleteMedicationEntry.mockReset().mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('defaults the medication name to Vitamin D and submits with the entered dose', async () => {
@@ -117,5 +121,43 @@ describe('MedicationForm', () => {
 
     expect(deleteMedicationEntry).toHaveBeenCalledWith('h1', 'b1', 'm1')
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('tells the user when the save is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateMedicationEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    renderMedicationForm(vi.fn(), entry)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save the dose. Please try again.'))
+  })
+
+  it('tells the user when the delete is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteMedicationEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    renderMedicationForm(vi.fn(), entry)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete the dose. Please try again.'))
+  })
+
+  it('refuses to save without a date', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderMedicationForm(onClose)
+
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(logMedication).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Pick a date.')
   })
 })
