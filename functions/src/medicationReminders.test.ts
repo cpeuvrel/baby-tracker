@@ -46,6 +46,18 @@ describe('shouldSendReminder', () => {
     expect(shouldSendReminder(reminder('02:30'), new Date('2026-03-29T00:45:00Z'), '2026-03-29')).toBe(false)
     expect(shouldSendReminder(reminder('02:30'), new Date('2026-03-29T01:00:00Z'), '2026-03-29')).toBe(true)
   })
+
+  // The app only ever writes "HH:MM" (src/repositories/reminders.ts). A malformed value turns into
+  // NaN, and a comparison with NaN is false: the reminder is silently never due, at any time of the day.
+  it.each(['9h00', '', 'soon', '09'])('is never due for the malformed time %j (NaN, silently)', (timeOfDay) => {
+    expect(shouldSendReminder(reminder(timeOfDay), new Date('2026-01-15T22:55:00Z'), '2026-01-15')).toBe(false)
+    expect(shouldSendReminder(reminder(timeOfDay), new Date('2026-01-15T07:00:00Z'), '2026-01-15')).toBe(false)
+  })
+
+  it('accepts an unpadded hour, which is well-formed enough to compare', () => {
+    expect(shouldSendReminder(reminder('9:00'), new Date('2026-01-15T07:59:00Z'), '2026-01-15')).toBe(false)
+    expect(shouldSendReminder(reminder('9:00'), new Date('2026-01-15T08:00:00Z'), '2026-01-15')).toBe(true)
+  })
 })
 
 describe('medicationMatches', () => {
