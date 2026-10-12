@@ -177,6 +177,95 @@ describe('serializeBabyExport / parseImportFile (native format)', () => {
     expect(data.sleepEntries[0].notes).toBe('sieste, courte "mais bonne"')
   })
 
+  it('accepts a file saved with a UTF-8 BOM (Excel "CSV UTF-8") and round-trips accents', () => {
+    const withAccents: BabyExport = { ...sample, sleepEntries: [{ ...sleep[0], notes: 'sieste côté gauche' }] }
+
+    const { data } = parseImportFile(`﻿${serializeBabyExport(withAccents)}`, 'uid1')
+
+    expect(data.sleepEntries[0].notes).toBe('sieste côté gauche')
+    expect(data.feedingEntries).toHaveLength(1)
+  })
+
+  it('neutralises spreadsheet formulas in the export and restores the text on import', () => {
+    const risky = ['=HYPERLINK("http://x";"see")', '-1 dose', '+10 mL', '@SUM(A1)', "'=already quoted", 'plain']
+    const exported: BabyExport = {
+      ...sample,
+      medicationEntries: risky.map((notes, index) => ({ ...medication[0], id: `m${index}`, notes, dose: notes })),
+    }
+
+    const csv = serializeBabyExport(exported)
+    const { data } = parseImportFile(csv, 'uid1')
+
+    expect(csv).toContain(`"'=HYPERLINK(""http://x"";""see"")"`)
+    expect(csv).toContain(",'-1 dose,")
+    expect(data.medicationEntries.map((entry) => entry.notes)).toEqual(risky)
+    expect(data.medicationEntries.map((entry) => entry.dose)).toEqual(risky)
+  })
+
+  describe('malformed native rows', () => {
+    const header = serializeBabyExport(emptyData())
+    const defaults: Record<string, string> = {
+      at: '2026-01-01T08:00:00.000Z',
+      createdBy: 'uid1',
+      createdAt: '2026-01-01T08:00:00.000Z',
+    }
+    const row = (fields: Record<string, string>) =>
+      header
+        .split(',')
+        .map((name) => fields[name] ?? defaults[name] ?? '')
+        .join(',')
+    const file = (...rows: string[]) => [header, ...rows].join('\n')
+
+    it('rejects a row with missing columns, naming its line', () => {
+      expect(() => parseImportFile(file(row({ category: 'bath' }), 'bath,2026-01-01T08:00:00.000Z'), 'uid1')).toThrow(
+        'Line 3: expected 15 columns, found 2.',
+      )
+    })
+
+    it('rejects an invalid date', () => {
+      expect(() => parseImportFile(file(row({ category: 'bath', at: 'yesterday' })), 'uid1')).toThrow(
+        'Line 2: invalid at "yesterday".',
+      )
+      expect(() => parseImportFile(file(row({ category: 'sleep', endAt: 'tomorrow' })), 'uid1')).toThrow(
+        'Line 2: invalid endAt "tomorrow".',
+      )
+    })
+
+    it('rejects a number that is not one instead of storing NaN', () => {
+      expect(() =>
+        parseImportFile(file(row({ category: 'feeding', subtype: 'bottle', volumeMl: 'abc' })), 'uid1'),
+      ).toThrow('Line 2: invalid volumeMl "abc".')
+    })
+
+    it('rejects an unknown subtype', () => {
+      expect(() => parseImportFile(file(row({ category: 'feeding', subtype: 'breast' })), 'uid1')).toThrow(
+        'Line 2: invalid subtype "breast" (expected bottle, solid).',
+      )
+      expect(() => parseImportFile(file(row({ category: 'diaper', subtype: 'soaked' })), 'uid1')).toThrow(
+        'Line 2: invalid subtype "soaked"',
+      )
+    })
+
+    it('rejects a medication without a name', () => {
+      expect(() => parseImportFile(file(row({ category: 'medication' })), 'uid1')).toThrow(
+        'Line 2: missing medicationName.',
+      )
+    })
+
+    it('counts a row of an unknown category as skipped', () => {
+      const { data, skipped } = parseImportFile(file(row({ category: 'tummyTime' }), row({ category: 'bath' })), 'uid1')
+
+      expect(skipped).toBe(1)
+      expect(data.bathEntries).toHaveLength(1)
+    })
+
+    it('falls back to the entry time and the importing user for an empty createdAt / createdBy', () => {
+      const { data } = parseImportFile(file(row({ category: 'bath', createdAt: '', createdBy: '' })), 'uid2')
+
+      expect(data.bathEntries[0]).toMatchObject({ createdAt: '2026-01-01T08:00:00.000Z', createdBy: 'uid2' })
+    })
+  })
+
   it('rejects an empty file', () => {
     expect(() => parseImportFile('', 'uid1')).toThrow('Empty file')
   })
@@ -360,6 +449,36 @@ describe('parseImportFile (Nara export format)', () => {
     ])
   })
 
+  it('skips a row without a start time instead of dating it 1970', () => {
+    const csv = `${NARA_HEADER}\n${naraRow({ Type: 'Bottle Feed', '[Bottle Feed] Formula Volume': '150' })}`
+
+    const { data, skipped } = parseImportFile(csv, 'uid1')
+
+    expect(skipped).toBe(1)
+    expect(data.feedingEntries).toEqual([])
+  })
+
+  it('reads an unreadable volume as missing rather than NaN', () => {
+    const csv = `${NARA_HEADER}\n${naraRow({
+      Type: 'Bottle Feed',
+      'Start Date/time (Epoch)': '1790058780000',
+      '[Bottle Feed] Formula Volume': 'abc',
+      '[Bottle Feed] Formula Volume Unit': 'ML',
+    })}`
+
+    const { data } = parseImportFile(csv, 'uid1')
+
+    expect(data.feedingEntries[0].volumeMl).toBeNull()
+  })
+
+  it('reads a sleep without an end as still running', () => {
+    const csv = `${NARA_HEADER}\n${naraRow({ Type: 'Sleep', 'Start Date/time (Epoch)': '1790049624000' })}`
+
+    const { data } = parseImportFile(csv, 'uid1')
+
+    expect(data.sleepEntries[0]).toMatchObject({ endedAt: null, durationSeconds: null })
+  })
+
   it('skips unsupported rows (other routines, Profile) and reports the count', () => {
     const csv = `${NARA_HEADER}\n${naraRow({
       Type: 'Routine',
@@ -401,9 +520,9 @@ describe('importBabyData', () => {
       bathEntries: bath,
     }
 
-    const result = await importBabyData('h1', 'b2', data)
+    const result = await importBabyData('h1', 'b2', data, 'uid1')
 
-    expect(result).toEqual({ imported: 6, duplicates: 0 })
+    expect(result).toEqual({ imported: 6, duplicates: 0, skippedRunning: 0 })
     expect(getAllFeedingEntries).toHaveBeenCalledWith('h1', 'b2')
     expect(importFeedingEntries).toHaveBeenCalledWith('h1', 'b2', feeding)
     expect(importSleepEntries).toHaveBeenCalledWith('h1', 'b2', sleep)
@@ -425,16 +544,21 @@ describe('importBabyData', () => {
     const otherFeed: FeedingEntry = { ...feeding[0], id: 'f2', occurredAt: '2026-01-01T08:01:00.000Z' }
     const otherDiaper: DiaperEntry = { ...diaper[0], id: 'd2', occurredAt: '2026-01-01T09:00:42.000Z' }
 
-    const result = await importBabyData('h1', 'b1', {
-      feedingEntries: [feeding[0], otherFeed],
-      sleepEntries: sleep,
-      diaperEntries: [diaper[0], otherDiaper],
-      growthEntries: [],
-      medicationEntries: [],
-      bathEntries: bath,
-    })
+    const result = await importBabyData(
+      'h1',
+      'b1',
+      {
+        feedingEntries: [feeding[0], otherFeed],
+        sleepEntries: sleep,
+        diaperEntries: [diaper[0], otherDiaper],
+        growthEntries: [],
+        medicationEntries: [],
+        bathEntries: bath,
+      },
+      'uid1',
+    )
 
-    expect(result).toEqual({ imported: 1, duplicates: 5 })
+    expect(result).toEqual({ imported: 1, duplicates: 5, skippedRunning: 0 })
     expect(importFeedingEntries).toHaveBeenCalledWith('h1', 'b1', [otherFeed])
     expect(importSleepEntries).toHaveBeenCalledWith('h1', 'b1', [])
     expect(importDiaperEntries).toHaveBeenCalledWith('h1', 'b1', [])
@@ -445,30 +569,99 @@ describe('importBabyData', () => {
     getAllMedicationEntries.mockResolvedValue(medication)
     const other: MedicationEntry = { ...medication[0], id: 'm2', name: 'Doliprane', dose: '2.5 ml' }
 
-    const result = await importBabyData('h1', 'b1', {
-      feedingEntries: [],
-      sleepEntries: [],
-      diaperEntries: [],
-      growthEntries: [],
-      medicationEntries: [{ ...medication[0], dose: '1 drop' }, other],
-      bathEntries: [],
-    })
+    const result = await importBabyData(
+      'h1',
+      'b1',
+      {
+        feedingEntries: [],
+        sleepEntries: [],
+        diaperEntries: [],
+        growthEntries: [],
+        medicationEntries: [{ ...medication[0], dose: '1 drop' }, other],
+        bathEntries: [],
+      },
+      'uid1',
+    )
 
-    expect(result).toEqual({ imported: 1, duplicates: 1 })
+    expect(result).toEqual({ imported: 1, duplicates: 1, skippedRunning: 0 })
     expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b1', [other])
   })
 
   it('ignores duplicates within the imported file itself', async () => {
-    const result = await importBabyData('h1', 'b1', {
-      feedingEntries: [],
-      sleepEntries: [],
-      diaperEntries: [],
-      growthEntries: [],
-      medicationEntries: [medication[0], { ...medication[0], id: 'm2', name: 'vitamin d ' }],
-      bathEntries: [],
-    })
+    const result = await importBabyData(
+      'h1',
+      'b1',
+      {
+        feedingEntries: [],
+        sleepEntries: [],
+        diaperEntries: [],
+        growthEntries: [],
+        medicationEntries: [medication[0], { ...medication[0], id: 'm2', name: 'vitamin d ' }],
+        bathEntries: [],
+      },
+      'uid1',
+    )
 
-    expect(result).toEqual({ imported: 1, duplicates: 1 })
+    expect(result).toEqual({ imported: 1, duplicates: 1, skippedRunning: 0 })
     expect(importMedicationEntries).toHaveBeenCalledWith('h1', 'b1', [medication[0]])
   })
+
+  it('does not count a running sleep as imported, and reports it', async () => {
+    const running: SleepEntry = {
+      ...sleep[0],
+      id: 's2',
+      startedAt: '2026-01-02T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+    }
+
+    const result = await importBabyData(
+      'h1',
+      'b1',
+      { ...emptyData(), feedingEntries: feeding, sleepEntries: [sleep[0], running] },
+      'uid1',
+    )
+
+    expect(result).toEqual({ imported: 2, duplicates: 0, skippedRunning: 1 })
+    expect(importSleepEntries).toHaveBeenCalledWith('h1', 'b1', [sleep[0]])
+  })
+
+  it('writes every entry as authored by the importing user, whatever the file says', async () => {
+    await importBabyData(
+      'h1',
+      'b1',
+      {
+        feedingEntries: [{ ...feeding[0], createdBy: 'other-account' }],
+        sleepEntries: [{ ...sleep[0], createdBy: 'other-account' }],
+        diaperEntries: [{ ...diaper[0], createdBy: 'other-account' }],
+        growthEntries: [{ ...growth[0], createdBy: 'other-account' }],
+        medicationEntries: [{ ...medication[0], createdBy: 'other-account' }],
+        bathEntries: [{ ...bath[0], createdBy: 'other-account' }],
+      },
+      'uid1',
+    )
+
+    for (const importMock of [
+      importFeedingEntries,
+      importSleepEntries,
+      importDiaperEntries,
+      importGrowthEntries,
+      importMedicationEntries,
+      importBathEntries,
+    ]) {
+      const [, , written] = importMock.mock.calls[0] as [string, string, Array<{ createdBy: string }>]
+      expect(written.map((entry) => entry.createdBy)).toEqual(['uid1'])
+    }
+  })
 })
+
+function emptyData(): BabyExport {
+  return {
+    feedingEntries: [],
+    sleepEntries: [],
+    diaperEntries: [],
+    growthEntries: [],
+    medicationEntries: [],
+    bathEntries: [],
+  }
+}
