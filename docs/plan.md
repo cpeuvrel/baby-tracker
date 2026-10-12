@@ -1,5 +1,16 @@
 # baby-tracker — implementation plan
 
+## Status as of 2026-10-12
+
+The 2026-09-23 status below covers what came before; added since then:
+- **Pediatrician visits** (Family → Pediatrician): per-child visits with remarks and discussions, upcoming/history tabs, collection `pediatricianVisits`.
+- **Vaccine reminders**: two schedulers (`askVaccinePurchase`, `remindVaccineDay`) and the `onPediatricianVisitWritten` trigger in `functions/`; a "yes" to the purchase question clears it on every phone.
+- **One sleep at a time**: `locks/sleepTimer` written in the same batch as a running sleep and enforced by `firestore.rules` (see `docs/firestore-rules.md`); a stopped sleep can be resumed within an hour.
+- **Sleep timer notification**: an ongoing, app-branded notification that opens the timer, kept current by server pushes (`tickSleepTimerNotifications`, `onSleepEntryWritten`).
+- **Dependabot auto-merge**: minor/patch updates are merged once CI passes (7-day cooldown); majors are left for review.
+- **Code review** of 2026-10-12 in `docs/code-review/2026-10-12/` (findings and validation decisions); its fixes add Firestore rules tests and their CI deployment.
+- This file moved from the repository root to `docs/`; the one-shot Windows setup section was removed (see `README.md` for the current setup).
+
 > Document meant to be handed to another Claude instance for implementation.
 > Context: the app "Nara Baby & Mom Tracker" (used daily by both parents) is considered too expensive/locked-down by the user.
 > Goal: a personal replacement app, restricted to 2 parents, whose **UX must match Nara's** (see section 6 — detailed screen patterns, do not re-research) so as not to break habits already formed.
@@ -17,77 +28,6 @@
 > 8. **Growth screen (`GrowthDetailPage.tsx`) revised** (2026-09-23) based on direct feedback from the user (no new Nara screenshots): the **chart view now shows only the chart** — the "callout" card that used to systematically appear below a clicked point (date, value, percentile, age, source, Edit/Dismiss buttons) has been removed; editing a measurement is now done from the list view only. The **list view** (top-right icon) now shows each entry across 3 stacked lines (`{Metric} {value}` / `{Sex} Percentile {value}% ›` / `Age {value}`) instead of a single compact line — the chevron linking to edit stays on the percentile line only, not on the whole row.
 > 9. **Activity screen overhaul + child photo** (2026-09-25), based on real Nara screenshots (Activity, Summary sheet, Child photo menu). **Activity**: cards reordered Feed, Diaper, Sleep, Medication, Growth; serif band title with the round "+" straddling the band's bottom edge; big illustrated icon (line icon over a category-colored blob, shared `BlobIcon`, icons redrawn: tilted bottle, moon + star, diaper, pill bottle, scale, ruler, head tape) + "Last feeding / 2h 02m ago" + big serif value on the right (`180 mL`, diaper `pee`/`poo`/`mix`/`dry`). Recent entries sit behind a **Show More / Show Less** toggle (remembered per card in `localStorage`) and cover **since yesterday at the start of the baby's night** (`activityWindowStart`, e.g. 20:00), then an "Entries before 20:00 ›" link to History; "View History ›" when nothing is recent. Rows: `16:01 Bottle` over a proportional bar + value; yesterday's rows prefixed `YD`; times now 24-hour everywhere. Growth rows show the measurement date. **Edit Activities** pill button at the bottom → the existing Edit Activities screen. **Header "…"** (Activity screen only) opens the **Summary** sheet: Today / Last 24 Hours, one row per category with a count badge and totals (`buildActivitySummary`; sleeps count only their part inside the range), hidden categories left out. The notes (list icon) button from Nara is not added (no notes in v1). **Child photo**: tapping the round photo on the Child screen opens "Change Child Photo" (Choose From Library / Take Photo / Delete Photo); the picked image opens a **Move and Scale** crop (drag, pinch, slider or wheel to zoom, circular preview), saved as a 320×320 JPEG data URL on `Baby.photoDataUrl` (≈20–40 KB on the Firestore doc — no Cloud Storage bucket or rules needed), and shown in the header next to the name.
 > 10. **Routine card, 24-hour pickers, Nara-style durations** (2026-09-25). **Routine** replaces the Medication card on Activity (after Sleep, lavender `--category-routine`): two always-visible rows, **Bath** and **Vitamin D**, each with how long ago it last happened (a dose counts as vitamin when its name starts with "Vitamin", so Nara's "Vitamin/Probiotic" too); tapping a row logs a new one. "+" opens "Add to Routine" (Bath / Vitamin D / Other medication). Show More lists baths and doses since last night; "Set reminder" stays. **Baths** are a new `bathEntries` collection (time + notes, `BathForm`), shown in History (daily list, week marks, "Bath" filter), the Summary sheet and the CSV export/import; the Nara import now keeps `Bath` routines instead of skipping them. Edit Activities' "Medication" toggle becomes "Routine (bath, vitamin)". **24-hour time everywhere**: native `datetime-local`/`time` inputs (shown in AM/PM on phones set to English) replaced by a date input + hour/minute selects (`DateTimeField`, `TimeSelect`). **Relative times** now read like Nara: "2h 2m ago", "204 days ago".
-
-## 0. Prerequisites before starting (Windows machine) — step by step
-
-✅ Already done: VS Code, Claude Code, Git for Windows.
-
-Still to do, **in this order**:
-
-### 1. Check/configure Git
-Open a terminal (PowerShell):
-```
-git config --global user.name "Your name"
-git config --global user.email "your-email@example.com"
-```
-Needed once — without it, commits have no author.
-
-### 2. Node.js LTS
-Download and run the `.msi` installer from https://nodejs.org (the "LTS" button). Default install (Next, Next...). Check in a **new** terminal:
-```
-node -v
-npm -v
-```
-
-### 3. Java (JDK), any version ≥ 11
-Download the Windows `.msi` installer from https://adoptium.net (Temurin). During installation, leave the default options checked ("Add to PATH", "Set JAVA_HOME"). Check:
-```
-java -version
-```
-Needed for the Firestore emulator (section 4b), not just for Node.
-
-### 4. GitHub account + private repo
-1. Create an account at https://github.com (if not already done).
-2. "New repository" → name `baby-tracker` → **Private** → Create (no README or .gitignore for now).
-3. In a terminal, on this PC:
-```
-git clone https://github.com/<your-user>/baby-tracker.git
-cd baby-tracker
-```
-4. Copy the contents of this `plan.md` (this one) into a new `plan.md` file at the root of the cloned folder (create the file in VS Code, copy-paste the text from the Mac).
-5. Then:
-```
-git add plan.md
-git commit -m "Add implementation plan"
-git push
-```
-On the first `push`, a browser window opens to sign in to GitHub (Git Credential Manager, bundled with Git for Windows) — sign in there, nothing to configure by hand.
-
-### 5. Google account + Firebase project
-1. https://console.firebase.google.com, sign in with a Google account.
-2. "Add project" → name it `baby-tracker` (Google Analytics: decline, not needed here).
-3. In the project: **Build → Firestore Database → Create database** menu → production mode → pick a nearby region (e.g. `europe-west`).
-4. **Build → Authentication → Get started** menu → enable the "Email/Password" method. *(History: since replaced by Google Sign-In, see section 1b — going forward, enable "Google" here instead.)*
-5. In a terminal:
-```
-npm install -g firebase-tools
-firebase login
-```
-(opens the browser, sign in with the same Google account). Don't run `firebase init` yet — that happens in Phase 1, once the Vite project folder exists.
-
-**Credit card: not needed yet.** The free "Spark" plan is enough to get started (Firestore, Auth, Hosting, FCM). The paid "Blaze" plan (card required, real cost ≈ €0/month at this usage) will only be needed in Phase 5 (Medication & reminder, section 8) — plan a budget alert at €0/€1 at that point.
-
-### 6. Vercel account
-1. https://vercel.com/signup → **"Continue with GitHub"** (recommended: links the two accounts directly).
-2. Authorize access to the `baby-tracker` repo (you can restrict to "Only select repositories").
-3. Nothing else to do now — the Vercel project import happens in Phase 1/2, once there's a build to deploy.
-
-### 7. Check Claude Code
-Open a terminal, run `claude`. If not already signed in, a browser sign-in is requested — check that it's the right account for implementation.
-
-No need for an Apple/Google Play developer account (this isn't a store app); PWA icons and FCM config are set up during implementation.
-
-Once all this is done, hand this `plan.md` (already in the repo since step 4) to the Claude instance doing the implementation — it contains all the necessary context.
 
 ## 1. Decisions already made (do not reopen without reason)
 

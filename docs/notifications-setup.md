@@ -32,7 +32,9 @@ firebase deploy --only functions,firestore:rules
 
 Afterwards, functions are redeployed automatically by
 `.github/workflows/deploy-functions.yml` on every push to `main` that touches
-`functions/` (it can also be started by hand from the Actions tab).
+`functions/` (it can also be started by hand from the Actions tab), and the
+Firestore rules and indexes by `.github/workflows/deploy-firestore.yml` on
+every push to `main` that touches `firestore.rules` or `firestore.indexes.json`.
 
 The `checkMedicationReminders` Cloud Function runs every 15 minutes and
 sends a notification if an active reminder's medication hasn't been logged
