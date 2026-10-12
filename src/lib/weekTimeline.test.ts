@@ -39,6 +39,39 @@ describe('splitIntervalByDay', () => {
     ])
   })
 
+  it('places blocks by wall-clock time on the 23-hour day of the spring change', () => {
+    // 29 March 2026: 02:00 → 03:00. A night 22:00 (UTC+1) → 07:00 (UTC+2) is 8 real hours.
+    const blocks = splitIntervalByDay(
+      new Date('2026-03-28T22:00:00+01:00'),
+      new Date('2026-03-29T07:00:00+02:00'),
+    )
+
+    expect(blocks).toEqual([
+      { dayKey: '2026-03-28', startFraction: 22 / 24, endFraction: 1 },
+      { dayKey: '2026-03-29', startFraction: 0, endFraction: 7 / 24 },
+    ])
+    // The whole 23-hour day is one full column.
+    expect(splitIntervalByDay(new Date('2026-03-29T00:00:00+01:00'), new Date('2026-03-30T00:00:00+02:00'))).toEqual([
+      { dayKey: '2026-03-29', startFraction: 0, endFraction: 1 },
+    ])
+  })
+
+  it('places blocks by wall-clock time on the 25-hour day of the autumn change', () => {
+    // 25 October 2026: 03:00 → 02:00. 01:00 (UTC+2) → 01:00 the next day (UTC+1) is 25 real hours.
+    const blocks = splitIntervalByDay(
+      new Date('2026-10-25T01:00:00+02:00'),
+      new Date('2026-10-26T01:00:00+01:00'),
+    )
+
+    expect(blocks).toEqual([
+      { dayKey: '2026-10-25', startFraction: 1 / 24, endFraction: 1 },
+      { dayKey: '2026-10-26', startFraction: 0, endFraction: 1 / 24 },
+    ])
+    expect(splitIntervalByDay(new Date('2026-10-25T00:00:00+02:00'), new Date('2026-10-26T00:00:00+01:00'))).toEqual([
+      { dayKey: '2026-10-25', startFraction: 0, endFraction: 1 },
+    ])
+  })
+
   it('returns an empty array when end is not after start', () => {
     const same = new Date('2026-03-05T20:00:00+01:00')
     expect(splitIntervalByDay(same, same)).toEqual([])
