@@ -29,6 +29,7 @@ import {
   subscribeToRecentSleepEntries,
   subscribeToSleepEntriesInRange,
   updateSleepEntry,
+  updateSleepNotes,
 } from './sleepEntries'
 
 vi.mock('firebase/firestore', async (importActual) => {
@@ -138,6 +139,38 @@ describe('sleepEntries repository', () => {
     expect(pathOf(entryRef)).toBe('households/h1/babies/b1/sleepEntries/entry1')
     expect(payload).toEqual({ startedAt: Timestamp.fromDate(startedAt), endedAt: null, durationSeconds: null })
     expect(batch.set).toHaveBeenCalledWith(expect.anything(), { entryId: 'entry1' })
+  })
+
+  it('resumes a stopped sleep with its edited notes in the same write', async () => {
+    const batch = mockBatch()
+    const startedAt = new Date('2026-03-05T20:00:00.000Z')
+    await resumeSleep('h1', 'b1', 'entry1', startedAt, 'fell back asleep')
+
+    const [, payload] = batch.update.mock.calls[0]
+    expect(payload).toEqual({
+      startedAt: Timestamp.fromDate(startedAt),
+      endedAt: null,
+      durationSeconds: null,
+      notes: 'fell back asleep',
+    })
+  })
+
+  it('starts a sleep with notes typed before the start', async () => {
+    const batch = mockBatch()
+    await startSleep('h1', 'b1', 'uid1', new Date('2026-03-05T20:00:00.000Z'), 'nursed to sleep')
+
+    const [, payload] = batch.set.mock.calls[0]
+    expect(payload).toMatchObject({ notes: 'nursed to sleep' })
+  })
+
+  it('updates only the notes of a sleep, without touching the lock', async () => {
+    await updateSleepNotes('h1', 'b1', 'entry1', 'woke once')
+
+    expect(updateDocMock).toHaveBeenCalledTimes(1)
+    const [entryRef, payload] = updateDocMock.mock.calls[0]
+    expect(pathOf(entryRef)).toBe('households/h1/babies/b1/sleepEntries/entry1')
+    expect(payload).toEqual({ notes: 'woke once' })
+    expect(writeBatchMock).not.toHaveBeenCalled()
   })
 
   it('updates a sleep entry, recomputing the duration from start/end', async () => {

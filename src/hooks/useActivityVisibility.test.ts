@@ -50,4 +50,27 @@ describe('useActivityVisibility', () => {
     expect(result.current.isVisible('sleep')).toBe(false)
     expect(result.current.isVisible('feeding')).toBe(true)
   })
+
+  it.each(['{}', 'null', '"abc"', '42'])('shows every category when storage holds %s instead of a list', (stored) => {
+    localStorage.setItem('baby-tracker:hiddenActivities', stored)
+
+    const { result } = renderHook(() => useActivityVisibility())
+
+    for (const category of ['feeding', 'sleep', 'diaper', 'growth', 'routine'] as const) {
+      expect(result.current.isVisible(category)).toBe(true)
+    }
+  })
+
+  it('ignores unknown entries in the stored list', () => {
+    localStorage.setItem('baby-tracker:hiddenActivities', JSON.stringify(['sleep', 'nap', 3, null]))
+
+    const { result } = renderHook(() => useActivityVisibility())
+
+    expect(result.current.isVisible('sleep')).toBe(false)
+    expect(result.current.isVisible('feeding')).toBe(true)
+    act(() => {
+      result.current.toggle('growth')
+    })
+    expect(JSON.parse(localStorage.getItem('baby-tracker:hiddenActivities') ?? '[]')).toEqual(['sleep', 'growth'])
+  })
 })

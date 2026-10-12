@@ -148,6 +148,7 @@ export async function startSleep(
   babyId: string,
   createdBy: string,
   startedAt: Date = new Date(),
+  notes = '',
 ): Promise<void> {
   await writeRunningSleep(
     householdId,
@@ -157,7 +158,7 @@ export async function startSleep(
       startedAt: Timestamp.fromDate(startedAt),
       endedAt: null,
       durationSeconds: null,
-      notes: '',
+      notes,
       createdBy,
       createdAt: Timestamp.now(),
     },
@@ -200,20 +201,39 @@ export async function stopSleep(
   })
 }
 
-/** Puts a stopped sleep back in progress: the timer runs again from `startedAt`. */
+/**
+ * Puts a stopped sleep back in progress: the timer runs again from `startedAt`. `notes`, when
+ * given, replaces the sleep's notes in the same write.
+ */
 export async function resumeSleep(
   householdId: string,
   babyId: string,
   entryId: string,
   startedAt: Date,
+  notes?: string,
 ): Promise<void> {
   await writeRunningSleep(
     householdId,
     babyId,
     doc(sleepEntriesCollection(householdId, babyId), entryId),
-    { startedAt: Timestamp.fromDate(startedAt), endedAt: null, durationSeconds: null },
+    {
+      startedAt: Timestamp.fromDate(startedAt),
+      endedAt: null,
+      durationSeconds: null,
+      ...(notes !== undefined && { notes }),
+    },
     false,
   )
+}
+
+/** Changes only the notes of a sleep: allowed while it runs, the lock is not involved. */
+export async function updateSleepNotes(
+  householdId: string,
+  babyId: string,
+  entryId: string,
+  notes: string,
+): Promise<void> {
+  await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), { notes })
 }
 
 /** Moves the start of a sleep in progress: its live timer follows. */

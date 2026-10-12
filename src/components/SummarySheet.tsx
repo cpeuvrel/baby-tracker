@@ -1,11 +1,12 @@
 import { useState, type ReactNode } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility, type ActivityCategory } from '../hooks/useActivityVisibility'
-import { useEntriesInRange } from '../hooks/useEntriesInRange'
+import { useEntriesInRangeState } from '../hooks/useEntriesInRange'
 import { buildActivitySummary, type SummaryRowId } from '../lib/activitySummary'
 import { addDays } from '../lib/appTime'
 import { dayRange, type DateRange } from '../lib/timeline'
 import { BlobIcon } from './BlobIcon'
+import { LiveUpdatesAlert } from './LiveUpdatesAlert'
 import { BathIcon, DiaperIcon, FeedIcon, MedicationIcon, SleepIcon } from './icons'
 import { Modal } from './Modal'
 
@@ -38,7 +39,7 @@ export function SummarySheet({ onClose }: { onClose: () => void }) {
   const range = periodRange(period, now)
   // Sleeps are queried by start time: look back a day to catch the one running over the range's start.
   const queryRange = { start: addDays(range.start, -1), end: range.end }
-  const entries = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, queryRange)
+  const entries = useEntriesInRangeState(household?.id ?? null, selectedBaby?.id ?? null, queryRange)
   const rows = buildActivitySummary(entries, range, now).filter((row) => isVisible(ROW_STYLE[row.id].category))
 
   return (
@@ -51,7 +52,10 @@ export function SummarySheet({ onClose }: { onClose: () => void }) {
           Last 24 Hours
         </button>
       </div>
-      {rows.length === 0 ? (
+      {entries.error && <LiveUpdatesAlert />}
+      {entries.loading ? (
+        <p className="hint">Loading…</p>
+      ) : rows.length === 0 ? (
         <p className="hint">Nothing logged yet.</p>
       ) : (
         <ul className="summary-rows">

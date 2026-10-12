@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
+import { reportWriteError } from '../lib/reportWriteError'
 import {
   deleteMedicationEntry,
   logMedication,
@@ -12,6 +13,7 @@ import { Modal } from './Modal'
 import { DateTimeField } from './DateTimeField'
 
 const DEFAULT_MEDICATION_NAME = 'Vitamin D'
+const FORM_ID = 'medication-form'
 
 interface MedicationFormProps {
   entry?: MedicationEntry
@@ -33,12 +35,12 @@ export function MedicationForm({ entry, defaultName = DEFAULT_MEDICATION_NAME, o
   if (!household || !selectedBaby || !user) return null
 
   const submit = () => {
-    if (name.trim() === '') return
+    if (name.trim() === '' || !givenAt) return
     const input = { name: name.trim(), givenAt: fromDatetimeLocalValue(givenAt), dose, notes }
     if (entry) {
-      void updateMedicationEntry(household.id, selectedBaby.id, entry.id, input)
+      updateMedicationEntry(household.id, selectedBaby.id, entry.id, input).catch(reportWriteError('save the dose'))
     } else {
-      void logMedication(household.id, selectedBaby.id, user.uid, input)
+      logMedication(household.id, selectedBaby.id, user.uid, input).catch(reportWriteError('save the dose'))
     }
     onClose()
   }
@@ -51,7 +53,7 @@ export function MedicationForm({ entry, defaultName = DEFAULT_MEDICATION_NAME, o
   const handleDelete = () => {
     if (!entry) return
     if (!window.confirm('Delete this entry?')) return
-    void deleteMedicationEntry(household.id, selectedBaby.id, entry.id)
+    deleteMedicationEntry(household.id, selectedBaby.id, entry.id).catch(reportWriteError('delete the dose'))
     onClose()
   }
 
@@ -60,9 +62,9 @@ export function MedicationForm({ entry, defaultName = DEFAULT_MEDICATION_NAME, o
       title="Medication"
       bandColorVar="--category-routine"
       onClose={onClose}
-      headerAction={{ label: 'Save', onClick: submit }}
+      headerAction={{ label: 'Save', formId: FORM_ID }}
     >
-      <form onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         <div>
           <label htmlFor="medication-name">Medication</label>
           <input
@@ -73,6 +75,11 @@ export function MedicationForm({ entry, defaultName = DEFAULT_MEDICATION_NAME, o
           />
         </div>
         <DateTimeField id="medication-given-at" label="Time" value={givenAt} onChange={setGivenAt} />
+        {!givenAt && (
+          <p role="alert" className="form-error">
+            Pick a date.
+          </p>
+        )}
         <div>
           <label htmlFor="medication-dose">Dose (optional)</label>
           <input

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import * as HouseholdContext from '../contexts/HouseholdContext'
 import type { GrowthEntry } from '../types/models'
@@ -33,9 +33,9 @@ const entry: GrowthEntry = {
 
 describe('GrowthForm', () => {
   beforeEach(() => {
-    addGrowthEntry.mockReset()
-    updateGrowthEntry.mockReset()
-    deleteGrowthEntry.mockReset()
+    addGrowthEntry.mockReset().mockResolvedValue(undefined)
+    updateGrowthEntry.mockReset().mockResolvedValue(undefined)
+    deleteGrowthEntry.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1' } as User,
@@ -54,6 +54,10 @@ describe('GrowthForm', () => {
       selectedBaby: baby,
       selectBaby: vi.fn(),
     })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('submits a growth measurement converted to grams and millimeters, then calls onClose', async () => {
@@ -123,5 +127,103 @@ describe('GrowthForm', () => {
 
     expect(deleteGrowthEntry).toHaveBeenCalledWith('h1', 'b1', 'g1')
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it.each(['0', '-1'])('refuses a weight of %s with a message under the field', async (weight) => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    render(<GrowthForm onClose={onClose} />)
+    await user.type(screen.getByLabelText('Weight (kg)'), weight)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(addGrowthEntry).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a value above 0')
+  })
+
+  it('asks before saving an implausible value, and saves only once confirmed', async () => {
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    render(<GrowthForm onClose={onClose} />)
+    // Grams typed in the kilogram field.
+    await user.type(screen.getByLabelText('Weight (kg)'), '6200')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(confirm).toHaveBeenCalledWith('Weight (kg): 6200 looks unusual. Save anyway?')
+    expect(addGrowthEntry).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+
+    confirm.mockReturnValue(true)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(addGrowthEntry).toHaveBeenCalledWith('h1', 'b1', 'uid1', expect.objectContaining({ weightG: 6_200_000 }))
+  })
+
+  it('does not ask for a plausible measurement', async () => {
+    const confirm = vi.spyOn(window, 'confirm')
+    const user = userEvent.setup()
+
+    render(<GrowthForm onClose={vi.fn()} />)
+    await user.type(screen.getByLabelText('Weight (kg)'), '3.4')
+    await user.type(screen.getByLabelText('Head Size (cm)'), '35')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(confirm).not.toHaveBeenCalled()
+    expect(addGrowthEntry).toHaveBeenCalledTimes(1)
+  })
+
+  it('prefills a weight to the gram without float noise, and the browser accepts it', async () => {
+    const user = userEvent.setup()
+
+    render(<GrowthForm entry={{ ...entry, weightG: 6235 }} onClose={vi.fn()} />)
+    const weight = screen.getByLabelText('Weight (kg)')
+    expect(weight).toHaveValue(6.235)
+    // No step mismatch: Save (and Enter) are not blocked by the native validation.
+    expect(weight).toBeValid()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(updateGrowthEntry).toHaveBeenCalledWith('h1', 'b1', 'g1', expect.objectContaining({ weightG: 6235 }))
+  })
+
+  it('prefills imperial values rounded to two decimals', () => {
+    localStorage.setItem('baby-tracker:unitSystem', 'imperial')
+
+    render(<GrowthForm entry={{ ...entry, weightG: 4536 }} onClose={vi.fn()} />)
+
+    expect(screen.getByLabelText('Weight (lb)')).toHaveValue(10)
+    expect(screen.getByLabelText('Height (in)')).toHaveValue(24.41)
+  })
+
+  it('tells the user when the save is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateGrowthEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<GrowthForm entry={entry} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() =>
+      expect(alert).toHaveBeenCalledWith('Could not save the measurement. Please try again.'),
+    )
+  })
+
+  it('tells the user when the delete is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteGrowthEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    render(<GrowthForm entry={entry} onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() =>
+      expect(alert).toHaveBeenCalledWith('Could not delete the measurement. Please try again.'),
+    )
   })
 })

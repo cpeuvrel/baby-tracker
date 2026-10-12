@@ -2,10 +2,13 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
+import { reportWriteError } from '../lib/reportWriteError'
 import { deleteBathEntry, logBath, updateBathEntry } from '../repositories/bathEntries'
 import type { BathEntry } from '../types/models'
 import { DateTimeField } from './DateTimeField'
 import { Modal } from './Modal'
+
+const FORM_ID = 'bath-form'
 
 interface BathFormProps {
   entry?: BathEntry
@@ -23,11 +26,12 @@ export function BathForm({ entry, onClose }: BathFormProps) {
   if (!household || !selectedBaby || !user) return null
 
   const submit = () => {
+    if (!occurredAt) return
     const input = { occurredAt: fromDatetimeLocalValue(occurredAt), notes }
     if (entry) {
-      void updateBathEntry(household.id, selectedBaby.id, entry.id, input)
+      updateBathEntry(household.id, selectedBaby.id, entry.id, input).catch(reportWriteError('save the bath'))
     } else {
-      void logBath(household.id, selectedBaby.id, user.uid, input)
+      logBath(household.id, selectedBaby.id, user.uid, input).catch(reportWriteError('save the bath'))
     }
     onClose()
   }
@@ -40,7 +44,7 @@ export function BathForm({ entry, onClose }: BathFormProps) {
   const handleDelete = () => {
     if (!entry) return
     if (!window.confirm('Delete this entry?')) return
-    void deleteBathEntry(household.id, selectedBaby.id, entry.id)
+    deleteBathEntry(household.id, selectedBaby.id, entry.id).catch(reportWriteError('delete the bath'))
     onClose()
   }
 
@@ -49,10 +53,15 @@ export function BathForm({ entry, onClose }: BathFormProps) {
       title="Bath"
       bandColorVar="--category-routine"
       onClose={onClose}
-      headerAction={{ label: 'Save', onClick: submit }}
+      headerAction={{ label: 'Save', formId: FORM_ID }}
     >
-      <form onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         <DateTimeField id="bath-occurred-at" label="Time" value={occurredAt} onChange={setOccurredAt} />
+        {!occurredAt && (
+          <p role="alert" className="form-error">
+            Pick a date.
+          </p>
+        )}
         <div>
           <label htmlFor="bath-notes">Notes (optional)</label>
           <input id="bath-notes" type="text" value={notes} onChange={(event) => setNotes(event.target.value)} />

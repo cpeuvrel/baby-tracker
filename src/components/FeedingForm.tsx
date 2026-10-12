@@ -2,10 +2,14 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
+import { parseOptionalPositive } from '../lib/numberInput'
+import { reportWriteError } from '../lib/reportWriteError'
 import { deleteFeedingEntry, logFeeding, updateFeedingEntry } from '../repositories/feedingEntries'
 import type { FeedingEntry, FeedingType } from '../types/models'
 import { Modal } from './Modal'
 import { DateTimeField } from './DateTimeField'
+
+const FORM_ID = 'feeding-form'
 
 interface FeedingFormProps {
   entry?: FeedingEntry
@@ -22,21 +26,28 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
   const [volumeMl, setVolumeMl] = useState(entry?.volumeMl != null ? String(entry.volumeMl) : '')
   const [foodType, setFoodType] = useState(entry?.foodType ?? '')
   const [notes, setNotes] = useState(entry?.notes ?? '')
+  const [volumeInvalid, setVolumeInvalid] = useState(false)
 
   if (!household || !selectedBaby || !user) return null
 
   const submit = () => {
+    if (!occurredAt) return
+    const volume = type === 'bottle' ? parseOptionalPositive(volumeMl) : null
+    if (volume === 'invalid') {
+      setVolumeInvalid(true)
+      return
+    }
     const input = {
       type,
       occurredAt: fromDatetimeLocalValue(occurredAt),
-      volumeMl: type === 'bottle' && volumeMl.trim() !== '' ? Number(volumeMl) : null,
+      volumeMl: volume,
       foodType: type === 'solid' && foodType.trim() !== '' ? foodType.trim() : null,
       notes,
     }
     if (entry) {
-      void updateFeedingEntry(household.id, selectedBaby.id, entry.id, input)
+      updateFeedingEntry(household.id, selectedBaby.id, entry.id, input).catch(reportWriteError('save the feeding'))
     } else {
-      void logFeeding(household.id, selectedBaby.id, user.uid, input)
+      logFeeding(household.id, selectedBaby.id, user.uid, input).catch(reportWriteError('save the feeding'))
     }
     onClose()
   }
@@ -49,7 +60,7 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
   const handleDelete = () => {
     if (!entry) return
     if (!window.confirm('Delete this entry?')) return
-    void deleteFeedingEntry(household.id, selectedBaby.id, entry.id)
+    deleteFeedingEntry(household.id, selectedBaby.id, entry.id).catch(reportWriteError('delete the feeding'))
     onClose()
   }
 
@@ -58,9 +69,9 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
       title="Feed"
       bandColorVar="--category-feeding"
       onClose={onClose}
-      headerAction={{ label: 'Save', onClick: submit }}
+      headerAction={{ label: 'Save', formId: FORM_ID }}
     >
-      <form onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         <div role="group" aria-label="Type">
           <button type="button" aria-pressed={type === 'bottle'} onClick={() => setType('bottle')}>
             Bottle
@@ -70,6 +81,11 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
           </button>
         </div>
         <DateTimeField id="feeding-occurred-at" label="Time" value={occurredAt} onChange={setOccurredAt} />
+        {!occurredAt && (
+          <p role="alert" className="form-error">
+            Pick a date.
+          </p>
+        )}
         {type === 'bottle' ? (
           <div>
             <label htmlFor="feeding-volume">Volume (mL, optional)</label>
@@ -79,8 +95,19 @@ export function FeedingForm({ entry, onClose }: FeedingFormProps) {
               min="0"
               inputMode="numeric"
               value={volumeMl}
-              onChange={(event) => setVolumeMl(event.target.value)}
+              aria-invalid={volumeInvalid || undefined}
+              // The browser refuses a negative before onSubmit: say why under the field.
+              onInvalid={() => setVolumeInvalid(true)}
+              onChange={(event) => {
+                setVolumeMl(event.target.value)
+                setVolumeInvalid(false)
+              }}
             />
+            {volumeInvalid && (
+              <p role="alert" className="form-error">
+                Enter a volume above 0, or leave it empty.
+              </p>
+            )}
           </div>
         ) : (
           <div>
