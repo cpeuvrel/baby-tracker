@@ -64,15 +64,6 @@ export function summarizeDiaperPrimary(entry: DiaperEntry, now: Date): PrimarySu
   }
 }
 
-export function summarizeMedicationPrimary(entry: MedicationEntry, now: Date): PrimarySummary {
-  return {
-    label: entry.name,
-    meta: entry.dose
-      ? `${entry.dose} — ${formatRelativeTime(new Date(entry.givenAt), now)}`
-      : formatRelativeTime(new Date(entry.givenAt), now),
-  }
-}
-
 export function summarizeFeedingRow(entry: FeedingEntry, maxVolumeMl: number, now?: Date): EntryRow {
   const time = formatRowClock(entry.occurredAt, now)
   if (entry.type === 'bottle') {

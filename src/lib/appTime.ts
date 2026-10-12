@@ -90,3 +90,17 @@ export function formatDate(date: Date, options: Intl.DateTimeFormatOptions = {},
 export function formatTime(date: Date, options: Intl.DateTimeFormatOptions = {}, locale = 'en-US'): string {
   return date.toLocaleTimeString(locale, { ...options, timeZone: APP_TIME_ZONE })
 }
+
+export interface ClockTime {
+  hour: number
+  minute: number
+}
+
+/** Hour and minute of a `HH:mm` clock time ("8:00" too), or null when `time` is not one (e.g. corrupted data). */
+export function parseClock(time: string): ClockTime | null {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(time)
+  if (!match) return null
+  const hour = Number(match[1])
+  const minute = Number(match[2])
+  return hour < 24 && minute < 60 ? { hour, minute } : null
+}

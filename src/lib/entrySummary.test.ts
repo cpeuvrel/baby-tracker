@@ -6,7 +6,6 @@ import {
   summarizeDiaperRow,
   summarizeFeedingPrimary,
   summarizeFeedingRow,
-  summarizeMedicationPrimary,
   summarizeMedicationRow,
   summarizeSleepPrimary,
   summarizeSleepRow,
@@ -94,42 +93,6 @@ describe('summarizeDiaperPrimary', () => {
     }
 
     expect(summarizeDiaperPrimary(entry, now)).toEqual({ label: 'Last change', meta: '30m ago' })
-  })
-})
-
-describe('summarizeMedicationPrimary', () => {
-  it('includes the dose in the meta when present', () => {
-    const entry: MedicationEntry = {
-      id: 'm1',
-      name: 'Vitamin D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '2 drops',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamin D',
-      meta: '2 drops — 30m ago',
-    })
-  })
-
-  it('omits the dose from the meta when absent', () => {
-    const entry: MedicationEntry = {
-      id: 'm2',
-      name: 'Vitamin D',
-      givenAt: '2026-03-05T11:30:00.000Z',
-      dose: '',
-      notes: '',
-      createdBy: 'uid1',
-      createdAt: '2026-03-05T11:30:00.000Z',
-    }
-
-    expect(summarizeMedicationPrimary(entry, now)).toEqual({
-      label: 'Vitamin D',
-      meta: '30m ago',
-    })
   })
 })
 

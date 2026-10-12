@@ -1,5 +1,5 @@
 import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
-import { DEFAULT_NIGHTTIME_HOURS, isDuringNight, startsDuringNight, type DailyPoint } from './aggregations'
+import { DEFAULT_NIGHTTIME_HOURS, isDuringNight, nightClocks, startsDuringNight, type DailyPoint } from './aggregations'
 import { formatDuration } from './duration'
 import {
   CALENDAR_DAYS,
@@ -279,8 +279,7 @@ export function sleepSegments(
   now: Date = new Date(),
   frame: DayFrame = CALENDAR_DAYS,
 ): SleepSegment[] {
-  const [nightStartHour, nightStartMinute] = nightRange.start.split(':').map(Number)
-  const [nightEndHour, nightEndMinute] = nightRange.end.split(':').map(Number)
+  const { start: nightStart, end: nightEnd } = nightClocks(nightRange)
   const segments: SleepSegment[] = []
   for (const entry of entries) {
     const start = new Date(entry.startedAt)
@@ -291,8 +290,8 @@ export function sleepSegments(
       const { year, month, day: date } = zonedParts(day)
       for (const cut of [
         frame.startOf(nextDayKey(dayKey(day))),
-        zonedTime(year, month, date, nightStartHour, nightStartMinute),
-        zonedTime(year, month, date, nightEndHour, nightEndMinute),
+        zonedTime(year, month, date, nightStart.hour, nightStart.minute),
+        zonedTime(year, month, date, nightEnd.hour, nightEnd.minute),
       ]) {
         if (cut.getTime() > start.getTime() && cut.getTime() < end.getTime()) cuts.add(cut.getTime())
       }
@@ -326,7 +325,7 @@ export function isNightSleep(entry: SleepEntry, nightRange: NighttimeHours, now:
   const start = new Date(entry.startedAt)
   if (isDuringNight(start, nightRange)) return true
   const end = sleepEnd(entry, now)
-  const [hour, minute] = nightRange.start.split(':').map(Number)
+  const { hour, minute } = nightClocks(nightRange).start
   for (let day = startOfDay(start); day.getTime() < end.getTime(); day = addDays(day, 1)) {
     const { year, month, day: date } = zonedParts(day)
     const nightStart = zonedTime(year, month, date, hour, minute)
@@ -365,7 +364,7 @@ function longestSleeps(
  * Whether a piece of sleep is part of the metric: the Calendar view draws it in full colour,
  * the rest of the baby's sleep faded.
  */
-export function sleepSegmentInMetric(
+function sleepSegmentInMetric(
   id: TrendMetricId,
   segment: SleepSegment,
   nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
