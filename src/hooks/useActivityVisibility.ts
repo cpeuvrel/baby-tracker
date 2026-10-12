@@ -12,10 +12,16 @@ export const ACTIVITY_CATEGORIES: { id: ActivityCategory; label: string }[] = [
   { id: 'routine', label: 'Routine (bath, vitamin)' },
 ]
 
+function isActivityCategory(value: unknown): value is ActivityCategory {
+  return ACTIVITY_CATEGORIES.some((category) => category.id === value)
+}
+
+/** The stored hidden categories; anything else stored there (corrupted, older format) hides nothing. */
 function readHidden(): ActivityCategory[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as ActivityCategory[]) : []
+    const parsed: unknown = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter(isActivityCategory) : []
   } catch {
     return []
   }
