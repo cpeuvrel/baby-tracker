@@ -22,13 +22,20 @@ interface TimePartInputProps {
 
 /**
  * One two-digit field typed on the numeric keypad. Only the last two digits count, like a
- * digital clock (with "00" shown, typing 3 then 0 gives "03" then "30"), so a tap that leaves
- * the cursor after the current value never blocks typing. Each valid entry is committed right
- * away; an out-of-range one is ignored and the last valid value shows again on blur.
+ * digital clock, so a tap that leaves the cursor after the current value never blocks typing.
+ * The value is committed once two digits are typed, or on blur for a single one ("9" → "09"):
+ * typing "20" never applies "02" on the way. An out-of-range one is ignored and the last valid
+ * value shows again on blur.
  */
 function TimePartInput({ label, value, max, disabled, onCommit, onFilled, inputRef }: TimePartInputProps) {
   // What is typed, while the field has focus (it may be partial, e.g. "1" before "15").
-  const [draft, setDraft] = useState<string | null>(null)
+  const [draft, setDraftState] = useState<string | null>(null)
+  // Also read on blur, which can fire before the typed draft renders (focus moves to the minutes).
+  const draftRef = useRef<string | null>(null)
+  const setDraft = (next: string | null) => {
+    draftRef.current = next
+    setDraftState(next)
+  }
 
   return (
     <input
@@ -45,14 +52,19 @@ function TimePartInput({ label, value, max, disabled, onCommit, onFilled, inputR
         setDraft(value)
         event.target.select()
       }}
-      onBlur={() => setDraft(null)}
+      onBlur={() => {
+        const typed = draftRef.current
+        const padded = typed?.length === 1 ? typed.padStart(2, '0') : null
+        if (padded != null && padded !== value && Number(padded) <= max) onCommit(padded)
+        setDraft(null)
+      }}
       onChange={(event) => {
         const digits = event.target.value.replace(/\D/g, '').slice(-2)
         // Only a field being typed in shows its draft; a programmatic change shows the committed value.
         if (event.target === document.activeElement) setDraft(digits)
-        if (digits === '' || Number(digits) > max) return
-        onCommit(digits.padStart(2, '0'))
-        if (digits.length === 2) onFilled?.()
+        if (digits.length < 2 || Number(digits) > max) return
+        onCommit(digits)
+        onFilled?.()
       }}
     />
   )

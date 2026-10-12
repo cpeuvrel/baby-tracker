@@ -62,7 +62,22 @@ describe('TimeSelect', () => {
     await user.keyboard('75')
     await user.tab()
 
-    expect(onChange).toHaveBeenLastCalledWith('07:07')
-    expect(screen.getByLabelText('Start minute')).toHaveValue('07')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Start minute')).toHaveValue('05')
+  })
+
+  it('applies nothing while only the first digit of the hour is typed', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Harness initial="07:05" onChange={onChange} />)
+
+    await user.click(screen.getByLabelText('Start hour'))
+    await user.keyboard('2')
+    expect(onChange).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Start hour')).toHaveValue('2')
+
+    await user.keyboard('0')
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith('20:05')
   })
 })
