@@ -1,5 +1,6 @@
 import { deleteDoc } from 'firebase/firestore'
 import { parseCsv, stripFormulaGuard, toCsv } from './csv'
+import { secondsBetween } from './duration'
 import { batchDeleteAll } from './firestoreBatch'
 import {
   bathEntriesCollection,
@@ -228,6 +229,11 @@ function nativeRowReader(row: string[], line: number) {
  * throws an error naming its line, before anything is written; a row of an unknown category is
  * counted as skipped.
  */
+/** A stopped sleep without a duration column gets its length from its bounds (LIB-13). */
+function sleepDurationOrNull(startedAt: string, endedAt: string | null): number | null {
+  return endedAt ? secondsBetween(new Date(startedAt), new Date(endedAt)) : null
+}
+
 function parseNativeRows(
   dataRows: string[][],
   currentUserUid: string,
@@ -270,11 +276,12 @@ function parseNativeRows(
       }
       case 'sleep': {
         const startedAt = at()
+        const endedAt = read.optionalDate(END_AT)
         sleepEntries.push({
           id,
           startedAt,
-          endedAt: read.optionalDate(END_AT),
-          durationSeconds: read.number(DURATION),
+          endedAt,
+          durationSeconds: read.number(DURATION) ?? sleepDurationOrNull(startedAt, endedAt),
           ...common(startedAt),
         })
         break
@@ -466,11 +473,12 @@ function parseNaraRows(
       }
       case 'Sleep': {
         const startedAt = start
+        const endedAt = epochToIso(row[SLEEP_END_EPOCH])
         sleepEntries.push({
           id: newId(),
           startedAt,
-          endedAt: epochToIso(row[SLEEP_END_EPOCH]),
-          durationSeconds: naraNumber(row[SLEEP_DURATION]),
+          endedAt,
+          durationSeconds: naraNumber(row[SLEEP_DURATION]) ?? sleepDurationOrNull(startedAt, endedAt),
           notes: note,
           createdBy: currentUserUid,
           createdAt: startedAt,

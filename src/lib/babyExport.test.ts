@@ -479,6 +479,18 @@ describe('parseImportFile (Nara export format)', () => {
     expect(data.sleepEntries[0]).toMatchObject({ endedAt: null, durationSeconds: null })
   })
 
+  it('derives the duration of a stopped sleep whose duration column is empty', () => {
+    const csv = `${NARA_HEADER}\n${naraRow({
+      Type: 'Sleep',
+      'Start Date/time (Epoch)': '1790049624000',
+      '[Sleep] End Date/time (Epoch)': '1790053224000',
+    })}`
+
+    const { data } = parseImportFile(csv, 'uid1')
+
+    expect(data.sleepEntries[0].durationSeconds).toBe(3600)
+  })
+
   it('skips unsupported rows (other routines, Profile) and reports the count', () => {
     const csv = `${NARA_HEADER}\n${naraRow({
       Type: 'Routine',
