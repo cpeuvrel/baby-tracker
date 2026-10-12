@@ -4,6 +4,7 @@ import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
 import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
 import { formatDuration } from '../lib/duration'
+import { withDuration, withEnd, withStart, type SleepTimes } from '../lib/sleepTimes'
 import { deleteSleepEntry, resumeSleep, updateSleepEntry } from '../repositories/sleepEntries'
 import type { SleepEntry } from '../types/models'
 import { DurationInput } from './DurationInput'
@@ -22,10 +23,13 @@ interface SleepEntryEditModalProps {
 
 export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEditModalProps) {
   const { household, selectedBaby } = useHousehold()
-  const [startedAt, setStartedAt] = useState(() => toDatetimeLocalValue(new Date(entry.startedAt)))
-  const [endedAt, setEndedAt] = useState(() =>
-    entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
+  const [times, setTimes] = useState<SleepTimes>(() =>
+    withEnd(
+      { start: toDatetimeLocalValue(new Date(entry.startedAt)), end: '', duration: null },
+      entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
+    ),
   )
+  const { start: startedAt, end: endedAt, duration: durationMinutes } = times
   const [notes, setNotes] = useState(entry.notes)
   const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
@@ -40,19 +44,6 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     Date.now() - new Date(entry.endedAt).getTime() < RESUME_WINDOW_MS &&
     activeSleep == null &&
     latestSleep?.id === entry.id
-
-  const durationMinutes =
-    endedAt !== ''
-      ? Math.round((fromDatetimeLocalValue(endedAt).getTime() - fromDatetimeLocalValue(startedAt).getTime()) / 60000)
-      : null
-
-  const handleDurationChange = (minutes: number | null) => {
-    if (minutes == null) {
-      setEndedAt('')
-      return
-    }
-    setEndedAt(toDatetimeLocalValue(new Date(fromDatetimeLocalValue(startedAt).getTime() + minutes * 60000)))
-  }
 
   const submit = () => {
     void updateSleepEntry(household.id, selectedBaby.id, entry.id, {
@@ -97,9 +88,9 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
             Start Timer
           </button>
         )}
-        <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
-        <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={setStartedAt} />
-        <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={setEndedAt} />
+        <DurationInput totalMinutes={durationMinutes} onChange={(minutes) => setTimes(withDuration(times, minutes))} />
+        <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={(value) => setTimes(withStart(times, value))} />
+        <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={(value) => setTimes(withEnd(times, value))} />
         <div>
           <label htmlFor="sleep-notes">Notes (optional)</label>
           <input
