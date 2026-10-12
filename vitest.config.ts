@@ -10,6 +10,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // Each test starts from a clean slate: vi.spyOn spies, stubbed globals and stubbed env
+    // vars are restored automatically (module-level vi.fn() mocks are left untouched).
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
     setupFiles: ['./src/test/setup.ts'],
     // Dummy Firebase config: tests mock Firestore / Auth and never reach a real project.
     env: {
