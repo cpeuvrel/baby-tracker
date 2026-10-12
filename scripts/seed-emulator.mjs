@@ -10,6 +10,10 @@ import { getFirestore } from 'firebase-admin/firestore'
 
 process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080'
 process.env.FIREBASE_AUTH_EMULATOR_HOST ??= '127.0.0.1:9099'
+// An empty variable survives `??=`, and without it the Admin SDK would target the real project.
+if (!process.env.FIRESTORE_EMULATOR_HOST || !process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+  throw new Error('FIRESTORE_EMULATOR_HOST and FIREBASE_AUTH_EMULATOR_HOST must point to the emulators')
+}
 
 const PROJECT_ID = 'baby-tracker-c8fd2'
 const SHARED_ACCOUNT_EMAIL = 'amandineandcorentin@gmail.com'
