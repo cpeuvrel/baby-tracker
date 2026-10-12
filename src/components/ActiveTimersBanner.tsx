@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
-import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
+import { useActiveSleepEntries } from '../hooks/useActiveSleepEntry'
 import { useElapsedSeconds } from '../hooks/useElapsedSeconds'
 import { useSleepTimerNotification } from '../hooks/useSleepTimerNotification'
 import { formatElapsed } from '../lib/duration'
@@ -12,7 +12,8 @@ export function ActiveTimersBanner() {
   const { user } = useAuth()
   const { household, selectedBaby } = useHousehold()
   const navigate = useNavigate()
-  const sleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
+  const sleepEntries = useActiveSleepEntries(household?.id ?? null, selectedBaby?.id ?? null)
+  const sleepEntry = sleepEntries[0] ?? null
   const sleepElapsed = useElapsedSeconds(sleepEntry?.startedAt ?? null)
   useSleepTimerNotification(user?.uid ?? null, selectedBaby?.name ?? null, sleepEntry)
 
@@ -26,13 +27,18 @@ export function ActiveTimersBanner() {
         </button>{' '}
         <button
           type="button"
-          onClick={() =>
-            void stopSleep(household.id, selectedBaby.id, sleepEntry.id, new Date(sleepEntry.startedAt))
-          }
+          onClick={() => {
+            for (const entry of sleepEntries) {
+              void stopSleep(household.id, selectedBaby.id, entry.id, new Date(entry.startedAt))
+            }
+          }}
         >
-          Stop
+          {sleepEntries.length > 1 ? 'Stop all' : 'Stop'}
         </button>
       </p>
+      {sleepEntries.length > 1 && (
+        <p>{sleepEntries.length} sleep timers were started at the same time: Stop all ends them.</p>
+      )}
     </div>
   )
 }

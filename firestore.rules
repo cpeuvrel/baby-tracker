@@ -23,8 +23,45 @@ service cloud.firestore {
       match /babies/{babyId} {
         allow read, write: if isHouseholdMember(householdId);
 
+        // Names the sleep in progress (src/repositories/sleepEntries.ts writes it with every
+        // sleep that starts or runs again): a sleep cannot start while another one runs.
+        function lockPath() {
+          return /databases/$(database)/documents/households/$(householdId)/babies/$(babyId)/locks/sleepTimer;
+        }
+
         match /{entryCollection}/{entryId} {
-          allow read, write: if isHouseholdMember(householdId);
+          allow read: if isHouseholdMember(householdId);
+          allow write: if isHouseholdMember(householdId) &&
+            !(entryCollection in ['sleepEntries', 'locks']);
+        }
+
+        match /sleepEntries/{entryId} {
+          function startsRunning() {
+            return request.resource.data.endedAt == null &&
+              (resource == null || resource.data.endedAt != null);
+          }
+
+          allow read, delete: if isHouseholdMember(householdId);
+          allow create, update: if isHouseholdMember(householdId) &&
+            (!startsRunning() || getAfter(lockPath()).data.entryId == entryId);
+        }
+
+        match /locks/sleepTimer {
+          // Free unless it names a sleep that still runs (deleted or stopped frees it).
+          function lockedEntryPath() {
+            return /databases/$(database)/documents/households/$(householdId)/babies/$(babyId)/sleepEntries/$(resource.data.entryId);
+          }
+
+          function isFree() {
+            return resource == null ||
+              !exists(lockedEntryPath()) ||
+              get(lockedEntryPath()).data.endedAt != null;
+          }
+
+          allow read: if isHouseholdMember(householdId);
+          allow write: if isHouseholdMember(householdId) &&
+            (isFree() ||
+              (request.resource != null && request.resource.data.entryId == resource.data.entryId));
         }
       }
     }

@@ -11,7 +11,7 @@ import {
   startSleep,
   resumeSleep,
   stopSleep,
-  subscribeToActiveSleep,
+  subscribeToActiveSleeps,
   subscribeToRecentSleepEntries,
   subscribeToSleepEntriesInRange,
   updateSleepEntry,
@@ -37,6 +37,16 @@ const onSnapshotMock = vi.mocked(onSnapshot)
 const getDocsMock = vi.mocked(getDocs)
 const writeBatchMock = vi.mocked(writeBatch)
 
+function mockBatch() {
+  const batch = { set: vi.fn(), update: vi.fn(), commit: vi.fn().mockResolvedValue(undefined) }
+  writeBatchMock.mockReturnValue(batch as unknown as ReturnType<typeof writeBatch>)
+  return batch
+}
+
+function pathOf(ref: unknown): string {
+  return (ref as { path: string }).path
+}
+
 describe('sleepEntries repository', () => {
   beforeEach(() => {
     addDocMock.mockReset()
@@ -53,22 +63,34 @@ describe('sleepEntries repository', () => {
     vi.useRealTimers()
   })
 
-  it('creates an in-progress sleep entry on start', async () => {
+  it('creates an in-progress sleep entry on start, taking the sleep timer lock in the same write', async () => {
+    const batch = mockBatch()
     await startSleep('h1', 'b1', 'uid1')
 
-    expect(addDocMock).toHaveBeenCalledTimes(1)
-    const [, payload] = addDocMock.mock.calls[0]
+    expect(batch.set).toHaveBeenCalledTimes(2)
+    const [entryRef, payload] = batch.set.mock.calls[0]
     expect(payload).toMatchObject({ endedAt: null, durationSeconds: null, createdBy: 'uid1' })
+    const [lockRef, lock] = batch.set.mock.calls[1]
+    expect(pathOf(lockRef)).toBe('households/h1/babies/b1/locks/sleepTimer')
+    expect(lock).toEqual({ entryId: (entryRef as { id: string }).id })
+    expect(batch.commit).toHaveBeenCalledTimes(1)
   })
 
   it('creates an in-progress sleep entry with a given start time', async () => {
+    const batch = mockBatch()
     await startSleep('h1', 'b1', 'uid1', new Date('2026-03-05T20:00:00.000Z'))
 
-    expect(addDocMock).toHaveBeenCalledTimes(1)
-    const [, payload] = addDocMock.mock.calls[0]
+    const [, payload] = batch.set.mock.calls[0]
     expect((payload as { startedAt: Timestamp }).startedAt.toDate()).toEqual(
       new Date('2026-03-05T20:00:00.000Z'),
     )
+  })
+
+  it('fails the start when the write is refused (another sleep runs)', async () => {
+    const batch = mockBatch()
+    batch.commit.mockRejectedValue(new Error('permission-denied'))
+
+    await expect(startSleep('h1', 'b1', 'uid1')).rejects.toThrow('permission-denied')
   })
 
   it('logs a completed sleep entry directly, computing the duration', async () => {
@@ -94,12 +116,14 @@ describe('sleepEntries repository', () => {
   })
 
   it('resumes a stopped sleep by clearing its end and duration', async () => {
+    const batch = mockBatch()
     const startedAt = new Date('2026-03-05T20:00:00.000Z')
     await resumeSleep('h1', 'b1', 'entry1', startedAt)
 
-    expect(updateDocMock).toHaveBeenCalledTimes(1)
-    const [, payload] = updateDocMock.mock.calls[0]
+    const [entryRef, payload] = batch.update.mock.calls[0]
+    expect(pathOf(entryRef)).toBe('households/h1/babies/b1/sleepEntries/entry1')
     expect(payload).toEqual({ startedAt: Timestamp.fromDate(startedAt), endedAt: null, durationSeconds: null })
+    expect(batch.set).toHaveBeenCalledWith(expect.anything(), { entryId: 'entry1' })
   })
 
   it('updates a sleep entry, recomputing the duration from start/end', async () => {
@@ -114,15 +138,18 @@ describe('sleepEntries repository', () => {
     expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'corrected' })
   })
 
-  it('updates a sleep entry back to in-progress when the end time is cleared', async () => {
+  it('updates a sleep entry back to in-progress when the end time is cleared, taking the lock', async () => {
+    const batch = mockBatch()
     await updateSleepEntry('h1', 'b1', 'entry1', {
       startedAt: new Date('2026-03-05T20:00:00.000Z'),
       endedAt: null,
       notes: '',
     })
 
-    const [, payload] = updateDocMock.mock.calls[0]
+    expect(updateDocMock).not.toHaveBeenCalled()
+    const [, payload] = batch.update.mock.calls[0]
     expect(payload).toMatchObject({ endedAt: null, durationSeconds: null })
+    expect(batch.set).toHaveBeenCalledWith(expect.anything(), { entryId: 'entry1' })
   })
 
   it('deletes a sleep entry', async () => {
@@ -152,21 +179,49 @@ describe('sleepEntries repository', () => {
       return vi.fn()
     })
 
-    subscribeToActiveSleep('h1', 'b1', onChange)
+    subscribeToActiveSleeps('h1', 'b1', onChange)
 
-    expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ id: 'entry1', endedAt: null }))
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'entry1', endedAt: null })])
   })
 
-  it('reports null when there is no active sleep entry', () => {
+  it('reports every sleep running, earliest first', () => {
+    const onChange = vi.fn()
+    const running = (startedAt: string) => ({
+      startedAt: Timestamp.fromDate(new Date(startedAt)),
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: Timestamp.fromDate(new Date(startedAt)),
+    })
+    onSnapshotMock.mockImplementation((_query, callback) => {
+      ;(callback as (snapshot: unknown) => void)(
+        fakeSnapshot([
+          { id: 'later', data: running('2026-03-05T21:05:00.000Z') },
+          { id: 'earlier', data: running('2026-03-05T21:00:00.000Z') },
+        ]),
+      )
+      return vi.fn()
+    })
+
+    subscribeToActiveSleeps('h1', 'b1', onChange)
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'earlier' }),
+      expect.objectContaining({ id: 'later' }),
+    ])
+  })
+
+  it('reports no sleep when none runs', () => {
     const onChange = vi.fn()
     onSnapshotMock.mockImplementation((_query, callback) => {
       ;(callback as (snapshot: unknown) => void)(fakeSnapshot([]))
       return vi.fn()
     })
 
-    subscribeToActiveSleep('h1', 'b1', onChange)
+    subscribeToActiveSleeps('h1', 'b1', onChange)
 
-    expect(onChange).toHaveBeenCalledWith(null)
+    expect(onChange).toHaveBeenCalledWith([])
   })
 
   it('maps today sleep entries from a snapshot', () => {
@@ -250,7 +305,7 @@ describe('sleepEntries repository', () => {
     expect(entries).toEqual([expect.objectContaining({ id: 'entry1', durationSeconds: 3600 })])
   })
 
-  it('imports sleep entries in a batch, treating a missing end time as null', async () => {
+  it('imports sleep entries in a batch, leaving out a timer still running in the export', async () => {
     const set = vi.fn()
     const commit = vi.fn().mockResolvedValue(undefined)
     writeBatchMock.mockReturnValue({ set, commit } as unknown as ReturnType<typeof writeBatch>)
@@ -265,11 +320,18 @@ describe('sleepEntries repository', () => {
       createdAt: '2026-01-01T20:00:00.000Z',
     }
 
-    await importSleepEntries('h1', 'b1', [entry])
+    const stopped: SleepEntry = {
+      ...entry,
+      id: 'stopped-id',
+      endedAt: '2026-01-01T21:00:00.000Z',
+      durationSeconds: 3600,
+    }
+
+    await importSleepEntries('h1', 'b1', [entry, stopped])
 
     expect(set).toHaveBeenCalledTimes(1)
     const [, payload] = set.mock.calls[0]
-    expect(payload).toMatchObject({ endedAt: null, durationSeconds: null })
+    expect(payload).toMatchObject({ durationSeconds: 3600 })
     expect(commit).toHaveBeenCalledTimes(1)
   })
 })

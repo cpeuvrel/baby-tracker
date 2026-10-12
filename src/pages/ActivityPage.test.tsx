@@ -28,8 +28,8 @@ function renderPage(initialEntry = '/') {
   )
 }
 
-const startSleep = vi.fn()
-const updateSleepEntry = vi.fn()
+const startSleep = vi.fn().mockResolvedValue(undefined)
+const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
 const deleteSleepEntry = vi.fn()
 const logFeeding = vi.fn()
 const updateFeedingEntry = vi.fn()
@@ -97,6 +97,7 @@ function setupHooks(
     selectBaby: vi.fn(),
   })
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeSleepEntry)
+  vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue(activeSleepEntry ? [activeSleepEntry] : [])
   vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue(
     options.recentSleep ?? [],
   )
@@ -114,7 +115,7 @@ function setupHooks(
 
 describe('ActivityPage', () => {
   beforeEach(() => {
-    startSleep.mockReset()
+    startSleep.mockReset().mockResolvedValue(undefined)
     logFeeding.mockReset()
     logDiaper.mockReset()
     logMedication.mockReset()

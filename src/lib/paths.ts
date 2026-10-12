@@ -1,4 +1,4 @@
-import { collection, type CollectionReference } from 'firebase/firestore'
+import { collection, doc, type CollectionReference, type DocumentReference } from 'firebase/firestore'
 import { db } from './firebase'
 
 export function householdsCollection() {
@@ -49,4 +49,9 @@ export function pediatricianVisitsCollection(
 
 export function fcmTokensCollection(uid: string): CollectionReference {
   return collection(db, 'users', uid, 'fcmTokens')
+}
+
+/** Names the sleep in progress: firestore.rules only let a sleep start once that one stopped. */
+export function sleepTimerLockDoc(householdId: string, babyId: string): DocumentReference {
+  return doc(db, 'households', householdId, 'babies', babyId, 'locks', 'sleepTimer')
 }

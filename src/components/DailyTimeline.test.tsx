@@ -8,17 +8,17 @@ import type { TimelineEntry } from '../lib/timeline'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { DailyTimeline } from './DailyTimeline'
 
-const updateSleepEntry = vi.fn()
+const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
 const deleteSleepEntry = vi.fn()
 
 vi.mock('../repositories/sleepEntries', () => ({
   updateSleepEntry: (...args: unknown[]) => updateSleepEntry(...args),
   deleteSleepEntry: (...args: unknown[]) => deleteSleepEntry(...args),
-  startSleep: vi.fn(),
+  startSleep: vi.fn().mockResolvedValue(undefined),
   stopSleep: vi.fn(),
   logSleep: vi.fn(),
-  resumeSleep: vi.fn(),
-  subscribeToActiveSleep: () => () => {},
+  resumeSleep: vi.fn().mockResolvedValue(undefined),
+  subscribeToActiveSleeps: () => () => {},
   subscribeToRecentSleepEntries: () => () => {},
 }))
 
@@ -27,7 +27,7 @@ const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 describe('DailyTimeline', () => {
   beforeEach(() => {
-    updateSleepEntry.mockReset()
+    updateSleepEntry.mockReset().mockResolvedValue(undefined)
     deleteSleepEntry.mockReset()
     vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
       household,

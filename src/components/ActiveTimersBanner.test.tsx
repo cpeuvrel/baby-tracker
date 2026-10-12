@@ -56,7 +56,7 @@ describe('ActiveTimersBanner', () => {
   })
 
   it('renders nothing when no sleep timer is active', () => {
-    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(null)
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue([])
 
     renderBanner()
 
@@ -73,7 +73,7 @@ describe('ActiveTimersBanner', () => {
       createdBy: 'uid1',
       createdAt: '2026-03-05T20:00:00.000Z',
     }
-    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(sleepEntry)
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue([sleepEntry])
     const user = userEvent.setup()
 
     renderBanner()
@@ -82,8 +82,8 @@ describe('ActiveTimersBanner', () => {
 
     expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
   })
-  it('opens the sleep timer when the running time is tapped', async () => {
-    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue({
+  it('warns when two sleep timers run and stops them all', async () => {
+    const first: SleepEntry = {
       id: 'sleep1',
       startedAt: '2026-03-05T20:00:00.000Z',
       endedAt: null,
@@ -91,7 +91,29 @@ describe('ActiveTimersBanner', () => {
       notes: '',
       createdBy: 'uid1',
       createdAt: '2026-03-05T20:00:00.000Z',
-    })
+    }
+    const second: SleepEntry = { ...first, id: 'sleep2', startedAt: '2026-03-05T20:03:00.000Z' }
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue([first, second])
+    const user = userEvent.setup()
+
+    renderBanner()
+    expect(screen.getByRole('status')).toHaveTextContent('2 sleep timers were started at the same time')
+    await user.click(screen.getByRole('button', { name: 'Stop all' }))
+
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date(first.startedAt))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep2', new Date(second.startedAt))
+  })
+
+  it('opens the sleep timer when the running time is tapped', async () => {
+    vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue([{
+      id: 'sleep1',
+      startedAt: '2026-03-05T20:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-03-05T20:00:00.000Z',
+    }])
     const user = userEvent.setup()
 
     renderBanner()
