@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,6 +13,7 @@ const signOut = vi.fn()
 const calls: string[] = []
 const unregisterPush = vi.fn()
 const clearLocalDataAndReload = vi.fn()
+let authListenerError: ((error: unknown) => void) | undefined
 
 vi.mock('../lib/firebase', () => ({
   auth: {},
@@ -23,8 +24,14 @@ vi.mock('../lib/pushRegistration', () => ({ unregisterPush: (uid: string) => unr
 
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
-  onAuthStateChanged: (_auth: unknown, listener: (user: User | null) => void) =>
-    mockAuth.subscribe(listener),
+  onAuthStateChanged: (
+    _auth: unknown,
+    listener: (user: User | null) => void,
+    onError?: (error: unknown) => void,
+  ) => {
+    authListenerError = onError
+    return mockAuth.subscribe(listener)
+  },
   signInWithPopup: (...args: unknown[]) => signInWithPopup(...args),
   signInWithEmailAndPassword: (...args: unknown[]) => signInWithEmailAndPassword(...args),
   createUserWithEmailAndPassword: (...args: unknown[]) => createUserWithEmailAndPassword(...args),
@@ -59,6 +66,7 @@ describe('AuthContext', () => {
   })
 
   beforeEach(() => {
+    authListenerError = undefined
     signInWithPopup.mockReset()
     signInWithEmailAndPassword.mockReset()
     createUserWithEmailAndPassword.mockReset()
@@ -235,6 +243,24 @@ describe('AuthContext', () => {
     mockAuth.emit({ email: 'stranger@example.com', emailVerified: true } as User)
 
     await waitFor(() => expect(screen.getByText('out')).toBeInTheDocument())
+  })
+
+  it('leaves the loading state when the auth listener itself fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    )
+    expect(screen.getByText('loading')).toBeInTheDocument()
+
+    act(() => authListenerError?.({ code: 'auth/network-request-failed' }))
+
+    expect(screen.getByText('out')).toBeInTheDocument()
+    expect(screen.getByTestId('error')).toHaveTextContent(
+      'Authentication is unavailable. (auth/network-request-failed)',
+    )
+    expect(consoleError).toHaveBeenCalledWith('[auth] onAuthStateChanged failed', expect.anything())
   })
 
   it('signs in locally with email and password', async () => {

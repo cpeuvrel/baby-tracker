@@ -225,6 +225,19 @@ describe('HouseholdContext', () => {
       consoleError.mockRestore()
     })
 
+    it('stops loading when the babies subscription fails before answering', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      renderProvider()
+      act(() => householdListener.onChange(household))
+      expect(screen.getByText('true')).toBeInTheDocument()
+
+      act(() => babiesListeners[0].onError(new Error('babies denied')))
+
+      expect(screen.getByText('false')).toBeInTheDocument()
+      expect(screen.getByText('error:babies denied')).toBeInTheDocument()
+      expect(consoleError).toHaveBeenCalledWith('[babies] subscription failed', expect.any(Error))
+    })
+
     it('unsubscribes from the household and the babies on unmount', () => {
       const { unmount } = renderProvider()
       act(() => householdListener.onChange(household))
