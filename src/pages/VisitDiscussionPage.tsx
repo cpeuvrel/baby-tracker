@@ -4,9 +4,9 @@ import { EmptyState } from '../components/EmptyState'
 import { ChatIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
-import { newItemId } from '../lib/visitItems'
+import { appendItem, editItem, newItemId, removeItem } from '../lib/visitItems'
 import { formatVisitDate } from '../lib/visitDate'
-import { updatePediatricianVisit } from '../repositories/pediatricianVisits'
+import { mutateVisitItems } from '../repositories/pediatricianVisits'
 import type { VisitDiscussion } from '../types/models'
 
 const FIELDS = [
@@ -22,8 +22,9 @@ export function VisitDiscussionPage() {
   if (visit === null) return <Navigate to="/account/pediatrician" replace />
   if (!household || !baby || !visit) return null
 
-  const save = (discussions: VisitDiscussion[]) =>
-    updatePediatricianVisit(household.id, baby.id, visit.id, { discussions })
+  // Each change applies to the latest stored questions: the other parent's changes stay.
+  const change = (mutate: (discussions: VisitDiscussion[]) => VisitDiscussion[]) =>
+    mutateVisitItems(household.id, baby.id, visit.id, 'discussions', mutate)
 
   return (
     <div>
@@ -64,19 +65,13 @@ export function VisitDiscussionPage() {
             editing === 'new' ? { question: '', answer: '' } : { question: editing.question, answer: editing.answer }
           }
           onSave={({ question, answer }) =>
-            save(
+            change(
               editing === 'new'
-                ? [...visit.discussions, { id: newItemId(), question, answer }]
-                : visit.discussions.map((entry) =>
-                    entry.id === editing.id ? { ...entry, question, answer } : entry,
-                  ),
+                ? appendItem({ id: newItemId(), question, answer })
+                : editItem(editing.id, { question, answer }),
             )
           }
-          onDelete={
-            editing === 'new'
-              ? undefined
-              : () => save(visit.discussions.filter((entry) => entry.id !== editing.id))
-          }
+          onDelete={editing === 'new' ? undefined : () => change(removeItem(editing.id))}
           onClose={() => setEditing(null)}
         />
       )}

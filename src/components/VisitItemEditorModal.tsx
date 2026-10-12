@@ -16,9 +16,17 @@ interface VisitItemEditorModalProps {
   onClose: () => void
 }
 
+const SAVE_ERROR = 'Could not save. Check your connection and try again.'
+
+/** Once the editor is gone, only an alert can still tell that the text was not kept. */
+function alertLostText(values: Record<string, string>) {
+  window.alert(`${SAVE_ERROR}\n\n${Object.values(values).filter(Boolean).join('\n')}`)
+}
+
 /**
  * Text editor for a remark or a question/answer pair: Save, or Discard (confirmed when edited).
  * Leaving the screen with it open (e.g. the phone's back gesture) saves the edits.
+ * A failed save or delete keeps the editor open with an error (writes need the network).
  */
 export function VisitItemEditorModal({
   title,
@@ -30,6 +38,7 @@ export function VisitItemEditorModal({
 }: VisitItemEditorModalProps) {
   const [values, setValues] = useState(initialValues)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const dirty = fields.some((field) => (values[field.name] ?? '') !== (initialValues[field.name] ?? ''))
   const empty = fields.every((field) => (values[field.name] ?? '').trim() === '')
 
@@ -51,25 +60,41 @@ export function VisitItemEditorModal({
     Object.fromEntries(fields.map((field) => [field.name, (values[field.name] ?? '').trim()]))
   const autosaveRef = useRef<(() => void) | null>(null)
   useEffect(() => {
-    autosaveRef.current = dirty && !empty ? () => void onSave(trimmedValues()) : null
+    autosaveRef.current =
+      dirty && !empty
+        ? () => {
+            const kept = trimmedValues()
+            onSave(kept).catch((cause: unknown) => {
+              console.error('[pediatrician] autosave failed', cause)
+              alertLostText(kept)
+            })
+          }
+        : null
   })
-  useEffect(
-    () => () => {
+  const mountedRef = useRef(false)
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
       if (!settledRef.current) autosaveRef.current?.()
-    },
-    [],
-  )
+    }
+  }, [])
 
   const submit = () => {
     if (empty || saving) return
     setSaving(true)
+    setError(null)
     settledRef.current = true
-    void onSave(trimmedValues())
+    const kept = trimmedValues()
+    void onSave(kept)
       .then(onClose)
-      .catch((error: unknown) => {
-        console.error('[pediatrician] save failed', error)
+      .catch((cause: unknown) => {
+        console.error('[pediatrician] save failed', cause)
+        // Left the screen while saving: the editor cannot show the error any more.
+        if (!mountedRef.current) return alertLostText(kept)
         settledRef.current = false
         setSaving(false)
+        setError(SAVE_ERROR)
       })
   }
 
@@ -79,9 +104,18 @@ export function VisitItemEditorModal({
   }
 
   const handleDelete = () => {
-    if (!onDelete || !window.confirm('Delete this entry?')) return
+    if (!onDelete || saving || !window.confirm('Delete this entry?')) return
+    setSaving(true)
+    setError(null)
     settledRef.current = true
-    void onDelete().then(onClose)
+    void onDelete()
+      .then(onClose)
+      .catch((cause: unknown) => {
+        console.error('[pediatrician] delete failed', cause)
+        settledRef.current = false
+        setSaving(false)
+        setError('Could not delete. Check your connection and try again.')
+      })
   }
 
   return (
@@ -103,12 +137,13 @@ export function VisitItemEditorModal({
             />
           </div>
         ))}
+        {error && <p role="alert">{error}</p>}
         <div className="visit-item-actions">
           <button type="button" onClick={discard}>
             Discard
           </button>
           {onDelete && (
-            <button type="button" className="button-delete" onClick={handleDelete}>
+            <button type="button" className="button-delete" onClick={handleDelete} disabled={saving}>
               Delete
             </button>
           )}
