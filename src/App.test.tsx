@@ -1,5 +1,5 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import type { User } from 'firebase/auth'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { signOut, type User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMockAuth } from './test/mockAuthState'
 
@@ -7,7 +7,13 @@ const mockAuth = createMockAuth()
 const subscribeToHouseholdForUser = vi.fn()
 const subscribeToBabies = vi.fn()
 
-vi.mock('./lib/firebase', () => ({ auth: {}, usingEmulators: false }))
+const clearLocalDataAndReload = vi.fn()
+vi.mock('./lib/firebase', () => ({
+  auth: {},
+  usingEmulators: false,
+  clearLocalDataAndReload: () => clearLocalDataAndReload(),
+}))
+vi.mock('./lib/pushRegistration', () => ({ unregisterPush: vi.fn().mockResolvedValue(undefined) }))
 
 vi.mock('firebase/auth', () => ({
   GoogleAuthProvider: class {},
@@ -51,9 +57,12 @@ describe('App', () => {
     subscribeToHouseholdForUser.mockReset()
     subscribeToBabies.mockReset()
     loginPageThrows = false
+    clearLocalDataAndReload.mockReset()
+    vi.mocked(signOut).mockReset().mockResolvedValue(undefined)
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     window.history.replaceState({}, '', '/')
   })
@@ -75,6 +84,39 @@ describe('App', () => {
     render(<App />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Loading…')
+  })
+
+  it('offers to sign out when loading takes more than 8 seconds', async () => {
+    vi.useFakeTimers()
+    render(<App />)
+
+    act(() => vi.advanceTimersByTime(7999))
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument()
+
+    act(() => vi.advanceTimersByTime(1))
+    expect(screen.getByText('This is taking longer than expected.')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await act(async () => {})
+
+    expect(signOut).toHaveBeenCalled()
+    expect(clearLocalDataAndReload).toHaveBeenCalled()
+  })
+
+  it('shows the family loading error with a way to sign out', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    subscribeToHouseholdForUser.mockImplementation((_uid, _onChange, onError) => {
+      onError(new Error('Missing or insufficient permissions.'))
+      return vi.fn()
+    })
+
+    render(<App />)
+    mockAuth.emit({ uid: 'uid1', email: 'amandineandcorentin@gmail.com', emailVerified: true } as User)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load your family data: Missing or insufficient permissions.',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    await waitFor(() => expect(signOut).toHaveBeenCalled())
   })
 
   it('renders the login page when signed out', async () => {
