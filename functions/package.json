@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "vitest run --dir src",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.test.json",
     "deploy": "firebase deploy --only functions"
   },
   "dependencies": {
