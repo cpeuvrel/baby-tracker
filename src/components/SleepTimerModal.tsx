@@ -29,7 +29,6 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   // Date picker bound, kept current past midnight; handleStartedAtChange still refuses any future time.
   const maxStart = toDatetimeLocalValue(useNow())
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
-  const [notes, setNotes] = useState('')
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -85,14 +84,14 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
         updateSleepEntry(household.id, selectedBaby.id, timerEntryId, {
           startedAt: fromDatetimeLocalValue(startedAt),
           endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
-          notes,
+          notes: '',
         }).catch(alertSleepAlreadyRunning)
       }
     } else if (!isActive && endedAt !== '') {
       void logSleep(household.id, selectedBaby.id, user.uid, {
         startedAt: fromDatetimeLocalValue(startedAt),
         endedAt: fromDatetimeLocalValue(endedAt),
-        notes,
+        notes: '',
       })
     }
     onClose()
@@ -160,15 +159,6 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       />
       <DurationInput totalMinutes={durationMinutes} onChange={setDurationMinutes} disabled={isActive} />
       <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} disabled={isActive} onChange={handleEndedAtChange} />
-      <div>
-        <label htmlFor="sleep-notes">Notes (optional)</label>
-        <input
-          id="sleep-notes"
-          type="text"
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-        />
-      </div>
     </Modal>
   )
 }

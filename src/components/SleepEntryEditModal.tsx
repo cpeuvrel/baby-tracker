@@ -27,7 +27,6 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
   const [endedAt, setEndedAt] = useState(() =>
     entry.endedAt ? toDatetimeLocalValue(new Date(entry.endedAt)) : '',
   )
-  const [notes, setNotes] = useState(entry.notes)
   const activeSleep = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
   const [latestSleep] = useRecentSleepEntries(household?.id ?? null, selectedBaby?.id ?? null, 1)
 
@@ -60,7 +59,8 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
     updateSleepEntry(household.id, selectedBaby.id, entry.id, {
       startedAt: fromDatetimeLocalValue(startedAt),
       endedAt: endedAt !== '' ? fromDatetimeLocalValue(endedAt) : null,
-      notes,
+      // Notes are no longer edited here; existing ones are kept.
+      notes: entry.notes,
     }).catch(alertSleepAlreadyRunning)
     onClose()
   }
@@ -102,15 +102,6 @@ export function SleepEntryEditModal({ entry, onClose, onResumed }: SleepEntryEdi
         <DurationInput totalMinutes={durationMinutes} onChange={handleDurationChange} />
         <DateTimeField id="sleep-started-at" label="Start Time" value={startedAt} onChange={setStartedAt} />
         <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} onChange={setEndedAt} />
-        <div>
-          <label htmlFor="sleep-notes">Notes (optional)</label>
-          <input
-            id="sleep-notes"
-            type="text"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-          />
-        </div>
         <button type="button" className="button-delete" onClick={handleDelete}>
           Delete
         </button>
