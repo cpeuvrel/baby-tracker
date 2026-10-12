@@ -52,9 +52,9 @@ export function NewVisitModal({ onClose, onCreated }: NewVisitModalProps) {
       <form onSubmit={handleSubmit}>
         <p className="hint">For {selectedBaby.name}</p>
         <div>
-          <label htmlFor="visit-date">Date</label>
+          <label htmlFor="new-visit-date">Date</label>
           <input
-            id="visit-date"
+            id="new-visit-date"
             type="date"
             required
             value={date}

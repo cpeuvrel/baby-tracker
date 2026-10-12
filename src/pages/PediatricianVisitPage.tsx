@@ -49,9 +49,13 @@ export function PediatricianVisitPage() {
 
   const handleDelete = () => {
     if (!window.confirm('Delete this visit, with its remarks and discussion?')) return
-    void deletePediatricianVisit(household.id, baby.id, visit.id).then(() =>
-      navigate('/account/pediatrician/history', { replace: true }),
-    )
+    // Leave first: the deletion shows in the visits at once (before the server confirms it),
+    // which would otherwise bounce this screen to another visit.
+    navigate('/account/pediatrician/history', { replace: true })
+    deletePediatricianVisit(household.id, baby.id, visit.id).catch((error: unknown) => {
+      console.error('[pediatrician] visit deletion failed', error)
+      window.alert('Could not delete this visit.')
+    })
   }
 
   const base = `/account/pediatrician/visits/${visit.id}`

@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,15 +13,24 @@ import { VisitRemarksPage } from './VisitRemarksPage'
 const addPediatricianVisit = vi.fn()
 const updatePediatricianVisit = vi.fn()
 const mutateVisitItems = vi.fn()
+const deletePediatricianVisit = vi.fn()
 let visitsByBaby: Record<string, PediatricianVisit[]> = {}
+// 'pending': no snapshot yet; an Error: the listener fails.
+let subscriptionOutcome: 'snapshot' | 'pending' | Error = 'snapshot'
 
 vi.mock('../repositories/pediatricianVisits', () => ({
   addPediatricianVisit: (...args: unknown[]) => addPediatricianVisit(...args),
   updatePediatricianVisit: (...args: unknown[]) => updatePediatricianVisit(...args),
   mutateVisitItems: (...args: unknown[]) => mutateVisitItems(...args),
-  deletePediatricianVisit: vi.fn(),
-  subscribeToPediatricianVisits: (_h: string, babyId: string, onChange: (v: PediatricianVisit[]) => void) => {
-    onChange(visitsByBaby[babyId] ?? [])
+  deletePediatricianVisit: (...args: unknown[]) => deletePediatricianVisit(...args),
+  subscribeToPediatricianVisits: (
+    _h: string,
+    babyId: string,
+    onChange: (v: PediatricianVisit[]) => void,
+    onError: (error: Error) => void,
+  ) => {
+    if (subscriptionOutcome instanceof Error) onError(subscriptionOutcome)
+    else if (subscriptionOutcome === 'snapshot') onChange(visitsByBaby[babyId] ?? [])
     return () => {}
   },
 }))
@@ -82,6 +91,7 @@ function renderAt(path: string) {
         <Route path="/account/pediatrician/visits/:visitId" element={<PediatricianVisitPage />} />
         <Route path="/account/pediatrician/visits/:visitId/remarks" element={<VisitRemarksPage />} />
         <Route path="/account/pediatrician/visits/:visitId/discussion" element={<VisitDiscussionPage />} />
+        <Route path="/account" element={<p>Family screen</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -92,7 +102,9 @@ describe('Pediatrician screens', () => {
     addPediatricianVisit.mockReset()
     updatePediatricianVisit.mockReset().mockResolvedValue(undefined)
     mutateVisitItems.mockReset().mockResolvedValue(undefined)
+    deletePediatricianVisit.mockReset().mockResolvedValue(undefined)
     visitsByBaby = {}
+    subscriptionOutcome = 'snapshot'
     selectBaby(leo)
   })
 
@@ -126,10 +138,80 @@ describe('Pediatrician screens', () => {
 
     await user.click(screen.getByRole('button', { name: /New Visit/ }))
     const dialog = screen.getByRole('dialog', { name: 'New Visit' })
+    // The popup's date field must not share its id with the visit's own date field behind it.
+    expect(document.querySelectorAll('#visit-date')).toHaveLength(1)
+    expect(within(dialog).getByLabelText('Date')).toHaveAttribute('id', 'new-visit-date')
     await user.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     expect(await screen.findByRole('heading', { name: 'Wed, Sep 30, 2026' })).toBeInTheDocument()
     expect(screen.queryByRole('dialog', { name: 'New Visit' })).not.toBeInTheDocument()
+  })
+
+  it('shows a loading state until the visits arrive', () => {
+    subscriptionOutcome = 'pending'
+    renderAt('/account/pediatrician')
+
+    expect(screen.getByRole('status')).toHaveTextContent('Loading…')
+  })
+
+  it('says so when the visits cannot be loaded, with a way back', async () => {
+    subscriptionOutcome = new Error('permission-denied')
+    const user = userEvent.setup()
+    renderAt('/account/pediatrician')
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to load the visits (permission-denied).')
+    await user.click(screen.getByRole('link', { name: 'Back' }))
+    expect(screen.getByText('Family screen')).toBeInTheDocument()
+  })
+
+  it('deletes the visit after confirmation and lands on the history', async () => {
+    const user = userEvent.setup()
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    visitsByBaby = { b1: [visit({ id: 'v1', date: '2026-07-01' })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    await user.click(screen.getByRole('button', { name: 'Delete visit' }))
+
+    expect(confirm).toHaveBeenCalledWith('Delete this visit, with its remarks and discussion?')
+    expect(deletePediatricianVisit).toHaveBeenCalledWith('h1', 'b1', 'v1')
+    expect(screen.getByRole('region', { name: 'Past' })).toBeInTheDocument()
+  })
+
+  it('keeps the visit when the deletion is cancelled', async () => {
+    const user = userEvent.setup()
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    visitsByBaby = { b1: [visit({ id: 'v1', date: '2026-07-01' })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    await user.click(screen.getByRole('button', { name: 'Delete visit' }))
+
+    expect(deletePediatricianVisit).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Wed, Jul 1, 2026' })).toBeInTheDocument()
+  })
+
+  it('alerts when the visit cannot be deleted', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    deletePediatricianVisit.mockRejectedValue(new Error('permission-denied'))
+    const user = userEvent.setup()
+    visitsByBaby = { b1: [visit({ id: 'v1' })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    await user.click(screen.getByRole('button', { name: 'Delete visit' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete this visit.'))
+  })
+
+  it('moves the visit to another date, ignoring a cleared field', () => {
+    visitsByBaby = { b1: [visit({ id: 'v1', date: '2026-10-08' })] }
+    renderAt('/account/pediatrician/visits/v1')
+
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '' } })
+    expect(updatePediatricianVisit).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-10-15' } })
+    expect(updatePediatricianVisit).toHaveBeenCalledWith('h1', 'b1', 'v1', { date: '2026-10-15' })
   })
 
   it('lists the selected child’s visits by date', () => {
