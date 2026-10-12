@@ -156,6 +156,8 @@ export function TrendDetailPage() {
   const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange, now, frame)
   const previousAvg = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange, now, frame)
   const delta = computeDelta(currentAvg, previousAvg)
+  /** Top of the Graph view's y axis: its ticks and their labels share one unit. */
+  const axisMax = Math.max(currentAvg, ...series.map((point) => point.value))
   const selectedPoint = series.find((point) => point.dayKey === selectedDayKey)
 
   return (
@@ -255,13 +257,13 @@ export function TrendDetailPage() {
           key={`${dayMode}-${currentDayKeys[0]}`}
           data={series}
           average={currentAvg}
-          ticks={computeAxisTicks(metric.id, Math.max(currentAvg, ...series.map((point) => point.value)))}
+          ticks={computeAxisTicks(metric.id, axisMax)}
           chartStyle={chartStyleOf(metric)}
           colorVar={metric.colorVar}
           icon={KIND_ICONS[metric.kind]}
           seriesLabel={metric.seriesLabel}
           formatValue={(value) => formatMetricValue(metric.id, value)}
-          formatTick={(value) => formatMetricAxisValue(metric.id, value)}
+          formatTick={(value) => formatMetricAxisValue(metric.id, value, axisMax)}
           selectedKey={selectedDayKey}
           onSelectDay={setSelectedDayKey}
           onPrevious={() => changePeriod((back) => back + 1)}
