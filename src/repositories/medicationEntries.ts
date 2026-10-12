@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { medicationEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
 import type { MedicationEntry } from '../types/models'
@@ -22,11 +23,11 @@ function toMedicationEntry(id: string, data: Record<string, unknown>): Medicatio
   return {
     id,
     name: data.name as string,
-    givenAt: timestampToIso(data.givenAt as Timestamp),
+    givenAt: timestampToIso(data.givenAt),
     dose: (data.dose as string) ?? '',
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.givenAt),
   }
 }
 
@@ -35,6 +36,7 @@ export function subscribeToMedicationEntriesInRange(
   babyId: string,
   range: DateRange,
   onChange: (entries: MedicationEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const rangeQuery = query(
     medicationEntriesCollection(householdId, babyId),
@@ -43,9 +45,13 @@ export function subscribeToMedicationEntriesInRange(
     orderBy('givenAt', 'desc'),
   )
 
-  return onSnapshot(rangeQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    rangeQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toMedicationEntry))
+    },
+    listenerErrorHandler('medicationEntries', onError),
+  )
 }
 
 export function subscribeToRecentMedicationEntries(
@@ -53,6 +59,7 @@ export function subscribeToRecentMedicationEntries(
   babyId: string,
   count: number,
   onChange: (entries: MedicationEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const recentQuery = query(
     medicationEntriesCollection(householdId, babyId),
@@ -60,9 +67,13 @@ export function subscribeToRecentMedicationEntries(
     limit(count),
   )
 
-  return onSnapshot(recentQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    recentQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toMedicationEntry))
+    },
+    listenerErrorHandler('medicationEntries', onError),
+  )
 }
 
 export async function getAllMedicationEntries(
@@ -71,7 +82,7 @@ export async function getAllMedicationEntries(
 ): Promise<MedicationEntry[]> {
   const allQuery = query(medicationEntriesCollection(householdId, babyId), orderBy('givenAt'))
   const snapshot = await getDocs(allQuery)
-  return snapshot.docs.map((docSnap) => toMedicationEntry(docSnap.id, docSnap.data()))
+  return mapDocs(snapshot, toMedicationEntry)
 }
 
 export async function importMedicationEntries(

@@ -1,6 +1,20 @@
-import { addDoc, deleteDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
+import {
+  addDoc,
+  deleteDoc,
+  getDocs,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  updateDoc,
+  where,
+  writeBatch,
+} from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { feedingEntriesCollection } from '../lib/paths'
 import { dayRange } from '../lib/timeline'
+import { expectQuery } from '../test/expectQuery'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import type { FeedingEntry } from '../types/models'
 import {
@@ -206,5 +220,92 @@ describe('feedingEntries repository', () => {
     const [, payload] = set.mock.calls[0]
     expect(payload).toMatchObject({ type: 'bottle', volumeMl: 100, createdBy: 'uid1' })
     expect(commit).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('feedingEntries queries and robustness', () => {
+  const range = dayRange(new Date('2026-03-05T12:00:00.000Z'))
+  const AT_ISO = '2026-03-05T08:00:00.000Z'
+  const at = Timestamp.fromDate(new Date(AT_ISO))
+
+  beforeEach(() => {
+    onSnapshotMock.mockReset().mockReturnValue(vi.fn())
+    getDocsMock.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('subscribes to the entries of the range [start, end), latest first', () => {
+    subscribeToFeedingEntriesInRange('h1', 'b1', range, vi.fn())
+
+    expectQuery(
+      onSnapshotMock.mock.calls[0][0],
+      query(
+        feedingEntriesCollection('h1', 'b1'),
+        where('occurredAt', '>=', Timestamp.fromDate(range.start)),
+        where('occurredAt', '<', Timestamp.fromDate(range.end)),
+        orderBy('occurredAt', 'desc'),
+      ),
+    )
+  })
+
+  it('subscribes to the latest entries, limited to the count', () => {
+    subscribeToRecentFeedingEntries('h1', 'b1', 5, vi.fn())
+
+    expectQuery(
+      onSnapshotMock.mock.calls[0][0],
+      query(feedingEntriesCollection('h1', 'b1'), orderBy('occurredAt', 'desc'), limit(5)),
+    )
+  })
+
+  it('reads every entry oldest first for the export', async () => {
+    getDocsMock.mockResolvedValue(fakeSnapshot([]))
+
+    await getAllFeedingEntries('h1', 'b1')
+
+    expectQuery(getDocsMock.mock.calls[0][0], query(feedingEntriesCollection('h1', 'b1'), orderBy('occurredAt')))
+  })
+
+  it('defaults the fields a legacy document lacks, createdAt included', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, next: (snapshot: unknown) => void) => {
+      next(fakeSnapshot([{ id: 'legacy', data: { type: 'bottle', occurredAt: at, createdBy: 'uid1' } }]))
+      return vi.fn()
+    }) as never)
+
+    subscribeToRecentFeedingEntries('h1', 'b1', 5, onChange)
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: 'legacy', type: 'bottle', occurredAt: AT_ISO, volumeMl: null, foodType: null, notes: '', createdBy: 'uid1', createdAt: AT_ISO },
+    ])
+  })
+
+  it('skips a document without occurredAt instead of throwing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, next: (snapshot: unknown) => void) => {
+      next(fakeSnapshot([{ id: 'broken', data: { createdBy: 'uid1' } }, { id: 'legacy', data: { type: 'bottle', occurredAt: at, createdBy: 'uid1' } }]))
+      return vi.fn()
+    }) as never)
+
+    subscribeToRecentFeedingEntries('h1', 'b1', 5, onChange)
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'legacy' })])
+    expect(warn).toHaveBeenCalledWith('[firestore] skipping malformed document', 'fake/broken', expect.any(Error))
+  })
+
+  it('forwards listener errors to onError', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onError = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, _next: unknown, error: (e: Error) => void) => {
+      error(new Error('permission-denied'))
+      return vi.fn()
+    }) as never)
+
+    subscribeToFeedingEntriesInRange('h1', 'b1', range, vi.fn(), onError)
+
+    expect(onError).toHaveBeenCalledWith(new Error('permission-denied'))
   })
 })

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { bathEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
 import type { BathEntry } from '../types/models'
@@ -21,10 +22,10 @@ import type { BathEntry } from '../types/models'
 function toBathEntry(id: string, data: Record<string, unknown>): BathEntry {
   return {
     id,
-    occurredAt: timestampToIso(data.occurredAt as Timestamp),
+    occurredAt: timestampToIso(data.occurredAt),
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.occurredAt),
   }
 }
 
@@ -33,6 +34,7 @@ export function subscribeToBathEntriesInRange(
   babyId: string,
   range: DateRange,
   onChange: (entries: BathEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const rangeQuery = query(
     bathEntriesCollection(householdId, babyId),
@@ -41,9 +43,13 @@ export function subscribeToBathEntriesInRange(
     orderBy('occurredAt', 'desc'),
   )
 
-  return onSnapshot(rangeQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toBathEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    rangeQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toBathEntry))
+    },
+    listenerErrorHandler('bathEntries', onError),
+  )
 }
 
 export function subscribeToRecentBathEntries(
@@ -51,6 +57,7 @@ export function subscribeToRecentBathEntries(
   babyId: string,
   count: number,
   onChange: (entries: BathEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const recentQuery = query(
     bathEntriesCollection(householdId, babyId),
@@ -58,9 +65,13 @@ export function subscribeToRecentBathEntries(
     limit(count),
   )
 
-  return onSnapshot(recentQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toBathEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    recentQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toBathEntry))
+    },
+    listenerErrorHandler('bathEntries', onError),
+  )
 }
 
 export async function getAllBathEntries(
@@ -69,7 +80,7 @@ export async function getAllBathEntries(
 ): Promise<BathEntry[]> {
   const allQuery = query(bathEntriesCollection(householdId, babyId), orderBy('occurredAt'))
   const snapshot = await getDocs(allQuery)
-  return snapshot.docs.map((docSnap) => toBathEntry(docSnap.id, docSnap.data()))
+  return mapDocs(snapshot, toBathEntry)
 }
 
 export async function importBathEntries(

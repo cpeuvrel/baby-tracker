@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { growthEntriesCollection } from '../lib/paths'
 import type { GrowthEntry } from '../types/models'
 
@@ -26,13 +27,13 @@ export interface GrowthMeasurement {
 function toGrowthEntry(id: string, data: Record<string, unknown>): GrowthEntry {
   return {
     id,
-    measuredAt: timestampToIso(data.measuredAt as Timestamp),
+    measuredAt: timestampToIso(data.measuredAt),
     weightG: (data.weightG as number | null) ?? null,
     heightMm: (data.heightMm as number | null) ?? null,
     headCircumferenceMm: (data.headCircumferenceMm as number | null) ?? null,
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.measuredAt),
   }
 }
 
@@ -40,12 +41,17 @@ export function subscribeToGrowthEntries(
   householdId: string,
   babyId: string,
   onChange: (entries: GrowthEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const growthQuery = query(growthEntriesCollection(householdId, babyId), orderBy('measuredAt'))
 
-  return onSnapshot(growthQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toGrowthEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    growthQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toGrowthEntry))
+    },
+    listenerErrorHandler('growthEntries', onError),
+  )
 }
 
 export async function getAllGrowthEntries(
@@ -54,7 +60,7 @@ export async function getAllGrowthEntries(
 ): Promise<GrowthEntry[]> {
   const allQuery = query(growthEntriesCollection(householdId, babyId), orderBy('measuredAt'))
   const snapshot = await getDocs(allQuery)
-  return snapshot.docs.map((docSnap) => toGrowthEntry(docSnap.id, docSnap.data()))
+  return mapDocs(snapshot, toGrowthEntry)
 }
 
 export async function importGrowthEntries(

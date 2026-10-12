@@ -5,20 +5,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as AuthContext from '../contexts/AuthContext'
 import { CreateFamilyPage } from './CreateFamilyPage'
 
-const addBaby = vi.fn()
-const createHousehold = vi.fn()
+const createHouseholdWithBaby = vi.fn()
 
-vi.mock('../repositories/babies', () => ({
-  addBaby: (...args: unknown[]) => addBaby(...args),
-}))
 vi.mock('../repositories/households', () => ({
-  createHousehold: (...args: unknown[]) => createHousehold(...args),
+  createHouseholdWithBaby: (...args: unknown[]) => createHouseholdWithBaby(...args),
 }))
 
 describe('CreateFamilyPage', () => {
   beforeEach(() => {
-    addBaby.mockReset()
-    createHousehold.mockReset()
+    createHouseholdWithBaby.mockReset()
     vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
       user: { uid: 'uid1', email: 'amandineandcorentin@gmail.com' } as User,
       loading: false,
@@ -46,19 +41,45 @@ describe('CreateFamilyPage', () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it('creates a household then the first child with the entered details', async () => {
-    createHousehold.mockResolvedValue('h1')
-    addBaby.mockResolvedValue(undefined)
+  async function fillAndSubmit() {
     const user = userEvent.setup()
-
     render(<CreateFamilyPage />)
-    await user.type(screen.getByLabelText('First Name'), 'Nina')
+    await user.type(screen.getByLabelText('First Name'), ' Nina ')
     await user.click(screen.getByRole('button', { name: 'Girl' }))
     await user.type(screen.getByLabelText('Birthdate'), '2026-01-15')
     await user.click(screen.getByRole('button', { name: 'Add child' }))
+    return user
+  }
 
-    expect(createHousehold).toHaveBeenCalledWith('uid1')
-    expect(addBaby).toHaveBeenCalledWith('h1', 'Nina', '2026-01-15', 'female')
+  it('creates the household with the first child and the entered details', async () => {
+    createHouseholdWithBaby.mockResolvedValue('h1')
+
+    await fillAndSubmit()
+
+    expect(createHouseholdWithBaby).toHaveBeenCalledWith('uid1', {
+      name: 'Nina',
+      birthDate: '2026-01-15',
+      sex: 'female',
+    })
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('shows an alert and enables the button again when the creation fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    createHouseholdWithBaby.mockRejectedValueOnce(new Error('unavailable')).mockResolvedValueOnce('h1')
+
+    const user = await fillAndSubmit()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not create your family')
+    expect(consoleError).toHaveBeenCalledWith('[family] creation failed', expect.any(Error))
+    const button = screen.getByRole('button', { name: 'Add child' })
+    expect(button).toBeEnabled()
+
+    await user.click(button)
+
+    expect(createHouseholdWithBaby).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    consoleError.mockRestore()
   })
 
   it('does not submit without a sex selected', async () => {
@@ -69,7 +90,6 @@ describe('CreateFamilyPage', () => {
     await user.type(screen.getByLabelText('Birthdate'), '2026-01-15')
     await user.click(screen.getByRole('button', { name: 'Add child' }))
 
-    expect(createHousehold).not.toHaveBeenCalled()
-    expect(addBaby).not.toHaveBeenCalled()
+    expect(createHouseholdWithBaby).not.toHaveBeenCalled()
   })
 })

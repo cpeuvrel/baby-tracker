@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { batchInsert } from '../lib/firestoreBatch'
 import { timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { feedingEntriesCollection } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
 import type { FeedingEntry, FeedingType } from '../types/models'
@@ -22,12 +23,12 @@ function toFeedingEntry(id: string, data: Record<string, unknown>): FeedingEntry
   return {
     id,
     type: data.type as FeedingType,
-    occurredAt: timestampToIso(data.occurredAt as Timestamp),
+    occurredAt: timestampToIso(data.occurredAt),
     volumeMl: (data.volumeMl as number | null) ?? null,
     foodType: (data.foodType as string | null) ?? null,
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.occurredAt),
   }
 }
 
@@ -36,6 +37,7 @@ export function subscribeToFeedingEntriesInRange(
   babyId: string,
   range: DateRange,
   onChange: (entries: FeedingEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const rangeQuery = query(
     feedingEntriesCollection(householdId, babyId),
@@ -44,9 +46,13 @@ export function subscribeToFeedingEntriesInRange(
     orderBy('occurredAt', 'desc'),
   )
 
-  return onSnapshot(rangeQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    rangeQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toFeedingEntry))
+    },
+    listenerErrorHandler('feedingEntries', onError),
+  )
 }
 
 export function subscribeToRecentFeedingEntries(
@@ -54,6 +60,7 @@ export function subscribeToRecentFeedingEntries(
   babyId: string,
   count: number,
   onChange: (entries: FeedingEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const recentQuery = query(
     feedingEntriesCollection(householdId, babyId),
@@ -61,9 +68,13 @@ export function subscribeToRecentFeedingEntries(
     limit(count),
   )
 
-  return onSnapshot(recentQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    recentQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toFeedingEntry))
+    },
+    listenerErrorHandler('feedingEntries', onError),
+  )
 }
 
 export async function getAllFeedingEntries(
@@ -72,7 +83,7 @@ export async function getAllFeedingEntries(
 ): Promise<FeedingEntry[]> {
   const allQuery = query(feedingEntriesCollection(householdId, babyId), orderBy('occurredAt'))
   const snapshot = await getDocs(allQuery)
-  return snapshot.docs.map((docSnap) => toFeedingEntry(docSnap.id, docSnap.data()))
+  return mapDocs(snapshot, toFeedingEntry)
 }
 
 export async function importFeedingEntries(

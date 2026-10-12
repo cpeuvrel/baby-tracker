@@ -1,5 +1,17 @@
-import { addDoc, deleteDoc, getDocs, onSnapshot, Timestamp, updateDoc, writeBatch } from 'firebase/firestore'
+import {
+  addDoc,
+  deleteDoc,
+  getDocs,
+  onSnapshot,
+  orderBy,
+  query,
+  Timestamp,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { growthEntriesCollection } from '../lib/paths'
+import { expectQuery } from '../test/expectQuery'
 import { fakeSnapshot } from '../test/fakeSnapshot'
 import type { GrowthEntry } from '../types/models'
 import {
@@ -160,5 +172,74 @@ describe('growthEntries repository', () => {
     const [, payload] = set.mock.calls[0]
     expect(payload).toMatchObject({ weightG: 5000, heightMm: 550 })
     expect(commit).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('growthEntries queries and robustness', () => {
+  const AT_ISO = '2026-03-05T08:00:00.000Z'
+  const at = Timestamp.fromDate(new Date(AT_ISO))
+
+  beforeEach(() => {
+    onSnapshotMock.mockReset().mockReturnValue(vi.fn())
+    getDocsMock.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('subscribes to every entry, oldest first', () => {
+    subscribeToGrowthEntries('h1', 'b1', vi.fn())
+
+    expectQuery(onSnapshotMock.mock.calls[0][0], query(growthEntriesCollection('h1', 'b1'), orderBy('measuredAt')))
+  })
+
+  it('reads every entry oldest first for the export', async () => {
+    getDocsMock.mockResolvedValue(fakeSnapshot([]))
+
+    await getAllGrowthEntries('h1', 'b1')
+
+    expectQuery(getDocsMock.mock.calls[0][0], query(growthEntriesCollection('h1', 'b1'), orderBy('measuredAt')))
+  })
+
+  it('defaults the fields a legacy document lacks, createdAt included', () => {
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, next: (snapshot: unknown) => void) => {
+      next(fakeSnapshot([{ id: 'legacy', data: { measuredAt: at, weightG: 4200, createdBy: 'uid1' } }]))
+      return vi.fn()
+    }) as never)
+
+    subscribeToGrowthEntries('h1', 'b1', onChange)
+
+    expect(onChange).toHaveBeenCalledWith([
+      { id: 'legacy', measuredAt: AT_ISO, weightG: 4200, heightMm: null, headCircumferenceMm: null, notes: '', createdBy: 'uid1', createdAt: AT_ISO },
+    ])
+  })
+
+  it('skips a document without measuredAt instead of throwing', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, next: (snapshot: unknown) => void) => {
+      next(fakeSnapshot([{ id: 'broken', data: { createdBy: 'uid1' } }, { id: 'legacy', data: { measuredAt: at, weightG: 4200, createdBy: 'uid1' } }]))
+      return vi.fn()
+    }) as never)
+
+    subscribeToGrowthEntries('h1', 'b1', onChange)
+
+    expect(onChange).toHaveBeenCalledWith([expect.objectContaining({ id: 'legacy' })])
+    expect(warn).toHaveBeenCalledWith('[firestore] skipping malformed document', 'fake/broken', expect.any(Error))
+  })
+
+  it('forwards listener errors to onError', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onError = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, _next: unknown, error: (e: Error) => void) => {
+      error(new Error('permission-denied'))
+      return vi.fn()
+    }) as never)
+
+    subscribeToGrowthEntries('h1', 'b1', vi.fn(), onError)
+
+    expect(onError).toHaveBeenCalledWith(new Error('permission-denied'))
   })
 })

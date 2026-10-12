@@ -17,6 +17,7 @@ import {
 import { secondsBetween } from '../lib/duration'
 import { batchInsert } from '../lib/firestoreBatch'
 import { nullableTimestampToIso, timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { db } from '../lib/firebase'
 import { sleepEntriesCollection, sleepTimerLockDoc } from '../lib/paths'
 import type { DateRange } from '../lib/timeline'
@@ -25,12 +26,12 @@ import type { SleepEntry } from '../types/models'
 function toSleepEntry(id: string, data: Record<string, unknown>): SleepEntry {
   return {
     id,
-    startedAt: timestampToIso(data.startedAt as Timestamp),
-    endedAt: nullableTimestampToIso(data.endedAt as Timestamp | null),
+    startedAt: timestampToIso(data.startedAt),
+    endedAt: nullableTimestampToIso(data.endedAt),
     durationSeconds: (data.durationSeconds as number | null) ?? null,
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.startedAt),
   }
 }
 
@@ -39,13 +40,18 @@ export function subscribeToActiveSleeps(
   householdId: string,
   babyId: string,
   onChange: (entries: SleepEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const activeQuery = query(sleepEntriesCollection(householdId, babyId), where('endedAt', '==', null))
 
-  return onSnapshot(activeQuery, (snapshot) => {
-    const entries = snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data()))
-    onChange(entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt)))
-  })
+  return onSnapshot(
+    activeQuery,
+    (snapshot) => {
+      const entries = mapDocs(snapshot, toSleepEntry)
+      onChange(entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt)))
+    },
+    listenerErrorHandler('sleepEntries', onError),
+  )
 }
 
 /**
@@ -71,6 +77,7 @@ export function subscribeToSleepEntriesInRange(
   babyId: string,
   range: DateRange,
   onChange: (entries: SleepEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const rangeQuery = query(
     sleepEntriesCollection(householdId, babyId),
@@ -79,9 +86,13 @@ export function subscribeToSleepEntriesInRange(
     orderBy('startedAt', 'desc'),
   )
 
-  return onSnapshot(rangeQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    rangeQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toSleepEntry))
+    },
+    listenerErrorHandler('sleepEntries', onError),
+  )
 }
 
 export function subscribeToRecentSleepEntries(
@@ -89,6 +100,7 @@ export function subscribeToRecentSleepEntries(
   babyId: string,
   count: number,
   onChange: (entries: SleepEntry[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const recentQuery = query(
     sleepEntriesCollection(householdId, babyId),
@@ -96,9 +108,13 @@ export function subscribeToRecentSleepEntries(
     limit(count),
   )
 
-  return onSnapshot(recentQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    recentQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toSleepEntry))
+    },
+    listenerErrorHandler('sleepEntries', onError),
+  )
 }
 
 export async function getAllSleepEntries(
@@ -107,7 +123,7 @@ export async function getAllSleepEntries(
 ): Promise<SleepEntry[]> {
   const allQuery = query(sleepEntriesCollection(householdId, babyId), orderBy('startedAt'))
   const snapshot = await getDocs(allQuery)
-  return snapshot.docs.map((docSnap) => toSleepEntry(docSnap.id, docSnap.data()))
+  return mapDocs(snapshot, toSleepEntry)
 }
 
 export async function importSleepEntries(

@@ -5,11 +5,14 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   Timestamp,
   updateDoc,
   type Unsubscribe,
 } from 'firebase/firestore'
+import { db } from '../lib/firebase'
 import { timestampToIso } from '../lib/firestoreDates'
+import { listenerErrorHandler, mapDocs } from '../lib/firestoreSnapshots'
 import { pediatricianVisitsCollection } from '../lib/paths'
 import type { PediatricianVisit, VisitDiscussion, VisitRemark } from '../types/models'
 
@@ -31,7 +34,7 @@ function toPediatricianVisit(id: string, data: Record<string, unknown>): Pediatr
     remarks: (data.remarks as VisitRemark[] | undefined) ?? [],
     discussions: (data.discussions as VisitDiscussion[] | undefined) ?? [],
     createdBy: data.createdBy as string,
-    createdAt: timestampToIso(data.createdAt as Timestamp),
+    createdAt: timestampToIso(data.createdAt ?? data.date),
   }
 }
 
@@ -40,12 +43,17 @@ export function subscribeToPediatricianVisits(
   householdId: string,
   babyId: string,
   onChange: (visits: PediatricianVisit[]) => void,
+  onError?: (error: Error) => void,
 ): Unsubscribe {
   const visitsQuery = query(pediatricianVisitsCollection(householdId, babyId), orderBy('date', 'desc'))
 
-  return onSnapshot(visitsQuery, (snapshot) => {
-    onChange(snapshot.docs.map((docSnap) => toPediatricianVisit(docSnap.id, docSnap.data())))
-  })
+  return onSnapshot(
+    visitsQuery,
+    (snapshot) => {
+      onChange(mapDocs(snapshot, toPediatricianVisit))
+    },
+    listenerErrorHandler('pediatricianVisits', onError),
+  )
 }
 
 /** Creates a visit and returns its id. */
@@ -74,6 +82,35 @@ export async function updatePediatricianVisit(
   changes: PediatricianVisitChanges,
 ): Promise<void> {
   await updateDoc(doc(pediatricianVisitsCollection(householdId, babyId), visitId), changes)
+}
+
+interface VisitItemsByField {
+  remarks: VisitRemark[]
+  discussions: VisitDiscussion[]
+}
+
+/**
+ * Changes a visit's remarks or discussions from their latest stored value, in a transaction:
+ * both parents may edit the same visit at once, and rewriting the whole list as one phone last
+ * saw it would drop the other's change. `mutate` may run more than once (the transaction retries
+ * on a concurrent write), so it must only compute the new list, e.g.
+ * `items => [...items, remark]`, `items => items.map(...)`, `items => items.filter(...)`.
+ * Like every transaction, it fails while offline instead of being queued.
+ */
+export async function mutateVisitItems<F extends keyof VisitItemsByField>(
+  householdId: string,
+  babyId: string,
+  visitId: string,
+  field: F,
+  mutate: (items: VisitItemsByField[F]) => VisitItemsByField[F],
+): Promise<void> {
+  const visitRef = doc(pediatricianVisitsCollection(householdId, babyId), visitId)
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(visitRef)
+    if (!snapshot.exists()) throw new Error('This visit no longer exists.')
+    const items = (snapshot.data()[field] as VisitItemsByField[F] | undefined) ?? []
+    transaction.update(visitRef, { [field]: mutate(items) })
+  })
 }
 
 export async function deletePediatricianVisit(

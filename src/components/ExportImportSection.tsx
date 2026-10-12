@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { deleteAllBabyData, exportBabyData, importBabyData, parseImportFile, serializeBabyExport } from '../lib/babyExport'
+import { BOM } from '../lib/csv'
 import type { Baby } from '../types/models'
 
 type Status =
@@ -11,14 +12,24 @@ type Status =
   | { kind: 'success'; message: string }
   | { kind: 'error'; message: string }
 
+/** How long the Blob URL outlives the click: the download reads it asynchronously. */
+const DOWNLOAD_URL_LIFETIME_MS = 10_000
+
 function downloadCsvFile(filename: string, contents: string) {
-  const blob = new Blob([contents], { type: 'text/csv;charset=utf-8' })
+  // The BOM makes Excel read the file as UTF-8 (accents in notes); the import ignores it.
+  const blob = new Blob([BOM, contents], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
+  // Some WebKit versions only honour `download` on a link attached to the document; revoking
+  // the URL right after click() can leave Firefox / Safari (PWA) with an empty file.
+  document.body.appendChild(link)
   link.click()
-  URL.revokeObjectURL(url)
+  setTimeout(() => {
+    URL.revokeObjectURL(url)
+    link.remove()
+  }, DOWNLOAD_URL_LIFETIME_MS)
 }
 
 interface ExportImportSectionProps {
@@ -56,9 +67,12 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
     try {
       const text = await selectedFile.text()
       const { data, skipped } = parseImportFile(text, user.uid)
-      const { imported, duplicates } = await importBabyData(householdId, baby.id, data)
+      const { imported, duplicates, skippedRunning } = await importBabyData(householdId, baby.id, data, user.uid)
       const details = [
         duplicates > 0 ? `${duplicates} already present (ignored)` : null,
+        skippedRunning > 0
+          ? `${skippedRunning} unfinished ${skippedRunning === 1 ? 'sleep' : 'sleeps'} ignored`
+          : null,
         skipped > 0 ? `${skipped} skipped (not supported)` : null,
       ].filter(Boolean)
       const message = `Import complete: ${imported} entries imported${details.map((d) => `, ${d}`).join('')}.`
@@ -73,7 +87,10 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
   }
 
   const handleDeleteAll = async () => {
-    if (!window.confirm(`Delete all of ${baby.name}'s data? This cannot be undone.`)) return
+    const confirmed = window.confirm(
+      `Delete all of ${baby.name}'s logged entries? Pediatrician visits and reminders are kept. This cannot be undone.`,
+    )
+    if (!confirmed) return
     setStatus({ kind: 'deleting' })
     try {
       const deleted = await deleteAllBabyData(householdId, baby.id)
@@ -94,6 +111,7 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
       >
         Export Data (CSV)
       </button>
+      <p className="hint">Logged entries only: pediatrician visits and reminders are not exported.</p>
       <div>
         <label htmlFor="import-file">Import a CSV file (native or Nara export)</label>
         <input
@@ -119,9 +137,13 @@ export function ExportImportSection({ householdId, baby }: ExportImportSectionPr
         className="settings-action settings-action-danger"
         onClick={() => void handleDeleteAll()}
         disabled={status.kind === 'deleting'}
+        aria-describedby="delete-all-data-hint"
       >
         Delete All Data
       </button>
+      <p id="delete-all-data-hint" className="hint">
+        Deletes every logged entry. Pediatrician visits and reminders are kept.
+      </p>
       {status.kind === 'success' && <p role="status">{status.message}</p>}
       {status.kind === 'error' && <p role="alert">{status.message}</p>}
     </section>
