@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { subscribeToBabies } from '../repositories/babies'
 import { subscribeToHouseholdForUser } from '../repositories/households'
 import type { Baby, Household } from '../types/models'
@@ -46,6 +46,7 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
       user.uid,
       (nextHousehold) => {
         setHousehold(nextHousehold)
+        setError(null)
         if (!nextHousehold) {
           setBabies([])
           setLoading(false)
@@ -59,12 +60,16 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
     )
   }, [user])
 
+  // Keyed on the id: the household object is rebuilt on every snapshot of its document.
+  const householdId = household?.id ?? null
+
   useEffect(() => {
-    if (!household) return
+    if (!householdId) return
     return subscribeToBabies(
-      household.id,
+      householdId,
       (nextBabies) => {
         setBabies(nextBabies)
+        setError(null)
         setLoading(false)
       },
       (subscriptionError) => {
@@ -73,21 +78,21 @@ export function HouseholdProvider({ children }: { children: ReactNode }) {
         setLoading(false)
       },
     )
-  }, [household])
+  }, [householdId])
 
   const selectedBaby = useMemo(
     () => babies.find((baby) => baby.id === selectedBabyId) ?? babies[0] ?? null,
     [babies, selectedBabyId],
   )
 
-  const selectBaby = (babyId: string) => {
+  const selectBaby = useCallback((babyId: string) => {
     setSelectedBabyId(babyId)
     try {
       localStorage.setItem(SELECTED_BABY_STORAGE_KEY, babyId)
     } catch {
       /* storage unavailable (private browsing): the selection stays in memory */
     }
-  }
+  }, [])
 
   return (
     <HouseholdContext.Provider value={{ household, babies, loading, error, selectedBaby, selectBaby }}>
