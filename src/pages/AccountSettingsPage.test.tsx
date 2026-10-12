@@ -50,4 +50,24 @@ describe('AccountSettingsPage', () => {
 
     expect(logout).toHaveBeenCalled()
   })
+
+  it('says so when signing out failed', () => {
+    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
+      user: { uid: 'uid1', email: 'parent1@example.com' } as User,
+      loading: false,
+      error: 'Unable to sign out. (auth/network-request-failed)',
+      devLoginAvailable: false,
+      loginWithGoogle: vi.fn(),
+      loginWithPassword: vi.fn(),
+      logout: vi.fn(),
+    })
+
+    render(
+      <MemoryRouter>
+        <AccountSettingsPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Unable to sign out.')
+  })
 })
