@@ -1,10 +1,8 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useReminderModule from '../hooks/useReminder'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { Reminder } from '../types/models'
 import { ReminderSettingsModal, TIME_SAVE_DELAY_MS } from './ReminderSettingsModal'
 import { setTime, timeValue } from '../test/timeFields'
@@ -19,30 +17,12 @@ vi.mock('../lib/pushRegistration', () => ({
   registerPush: (...args: unknown[]) => registerPush(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 describe('ReminderSettingsModal', () => {
   beforeEach(() => {
     setReminder.mockReset()
     registerPush.mockReset()
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockAuth()
+    mockHousehold()
   })
 
   afterEach(() => {

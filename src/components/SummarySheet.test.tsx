@@ -1,13 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import { zonedTime } from '../lib/appTime'
+import { mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry, SleepEntry } from '../types/models'
 import { SummarySheet } from './SummarySheet'
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 const now = zonedTime(2026, 9, 25, 18, 3)
 
@@ -33,14 +32,7 @@ describe('SummarySheet', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
     localStorage.clear()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ babies: [baby], selectedBaby: baby })
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRangeState').mockReturnValue({
       feeding: [
         bottle(zonedTime(2026, 9, 24, 20, 30), 150),

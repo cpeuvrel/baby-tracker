@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useDayTimelineModule from '../hooks/useDayTimeline'
 import type { DayTimeline } from '../hooks/useDayTimeline'
 import type { EntryKind } from '../lib/historyFilters'
 import type { TimelineEntry } from '../lib/timeline'
+import { mockHousehold } from '../test/mockContexts'
 import type { DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { DailyTimeline } from './DailyTimeline'
 
@@ -31,21 +31,11 @@ function day(timeline: TimelineEntry[], sleep?: SleepEntry[]): DayTimeline {
   }
 }
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 describe('DailyTimeline', () => {
   beforeEach(() => {
     updateSleepEntry.mockReset().mockResolvedValue(undefined)
     deleteSleepEntry.mockReset()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   it('shows a placeholder when there are no entries today', () => {

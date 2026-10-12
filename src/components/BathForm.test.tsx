@@ -1,9 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { BathEntry } from '../types/models'
 import { dateTimeValue, setDateTime } from '../test/timeFields'
 import { BathForm } from './BathForm'
@@ -31,23 +29,8 @@ describe('BathForm', () => {
     logBath.mockReset().mockResolvedValue(undefined)
     updateBathEntry.mockReset().mockResolvedValue(undefined)
     deleteBathEntry.mockReset().mockResolvedValue(undefined)
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: { id: 'h1', name: 'Famille Test', memberUids: [] },
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null },
-      selectBaby: vi.fn(),
-    })
+    mockAuth()
+    mockHousehold({ babies: [] })
   })
 
   afterEach(() => {

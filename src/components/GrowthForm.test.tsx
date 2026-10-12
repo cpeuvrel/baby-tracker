@@ -1,9 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { GrowthEntry } from '../types/models'
 import { GrowthForm } from './GrowthForm'
 
@@ -16,9 +14,6 @@ vi.mock('../repositories/growthEntries', () => ({
   updateGrowthEntry: (...args: unknown[]) => updateGrowthEntry(...args),
   deleteGrowthEntry: (...args: unknown[]) => deleteGrowthEntry(...args),
 }))
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const entry: GrowthEntry = {
   id: 'g1',
@@ -37,23 +32,8 @@ describe('GrowthForm', () => {
     updateGrowthEntry.mockReset().mockResolvedValue(undefined)
     deleteGrowthEntry.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockAuth()
+    mockHousehold()
   })
 
   afterEach(() => {

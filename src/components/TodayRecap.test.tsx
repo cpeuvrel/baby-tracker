@@ -1,12 +1,10 @@
 import { render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import { zonedTime } from '../lib/appTime'
+import { mockHousehold } from '../test/mockContexts'
 import { TodayRecap } from './TodayRecap'
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 const now = zonedTime(2026, 3, 5, 18, 3)
 
 function mockEntries(overrides: Partial<useEntriesInRangeModule.EntriesInRangeState> = {}) {
@@ -25,14 +23,7 @@ function mockEntries(overrides: Partial<useEntriesInRangeModule.EntriesInRangeSt
 describe('TodayRecap', () => {
   beforeEach(() => {
     localStorage.clear()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   afterEach(() => {
