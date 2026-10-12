@@ -134,7 +134,7 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       </p>
       <button
         type="button"
-        className="button-action"
+        className={isActive ? 'button-action button-timer-stop' : 'button-action button-timer-start'}
         onClick={handleToggleTimer}
         disabled={pendingStart && !isActive}
       >
