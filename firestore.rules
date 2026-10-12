@@ -1,11 +1,15 @@
 rules_version = '2';
 
+// Tested by rules/firestore.rules.test.ts (npm run test:rules) and deployed by
+// .github/workflows/deploy-firestore.yml. See docs/firestore-rules.md.
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Keep this list in sync with src/lib/allowedEmails.ts (src/lib/allowedEmails.test.ts checks it).
     function isAllowedEmail() {
       return request.auth != null &&
-        request.auth.token.email in ['amandineandcorentin@gmail.com'];
+        request.auth.token.email_verified == true &&
+        request.auth.token.email.lower() in ['amandineandcorentin@gmail.com'];
     }
 
     function isHouseholdMember(householdId) {
@@ -14,14 +18,47 @@ service cloud.firestore {
           get(/databases/$(database)/documents/households/$(householdId)).data.memberUids;
     }
 
+    // Field checks run on the document as it will be stored (request.resource.data), so a
+    // partial update is checked against the merged document. Optional fields are only checked
+    // when present: older documents may lack fields added later.
+    function isOptionalString(data, field, maxSize) {
+      return !(field in data) || (data[field] is string && data[field].size() <= maxSize);
+    }
+
+    function isOptionalTimestamp(data, field) {
+      return !(field in data) || data[field] is timestamp;
+    }
+
+    function hasValidNotesAndCreatedAt(data) {
+      return isOptionalString(data, 'notes', 2000) && isOptionalTimestamp(data, 'createdAt');
+    }
+
     match /households/{householdId} {
-      allow read, update, delete: if isAllowedEmail() &&
-        request.auth.uid in resource.data.memberUids;
+      function isValidHousehold(data) {
+        return data.memberUids is list && data.memberUids.size() <= 4;
+      }
+
+      allow read: if isAllowedEmail() && request.auth.uid in resource.data.memberUids;
       allow create: if isAllowedEmail() &&
+        isValidHousehold(request.resource.data) &&
         request.auth.uid in request.resource.data.memberUids;
+      // Members cannot be added or removed from the app (only from the console / Admin SDK).
+      allow update: if isAllowedEmail() &&
+        request.auth.uid in resource.data.memberUids &&
+        request.resource.data.memberUids == resource.data.memberUids;
+      // Deleting a household would orphan (and lock out) everything under it.
+      allow delete: if false;
 
       match /babies/{babyId} {
-        allow read, write: if isHouseholdMember(householdId);
+        function isValidBaby(data) {
+          return data.name is string && data.name.size() <= 80 &&
+            (!('photoDataUrl' in data) || data.photoDataUrl == null ||
+              (data.photoDataUrl is string && data.photoDataUrl.size() < 150000));
+        }
+
+        allow read, delete: if isHouseholdMember(householdId);
+        allow create, update: if isHouseholdMember(householdId) &&
+          isValidBaby(request.resource.data);
 
         // Names the sleep in progress (src/repositories/sleepEntries.ts writes it with every
         // sleep that starts or runs again): a sleep cannot start while another one runs.
@@ -29,45 +66,102 @@ service cloud.firestore {
           return /databases/$(database)/documents/households/$(householdId)/babies/$(babyId)/locks/sleepTimer;
         }
 
+        // Every collection under a baby except sleepEntries and locks (matched below).
         match /{entryCollection}/{entryId} {
+          function isEntryCollection() {
+            return entryCollection in [
+              'feedingEntries', 'diaperEntries', 'bathEntries', 'growthEntries',
+              'medicationEntries', 'reminders', 'pediatricianVisits'
+            ];
+          }
+
+          function isValidEntry(data) {
+            let timeField = {
+              'feedingEntries': 'occurredAt',
+              'diaperEntries': 'occurredAt',
+              'bathEntries': 'occurredAt',
+              'growthEntries': 'measuredAt',
+              'medicationEntries': 'givenAt'
+            }.get(entryCollection, null);
+            return (timeField == null || data.get(timeField, null) is timestamp) &&
+              hasValidNotesAndCreatedAt(data);
+          }
+
+          // Reminders carry no author.
+          function isCreatedByCaller(data) {
+            return entryCollection == 'reminders' || data.get('createdBy', null) == request.auth.uid;
+          }
+
           allow read: if isHouseholdMember(householdId);
-          allow write: if isHouseholdMember(householdId) &&
+          allow delete: if isHouseholdMember(householdId) &&
             !(entryCollection in ['sleepEntries', 'locks']);
+          allow create: if isHouseholdMember(householdId) &&
+            isEntryCollection() &&
+            isValidEntry(request.resource.data) &&
+            isCreatedByCaller(request.resource.data);
+          allow update: if isHouseholdMember(householdId) &&
+            isEntryCollection() &&
+            isValidEntry(request.resource.data);
         }
 
         match /sleepEntries/{entryId} {
+          function isValidSleep(data) {
+            return data.startedAt is timestamp &&
+              (data.endedAt == null || data.endedAt is timestamp) &&
+              hasValidNotesAndCreatedAt(data);
+          }
+
           function startsRunning() {
             return request.resource.data.endedAt == null &&
               (resource == null || resource.data.endedAt != null);
           }
 
+          function holdsLock() {
+            return !startsRunning() || getAfter(lockPath()).data.entryId == entryId;
+          }
+
           allow read, delete: if isHouseholdMember(householdId);
-          allow create, update: if isHouseholdMember(householdId) &&
-            (!startsRunning() || getAfter(lockPath()).data.entryId == entryId);
+          allow create: if isHouseholdMember(householdId) &&
+            isValidSleep(request.resource.data) &&
+            request.resource.data.get('createdBy', null) == request.auth.uid &&
+            holdsLock();
+          allow update: if isHouseholdMember(householdId) &&
+            isValidSleep(request.resource.data) &&
+            holdsLock();
         }
 
         match /locks/sleepTimer {
-          // Free unless it names a sleep that still runs (deleted or stopped frees it).
+          // Free unless it names a sleep that still runs (deleted or stopped frees it). A
+          // malformed lock (no string entryId) is free too, so it can never block the timer.
           function lockedEntryPath() {
             return /databases/$(database)/documents/households/$(householdId)/babies/$(babyId)/sleepEntries/$(resource.data.entryId);
           }
 
           function isFree() {
             return resource == null ||
+              !(resource.data.get('entryId', null) is string) ||
               !exists(lockedEntryPath()) ||
-              get(lockedEntryPath()).data.endedAt != null;
+              get(lockedEntryPath()).data.get('endedAt', null) != null;
+          }
+
+          function isValidLock(data) {
+            return data.keys().hasOnly(['entryId']) && data.entryId is string;
           }
 
           allow read: if isHouseholdMember(householdId);
-          allow write: if isHouseholdMember(householdId) &&
-            (isFree() ||
-              (request.resource != null && request.resource.data.entryId == resource.data.entryId));
+          allow delete: if isHouseholdMember(householdId) && isFree();
+          allow create, update: if isHouseholdMember(householdId) &&
+            isValidLock(request.resource.data) &&
+            (isFree() || request.resource.data.entryId == resource.data.entryId);
         }
       }
     }
 
+    // The document id is the FCM token itself: functions/src/tokens.ts sends to the ids.
     match /users/{uid}/fcmTokens/{tokenId} {
-      allow read, write: if isAllowedEmail() && request.auth.uid == uid;
+      allow read, delete: if isAllowedEmail() && request.auth.uid == uid;
+      allow create, update: if isAllowedEmail() && request.auth.uid == uid &&
+        request.resource.data.get('token', null) == tokenId;
     }
 
     match /{document=**} {
