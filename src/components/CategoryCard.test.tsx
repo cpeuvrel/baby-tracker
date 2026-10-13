@@ -48,7 +48,7 @@ describe('CategoryCard', () => {
     expect(onShowHistory).toHaveBeenCalled()
   })
 
-  it('keeps recent entries behind Show More, then lists them with the history link', async () => {
+  it('lists recent entries by default with the history link, and folds them behind Show More', async () => {
     const onSelectRow = vi.fn()
     const onShowHistory = vi.fn()
     const user = userEvent.setup()
@@ -58,11 +58,8 @@ describe('CategoryCard', () => {
       historyLabel: 'Entries before 20:00',
     })
 
-    expect(screen.queryByText('08:33 Bottle')).not.toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Show More' }))
-
     expect(screen.getByText('40 mL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show Less' })).toHaveAttribute('aria-expanded', 'true')
     await user.click(screen.getByRole('button', { name: /08:33 Bottle/ }))
     expect(onSelectRow).toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Entries before 20:00' }))
@@ -70,18 +67,22 @@ describe('CategoryCard', () => {
 
     await user.click(screen.getByRole('button', { name: 'Show Less' }))
     expect(screen.queryByText('08:33 Bottle')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Show More' }))
+    expect(screen.getByText('08:33 Bottle')).toBeInTheDocument()
   })
 
-  it('remembers that a card was expanded', async () => {
+  it('remembers that a card was collapsed', async () => {
     const user = userEvent.setup()
     const lines = [{ id: 'f1', title: '08:33 Bottle', onClick: vi.fn() }]
     const { unmount } = renderCard({ lines })
-    await user.click(screen.getByRole('button', { name: 'Show More' }))
+    await user.click(screen.getByRole('button', { name: 'Show Less' }))
     unmount()
 
     renderCard({ lines })
 
-    expect(screen.getByText('08:33 Bottle')).toBeInTheDocument()
+    expect(screen.queryByText('08:33 Bottle')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Show More' })).toBeInTheDocument()
   })
 
   it('lists pinned rows directly, with the value on the right of a subtitle', () => {
@@ -165,13 +166,11 @@ describe('CategoryCard', () => {
   })
 
   it('keeps each row with its entry when an entry is added at the top', async () => {
-    const user = userEvent.setup()
     const lines = [
       { id: 'f2', title: '09:00 Bottle', onClick: vi.fn() },
       { id: 'f1', title: '08:33 Bottle', onClick: vi.fn() },
     ]
     const { rerender } = renderCard({ lines })
-    await user.click(screen.getByRole('button', { name: 'Show More' }))
     const firstRow = screen.getByText('09:00 Bottle').closest('li')
 
     rerender(

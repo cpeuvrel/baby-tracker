@@ -331,11 +331,9 @@ describe('ActivityPage', () => {
           makeSleepEntry('yesterday-nap', zonedTime(2026, 3, 4, 13, 0), zonedTime(2026, 3, 4, 15, 15)),
         ],
       })
-      const user = userEvent.setup()
 
       renderPage()
       const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
-      await user.click(sleepCard.getByRole('button', { name: 'Show More' }))
 
       expect(sleepCard.getByText('YD 19:37 – 07:25')).toBeInTheDocument()
       expect(sleepCard.getByText('11h 48m')).toBeInTheDocument()
@@ -355,7 +353,6 @@ describe('ActivityPage', () => {
       renderPage()
       const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
       expect(feedCard.getByText('180')).toBeInTheDocument()
-      await user.click(feedCard.getByRole('button', { name: 'Show More' }))
 
       expect(feedCard.getByText('YD 22:00 Bottle')).toBeInTheDocument()
       expect(feedCard.queryByText('77 mL')).not.toBeInTheDocument()
@@ -389,15 +386,12 @@ describe('ActivityPage', () => {
       createdAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
     }
     setupHooks(null, { recentBath: [bath], recentMedication: [vitamin] })
-    const user = userEvent.setup()
 
     try {
       renderPage()
       const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
       expect(routineCard.getByText('23h 3m ago')).toBeInTheDocument()
       expect(routineCard.getByText('2h 0m ago')).toBeInTheDocument()
-
-      await user.click(routineCard.getByRole('button', { name: 'Show More' }))
       expect(routineCard.getByText('16:03 Vitamin/Probiotic')).toBeInTheDocument()
       // Yesterday 19:00 is before last night's 20:00 start.
       expect(routineCard.queryByText('YD 19:00 Bath')).not.toBeInTheDocument()
@@ -503,11 +497,9 @@ describe('ActivityPage', () => {
         }
       })
       setupHooks(null, { recentFeeding: feeds })
-      const user = userEvent.setup()
 
       renderPage()
       const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
-      await user.click(feedCard.getByRole('button', { name: 'Show More' }))
 
       expect(feedCard.getAllByText(/Bottle$/)).toHaveLength(25)
     })
@@ -523,11 +515,9 @@ describe('ActivityPage', () => {
         createdAt: zonedTime(2026, 3, 1, 21, 0).toISOString(),
       }
       setupHooks(running, { recentSleep: [] })
-      const user = userEvent.setup()
 
       renderPage()
       const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
-      await user.click(sleepCard.getByRole('button', { name: 'Show More' }))
 
       expect(sleepCard.getByText('21:00 Timer running')).toBeInTheDocument()
     })
@@ -550,11 +540,9 @@ describe('ActivityPage', () => {
         durationSeconds: 3600,
       }
       setupHooks(null, { recentSleep: [imported, nap] })
-      const user = userEvent.setup()
 
       const { container } = renderPage()
       const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
-      await user.click(sleepCard.getByRole('button', { name: 'Show More' }))
 
       expect(sleepCard.getByText('2h 00m')).toBeInTheDocument()
       const bars = [...container.querySelectorAll<HTMLElement>('.category-card-row-bar')].map((bar) => bar.style.width)

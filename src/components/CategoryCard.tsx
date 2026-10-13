@@ -7,11 +7,12 @@ export type CategoryCardEntryRow = EntryRow & { id: string }
 
 const EXPANDED_STORAGE_PREFIX = 'baby-tracker:expandedCard:'
 
+/** Cards open expanded; only an explicit Show Less (remembered per card) collapses them. */
 function readExpanded(title: string): boolean {
   try {
-    return localStorage.getItem(EXPANDED_STORAGE_PREFIX + title) === 'true'
+    return localStorage.getItem(EXPANDED_STORAGE_PREFIX + title) !== 'false'
   } catch {
-    return false
+    return true
   }
 }
 
