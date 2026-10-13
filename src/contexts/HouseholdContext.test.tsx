@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { User } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -25,11 +25,15 @@ const babies: Baby[] = [
   { id: 'b2', name: 'Nina', birthDate: '2026-01-15', sex: null },
 ]
 
+const selectBabyIdentities = new Set<unknown>()
+
 function Probe() {
-  const { household: h, babies: b, loading, selectedBaby, selectBaby } = useHousehold()
+  const { household: h, babies: b, loading, error, selectedBaby, selectBaby } = useHousehold()
+  selectBabyIdentities.add(selectBaby)
   return (
     <div>
       <span data-role="loading">{String(loading)}</span>
+      <span data-role="error">error:{error ?? 'none'}</span>
       <span data-role="household">household:{h?.name ?? 'none'}</span>
       <span data-role="selected">selected:{selectedBaby?.name ?? 'none'}</span>
       {b.map((baby) => (
@@ -46,6 +50,7 @@ describe('HouseholdContext', () => {
     subscribeToHouseholdForUser.mockReset()
     subscribeToBabies.mockReset()
     localStorage.clear()
+    selectBabyIdentities.clear()
   })
 
   it('resolves the household then the babies, defaulting to the first baby', async () => {
@@ -114,5 +119,142 @@ describe('HouseholdContext', () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(() => render(<Probe />)).toThrow('useHousehold must be used within a HouseholdProvider')
     consoleErrorSpy.mockRestore()
+  })
+
+  describe('listeners', () => {
+    type HouseholdListener = { onChange: (h: Household | null) => void; onError: (e: Error) => void }
+    type BabiesListener = { householdId: string; onChange: (b: Baby[]) => void; onError: (e: Error) => void }
+    let householdListener: HouseholdListener
+    let babiesListeners: BabiesListener[]
+    let unsubscribeHousehold: ReturnType<typeof vi.fn>
+    let unsubscribeBabies: ReturnType<typeof vi.fn>
+
+    beforeEach(() => {
+      babiesListeners = []
+      unsubscribeHousehold = vi.fn()
+      unsubscribeBabies = vi.fn()
+      subscribeToHouseholdForUser.mockImplementation((_uid, onChange, onError) => {
+        householdListener = { onChange, onError }
+        return unsubscribeHousehold
+      })
+      subscribeToBabies.mockImplementation((householdId, onChange, onError) => {
+        babiesListeners.push({ householdId, onChange, onError })
+        return unsubscribeBabies
+      })
+    })
+
+    function renderProvider() {
+      return render(
+        <HouseholdProvider>
+          <Probe />
+        </HouseholdProvider>,
+      )
+    }
+
+    it('stays loading while the household is not known (e.g. an empty cached snapshot is ignored)', () => {
+      renderProvider()
+
+      expect(screen.getByText('true')).toBeInTheDocument()
+      expect(subscribeToBabies).not.toHaveBeenCalled()
+    })
+
+    it('stays loading until the babies answer', () => {
+      renderProvider()
+
+      act(() => householdListener.onChange(household))
+      expect(screen.getByText('true')).toBeInTheDocument()
+      expect(screen.getByText('household:Famille Test')).toBeInTheDocument()
+
+      act(() => babiesListeners[0].onChange(babies))
+      expect(screen.getByText('false')).toBeInTheDocument()
+    })
+
+    it('falls back to the first baby when the stored one was deleted', () => {
+      localStorage.setItem('baby-tracker:selectedBabyId', 'ghost')
+      renderProvider()
+
+      act(() => householdListener.onChange(household))
+      act(() => babiesListeners[0].onChange(babies))
+
+      expect(screen.getByText('selected:Léo')).toBeInTheDocument()
+    })
+
+    it('resets the babies when the household goes away', () => {
+      renderProvider()
+      act(() => householdListener.onChange(household))
+      act(() => babiesListeners[0].onChange(babies))
+
+      act(() => householdListener.onChange(null))
+
+      expect(screen.getByText('household:none')).toBeInTheDocument()
+      expect(screen.getByText('selected:none')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Léo' })).not.toBeInTheDocument()
+      expect(unsubscribeBabies).toHaveBeenCalled()
+    })
+
+    it('keeps the babies subscription when the household document changes', () => {
+      renderProvider()
+      act(() => householdListener.onChange(household))
+      act(() => babiesListeners[0].onChange(babies))
+
+      act(() => householdListener.onChange({ ...household, name: 'Renamed' }))
+
+      expect(screen.getByText('household:Renamed')).toBeInTheDocument()
+      expect(subscribeToBabies).toHaveBeenCalledTimes(1)
+      expect(unsubscribeBabies).not.toHaveBeenCalled()
+    })
+
+    it('reports a subscription error, then clears it on the next successful snapshot', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      renderProvider()
+
+      act(() => householdListener.onError(new Error('permission-denied')))
+
+      expect(screen.getByText('error:permission-denied')).toBeInTheDocument()
+      expect(screen.getByText('false')).toBeInTheDocument()
+      expect(consoleError).toHaveBeenCalledWith('[household] subscription failed', expect.any(Error))
+
+      act(() => householdListener.onChange(household))
+      expect(screen.getByText('error:none')).toBeInTheDocument()
+
+      act(() => babiesListeners[0].onError(new Error('babies denied')))
+      expect(screen.getByText('error:babies denied')).toBeInTheDocument()
+
+      act(() => babiesListeners[0].onChange(babies))
+      expect(screen.getByText('error:none')).toBeInTheDocument()
+      consoleError.mockRestore()
+    })
+
+    it('stops loading when the babies subscription fails before answering', () => {
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+      renderProvider()
+      act(() => householdListener.onChange(household))
+      expect(screen.getByText('true')).toBeInTheDocument()
+
+      act(() => babiesListeners[0].onError(new Error('babies denied')))
+
+      expect(screen.getByText('false')).toBeInTheDocument()
+      expect(screen.getByText('error:babies denied')).toBeInTheDocument()
+      expect(consoleError).toHaveBeenCalledWith('[babies] subscription failed', expect.any(Error))
+    })
+
+    it('unsubscribes from the household and the babies on unmount', () => {
+      const { unmount } = renderProvider()
+      act(() => householdListener.onChange(household))
+
+      unmount()
+
+      expect(unsubscribeHousehold).toHaveBeenCalled()
+      expect(unsubscribeBabies).toHaveBeenCalled()
+    })
+
+    it('keeps selectBaby stable across renders', () => {
+      renderProvider()
+
+      act(() => householdListener.onChange(household))
+      act(() => babiesListeners[0].onChange(babies))
+
+      expect(selectBabyIdentities.size).toBe(1)
+    })
   })
 })

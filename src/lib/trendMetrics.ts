@@ -1,5 +1,12 @@
 import { addDays, startOfDay, zonedParts, zonedTime } from './appTime'
-import { DEFAULT_NIGHTTIME_HOURS, isDuringNight, startsDuringNight, type DailyPoint } from './aggregations'
+import {
+  DEFAULT_NIGHTTIME_HOURS,
+  isDuringNight,
+  nightClocks,
+  startsDuringNight,
+  type DailyPoint,
+  type Delta,
+} from './aggregations'
 import { formatDuration } from './duration'
 import {
   CALENDAR_DAYS,
@@ -279,8 +286,7 @@ export function sleepSegments(
   now: Date = new Date(),
   frame: DayFrame = CALENDAR_DAYS,
 ): SleepSegment[] {
-  const [nightStartHour, nightStartMinute] = nightRange.start.split(':').map(Number)
-  const [nightEndHour, nightEndMinute] = nightRange.end.split(':').map(Number)
+  const { start: nightStart, end: nightEnd } = nightClocks(nightRange)
   const segments: SleepSegment[] = []
   for (const entry of entries) {
     const start = new Date(entry.startedAt)
@@ -291,8 +297,8 @@ export function sleepSegments(
       const { year, month, day: date } = zonedParts(day)
       for (const cut of [
         frame.startOf(nextDayKey(dayKey(day))),
-        zonedTime(year, month, date, nightStartHour, nightStartMinute),
-        zonedTime(year, month, date, nightEndHour, nightEndMinute),
+        zonedTime(year, month, date, nightStart.hour, nightStart.minute),
+        zonedTime(year, month, date, nightEnd.hour, nightEnd.minute),
       ]) {
         if (cut.getTime() > start.getTime() && cut.getTime() < end.getTime()) cuts.add(cut.getTime())
       }
@@ -319,14 +325,25 @@ function sleepEnd(entry: SleepEntry, now: Date): Date {
 }
 
 /**
+ * How long a sleep lasted (a running one: so far), from its start and end: the single
+ * source for every sleep duration here, as `durationSeconds` can be missing on imported sleeps.
+ */
+function sleepSeconds(entry: SleepEntry, now: Date): number {
+  return Math.max(0, (sleepEnd(entry, now).getTime() - new Date(entry.startedAt).getTime()) / 1000)
+}
+
+/**
  * Whether a sleep is a night (as a whole): it touches the nighttime hours, starting during
  * them or still asleep when they begin. 19:30 → 08:00 is a night; a 14:00 nap is not.
+ * A night range starting and ending at the same time has no night at all.
  */
 export function isNightSleep(entry: SleepEntry, nightRange: NighttimeHours, now: Date = new Date()): boolean {
+  const clocks = nightClocks(nightRange)
+  if (clocks.start.hour === clocks.end.hour && clocks.start.minute === clocks.end.minute) return false
   const start = new Date(entry.startedAt)
   if (isDuringNight(start, nightRange)) return true
   const end = sleepEnd(entry, now)
-  const [hour, minute] = nightRange.start.split(':').map(Number)
+  const { hour, minute } = clocks.start
   for (let day = startOfDay(start); day.getTime() < end.getTime(); day = addDays(day, 1)) {
     const { year, month, day: date } = zonedParts(day)
     const nightStart = zonedTime(year, month, date, hour, minute)
@@ -344,7 +361,10 @@ function sleepWakeDayKey(entry: SleepEntry, now: Date, frame: DayFrame): string 
   return frame.keyOf(entry.endedAt ? new Date(entry.endedAt) : new Date(now.getTime() - 1))
 }
 
-/** The longest completed sleep of each day of `dayKeys`, on the day the baby woke up. */
+/**
+ * The longest completed sleep of each day of `dayKeys`, on the day the baby woke up (a
+ * running sleep is left out: it is not over, so not yet a "longest sleep").
+ */
 function longestSleeps(
   dayKeys: string[],
   entries: SleepEntry[],
@@ -353,31 +373,45 @@ function longestSleeps(
   const inPeriod = new Set(dayKeys)
   const longest = new Map<string, SleepEntry>()
   for (const entry of completedSleeps(entries)) {
-    const key = sleepWakeDayKey(entry, new Date(entry.endedAt), frame)
+    const wokeUp = new Date(entry.endedAt)
+    const key = sleepWakeDayKey(entry, wokeUp, frame)
     if (!inPeriod.has(key)) continue
     const current = longest.get(key)
-    if (!current || (current.durationSeconds ?? 0) < entry.durationSeconds) longest.set(key, entry)
+    if (!current || sleepSeconds(current, wokeUp) < sleepSeconds(entry, wokeUp)) longest.set(key, entry)
   }
   return longest
+}
+
+/** `isNightSleep` at `now`, worked out once per sleep (it is asked for every piece of it). */
+function nightSleepTest(nightRange: NighttimeHours, now: Date): (entry: SleepEntry) => boolean {
+  const known = new Map<string, boolean>()
+  return (entry) => {
+    let night = known.get(entry.id)
+    if (night === undefined) {
+      night = isNightSleep(entry, nightRange, now)
+      known.set(entry.id, night)
+    }
+    return night
+  }
 }
 
 /**
  * Whether a piece of sleep is part of the metric: the Calendar view draws it in full colour,
  * the rest of the baby's sleep faded.
  */
-export function sleepSegmentInMetric(
+function sleepSegmentInMetric(
   id: TrendMetricId,
   segment: SleepSegment,
-  nightRange: NighttimeHours = DEFAULT_NIGHTTIME_HOURS,
-  longestIds: Set<string> = new Set(),
+  isNight: (entry: SleepEntry) => boolean,
+  longestIds: Set<string>,
 ): boolean {
   switch (id) {
     case 'sleepDay':
     case 'napCount':
     case 'napLength':
-      return !isNightSleep(segment.entry, nightRange)
+      return !isNight(segment.entry)
     case 'sleepNight':
-      return isNightSleep(segment.entry, nightRange)
+      return isNight(segment.entry)
     case 'sleepLongest':
       return longestIds.has(segment.entry.id)
     default:
@@ -395,9 +429,11 @@ function sleepMetricDayKey(id: TrendMetricId, entry: SleepEntry, now: Date, fram
 }
 
 /**
- * Every piece of the period's sleep, flagged as part of the metric or not. With `focusDayKey`
- * (a selected day), only the sleeps the metric counts on that day are: for Longest Sleep, that
- * day's longest, whole (the evening before included).
+ * Every piece of the period's sleep, flagged as part of the metric or not: only the sleeps the
+ * metric counts on one of the period's days are (a night ending the morning after the period
+ * is not, even its evening piece inside it). With `focusDayKey` (a selected day), only the
+ * sleeps the metric counts on that day are: for Longest Sleep, that day's longest, whole (the
+ * evening before included).
  */
 export function metricSleepSegments(
   id: TrendMetricId,
@@ -415,21 +451,31 @@ export function metricSleepSegments(
       .filter((entry): entry is SleepEntry => entry != null)
       .map((entry) => entry.id),
   )
-  const onFocusDay = (entry: SleepEntry) => !focusDayKey || sleepMetricDayKey(id, entry, now, frame) === focusDayKey
+  const isNight = nightSleepTest(nightRange, now)
+  const counted = (entry: SleepEntry) => {
+    const key = sleepMetricDayKey(id, entry, now, frame)
+    return focusDayKey ? key === focusDayKey : inPeriod.has(key)
+  }
   return sleepSegments(entries, nightRange, now, frame)
     .filter((segment) => inPeriod.has(segment.dayKey))
     .map((segment) => ({
       ...segment,
-      inMetric: sleepSegmentInMetric(id, segment, nightRange, longestIds) && onFocusDay(segment.entry),
+      inMetric: sleepSegmentInMetric(id, segment, isNight, longestIds) && counted(segment.entry),
     }))
 }
 
 /**
- * Range to load for a period of calendar days: from the day before, so a night that ends on
- * the period's first morning (sleeps count on the day they end) is loaded.
+ * Range to load for a period: from the day before, so a night that ends on the period's first
+ * morning (sleeps count on the day they end) is loaded, widened to whole calendar days. A
+ * rolling period (ending at the current time) then loads the same range all day long, and
+ * the metrics keep only what falls in its days.
  */
 export function trendFetchRange(range: DateRange): DateRange {
-  return { start: addDays(range.start, -1), end: range.end }
+  const endDay = startOfDay(range.end)
+  return {
+    start: startOfDay(addDays(range.start, -1)),
+    end: endDay.getTime() === range.end.getTime() ? range.end : addDays(endDay, 1),
+  }
 }
 
 /**
@@ -445,6 +491,7 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
   frame: DayFrame = CALENDAR_DAYS,
 ): T {
   const isNight = (date: string) => startsDuringNight(date, nightRange)
+  const isNightEntry = nightSleepTest(nightRange, now)
   switch (id) {
     case 'sleepDay':
     case 'sleepNight': {
@@ -453,14 +500,14 @@ export function filterMetricEntries<T extends Partial<TrendEntriesBundle>>(
         ...entries,
         sleep: entries.sleep?.filter(
           (entry) =>
-            (id === 'sleepNight') === isNightSleep(entry, nightRange, now) &&
+            (id === 'sleepNight') === isNightEntry(entry) &&
             (!inPeriod || inPeriod.has(sleepWakeDayKey(entry, now, frame))),
         ),
       }
     }
     case 'napCount':
     case 'napLength':
-      return { ...entries, sleep: entries.sleep?.filter((entry) => !isNightSleep(entry, nightRange, now)) }
+      return { ...entries, sleep: entries.sleep?.filter((entry) => !isNightEntry(entry)) }
     case 'sleepLongest': {
       if (!dayKeys) return entries
       const kept = new Set(
@@ -488,22 +535,25 @@ function addSample(samples: Samples, key: string, value: number) {
   samples.get(key)?.push(value)
 }
 
-/** Gaps between consecutive events, each counted on the day of the event that ends it. */
+/**
+ * Gaps between consecutive events, each counted on the day of the event that ends it. A gap
+ * runs from the latest end so far, so an event inside another (a duplicate sleep) adds none.
+ */
 function gapSamples(dayKeys: string[], keyOf: DayKeyOf, events: { start: string; end: string }[]): Samples {
   const samples = emptySamples(dayKeys)
   const sorted = [...events].sort((a, b) => a.start.localeCompare(b.start))
+  if (sorted.length === 0) return samples
+  let lastEnd = new Date(sorted[0].end).getTime()
   for (let index = 1; index < sorted.length; index += 1) {
-    const gap = (new Date(sorted[index].start).getTime() - new Date(sorted[index - 1].end).getTime()) / 1000
+    const gap = (new Date(sorted[index].start).getTime() - lastEnd) / 1000
     if (gap > 0) addSample(samples, keyOf(sorted[index].start), gap)
+    lastEnd = Math.max(lastEnd, new Date(sorted[index].end).getTime())
   }
   return samples
 }
 
 function completedSleeps(entries: SleepEntry[]) {
-  return entries.filter(
-    (entry): entry is SleepEntry & { endedAt: string; durationSeconds: number } =>
-      entry.endedAt != null && entry.durationSeconds != null,
-  )
+  return entries.filter((entry): entry is SleepEntry & { endedAt: string } => entry.endedAt != null)
 }
 
 /** Every value that makes up the metric, grouped by the day it counts on. */
@@ -518,9 +568,9 @@ function metricSamples(
   const samples = emptySamples(dayKeys)
   const keyOf = metricDayKeyOf(frame)
   const isNight = (date: string) => startsDuringNight(date, nightRange)
-  const bottlesWithVolume = entries.feeding.filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
-  const sleeps = completedSleeps(entries.sleep)
-  const naps = sleeps.filter((entry) => !isNightSleep(entry, nightRange, now))
+  const isNightEntry = nightSleepTest(nightRange, now)
+  // Naps include a running one: it is a nap already, and its length so far counts.
+  const naps = () => entries.sleep.filter((entry) => !isNightEntry(entry))
 
   switch (id) {
     case 'feedSessions':
@@ -528,7 +578,9 @@ function metricSamples(
       return samples
     case 'feedVolume':
     case 'feedAvgVolume':
-      for (const entry of bottlesWithVolume) addSample(samples, keyOf(entry.occurredAt), entry.volumeMl ?? 0)
+      for (const entry of entries.feeding) {
+        if (entry.type === 'bottle' && entry.volumeMl != null) addSample(samples, keyOf(entry.occurredAt), entry.volumeMl)
+      }
       return samples
     case 'feedInterval':
       return gapSamples(
@@ -550,28 +602,29 @@ function metricSamples(
     case 'sleepNight':
       // Each sleep whole, on the day the baby woke up; a night if it touches the nighttime hours.
       for (const entry of entries.sleep) {
-        if (id === 'sleepDay' && isNightSleep(entry, nightRange, now)) continue
-        if (id === 'sleepNight' && !isNightSleep(entry, nightRange, now)) continue
-        const seconds = (sleepEnd(entry, now).getTime() - new Date(entry.startedAt).getTime()) / 1000
+        if (id === 'sleepDay' && isNightEntry(entry)) continue
+        if (id === 'sleepNight' && !isNightEntry(entry)) continue
+        const seconds = sleepSeconds(entry, now)
         if (seconds > 0) addSample(samples, sleepWakeDayKey(entry, now, frame), seconds)
       }
       return samples
     case 'sleepLongest':
       for (const [key, entry] of longestSleeps(dayKeys, entries.sleep, frame)) {
-        addSample(samples, key, entry.durationSeconds ?? 0)
+        addSample(samples, key, sleepSeconds(entry, now))
       }
       return samples
     case 'napCount':
-      for (const entry of naps) addSample(samples, keyOf(entry.startedAt), 1)
+      for (const entry of naps()) addSample(samples, keyOf(entry.startedAt), 1)
       return samples
     case 'napLength':
-      for (const entry of naps) addSample(samples, keyOf(entry.startedAt), entry.durationSeconds)
+      for (const entry of naps()) addSample(samples, keyOf(entry.startedAt), sleepSeconds(entry, now))
       return samples
     case 'wakeWindow':
+      // A running sleep ends the wake window before it (the one after it has not started yet).
       return gapSamples(
         dayKeys,
         keyOf,
-        sleeps.map((entry) => ({ start: entry.startedAt, end: entry.endedAt })),
+        entries.sleep.map((entry) => ({ start: entry.startedAt, end: sleepEnd(entry, now).toISOString() })),
       )
   }
 }
@@ -700,12 +753,19 @@ export function formatMetricValue(id: TrendMetricId, value: number): string {
   }
 }
 
+/** A count metric's unit word, singular for exactly one ("1 diaper", "3 diapers"). */
+function unitWordFor(metric: TrendMetricMeta | undefined, shown: string): string | undefined {
+  if (!metric?.unitWord) return undefined
+  return shown === '1' ? metric.unitWord.replace(/s$/, '') : metric.unitWord
+}
+
 /** Row subtitle / detail headline for the period, e.g. "3.5 sessions per day", "464 mL per day", "132 mL average". */
 export function formatMetricHeadline(id: TrendMetricId, value: number): string {
   const metric = getTrendMetric(id)
   if (metric?.reducer === 'mean') return `${formatMetricValue(id, value)} average`
   if (metric?.reducer === 'max') return `${formatMetricValue(id, value)} longest`
-  return [formatMetricValue(id, value), metric?.unitWord, 'per day'].filter(Boolean).join(' ')
+  const shown = formatMetricValue(id, value)
+  return [shown, unitWordFor(metric, shown), 'per day'].filter(Boolean).join(' ')
 }
 
 /** Headline for a single selected day (no "per day": it is that day's own value), e.g. "5 sessions" or "620 mL total". */
@@ -713,8 +773,19 @@ export function formatMetricDayHeadline(id: TrendMetricId, value: number): strin
   const metric = getTrendMetric(id)
   if (id === 'sleepLongest') return `${formatMetricValue(id, value)} longest`
   if (metric?.reducer === 'mean') return `${formatMetricValue(id, value)} average`
-  if (metric?.valueType === 'count') return `${Math.round(value)} ${metric.unitWord}`
+  if (metric?.valueType === 'count') {
+    const shown = String(Math.round(value))
+    return `${shown} ${unitWordFor(metric, shown)}`
+  }
   return `${formatMetricValue(id, value)} total`
+}
+
+/**
+ * The change shown for a metric: flat when it rounds to nothing at the metric's precision
+ * (no "↑ 0 mL" for a 0.3 mL difference).
+ */
+export function displayDelta(id: TrendMetricId, delta: Delta): Delta {
+  return formatMetricValue(id, Math.abs(delta.value)) === formatMetricValue(id, 0) ? { ...delta, direction: 'flat' } : delta
 }
 
 /** Seconds per y axis unit of a duration graph: hours, or minutes for short durations. */
@@ -722,10 +793,13 @@ function durationAxisUnit(max: number): number {
   return max >= 2 * 3600 ? 3600 : 60
 }
 
-/** Short tick label for the Graph view's y axis. */
-export function formatMetricAxisValue(id: TrendMetricId, value: number): string {
+/**
+ * Short tick label for the Graph view's y axis. Durations use one unit for the whole axis, the
+ * one `computeAxisTicks` steps in for the same `axisMax`: "20m 40m 60m 80m", never "1h" among minutes.
+ */
+export function formatMetricAxisValue(id: TrendMetricId, value: number, axisMax: number): string {
   if (getTrendMetric(id)?.valueType !== 'duration' || value === 0) return String(Math.round(value))
-  return value % 3600 === 0 ? `${value / 3600}h` : `${Math.round(value / 60)}m`
+  return durationAxisUnit(axisMax) === 3600 ? `${Math.round((value / 3600) * 10) / 10}h` : `${Math.round(value / 60)}m`
 }
 
 /** Evenly spaced y axis ticks (whole units: counts, mL, hours or minutes) from 0 up to a round maximum covering `max`. */

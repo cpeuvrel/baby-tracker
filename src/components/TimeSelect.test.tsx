@@ -65,4 +65,44 @@ describe('TimeSelect', () => {
     expect(onChange).toHaveBeenLastCalledWith('07:07')
     expect(screen.getByLabelText('Start minute')).toHaveValue('07')
   })
+
+  it('keeps only the last two digits when the cursor sits after the value', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Harness initial="07:05" onChange={onChange} />)
+
+    const hour = screen.getByLabelText('Start hour')
+    await user.click(hour)
+    await user.keyboard('{End}1')
+
+    // "071" -> "71": out of range, nothing committed, the draft keeps what was typed.
+    expect(onChange).not.toHaveBeenCalled()
+    expect(hour).toHaveValue('71')
+
+    await user.keyboard('9')
+
+    expect(onChange).toHaveBeenLastCalledWith('19:05')
+    expect(screen.getByLabelText('Start minute')).toHaveFocus()
+    expect(hour).toHaveValue('19')
+  })
+
+  it('accepts a new entry after leaving the field with an invalid draft', async () => {
+    const onChange = vi.fn()
+    const user = userEvent.setup()
+    render(<Harness initial="07:05" onChange={onChange} />)
+
+    const minute = screen.getByLabelText('Start minute')
+    await user.click(minute)
+    await user.keyboard('65')
+    await user.tab()
+    // The "6" was committed as "06"; the out-of-range "65" was ignored.
+    expect(minute).toHaveValue('06')
+    expect(onChange).toHaveBeenLastCalledWith('07:06')
+
+    await user.click(minute)
+    await user.keyboard('30')
+
+    expect(onChange).toHaveBeenLastCalledWith('07:30')
+    expect(minute).toHaveValue('30')
+  })
 })

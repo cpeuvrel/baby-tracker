@@ -1,16 +1,24 @@
 import { useMemo } from 'react'
+import { useNow } from '../hooks/useNow'
 import { formatDate } from '../lib/appTime'
 import { CALENDAR_DAYS, dayKey, parseDayKey, type DayFrame } from '../lib/timeline'
 import { markForInstant, nightFractions, splitIntervalByDay, type DayBlock, type DayMark } from '../lib/weekTimeline'
 import type { NighttimeHours } from '../types/models'
 import { TimelineGrid } from './TimelineGrid'
 
-/** Hour labels down the side, every 3 hours from the start of the frame's days (00 for calendar days). */
+/**
+ * Time labels down the side, every 3 hours from the start of the frame's days: hours ("00",
+ * "03"…) when the days start on the hour, else the exact times of the grid lines ("14:37",
+ * "17:37"…, a rolling window ending at 14:37).
+ */
 function axisLabels(startSeconds: number): string[] {
-  const startHour = Math.floor(startSeconds / 3600)
+  const startMinutes = Math.floor(startSeconds / 60)
+  const onTheHour = startMinutes % 60 === 0
   return Array.from({ length: 9 }, (_, index) => {
-    const hour = startHour + index * 3
-    return String(startSeconds === 0 && index === 8 ? 24 : hour % 24).padStart(2, '0')
+    if (startSeconds === 0 && index === 8) return '24'
+    const minutes = (startMinutes + index * 180) % 1440
+    const hour = String(Math.floor(minutes / 60)).padStart(2, '0')
+    return onTheHour ? hour : `${hour}:${String(minutes % 60).padStart(2, '0')}`
   })
 }
 
@@ -67,13 +75,15 @@ export function MetricCalendar({
   blocks = [],
   marks = [],
   nightRange,
-  now = new Date(),
+  now: nowProp,
   frame = CALENDAR_DAYS,
   selectedKey,
   onSelectDay,
   onPrevious,
   onNext,
 }: MetricCalendarProps) {
+  const clock = useNow()
+  const now = nowProp ?? clock
   const blocksByDay = useMemo(
     () =>
       groupByDay<DayBlock & { faded: boolean }>(
@@ -97,7 +107,7 @@ export function MetricCalendar({
   const toggleDay = (key: string) => onSelectDay(key === selectedKey ? null : key)
 
   return (
-    <div className="metric-calendar" aria-label="Metric calendar">
+    <section className="metric-calendar" aria-label="Metric calendar">
       <TimelineGrid
         dayKeys={dayKeys}
         visibleDays={dayKeys.length}
@@ -141,6 +151,6 @@ export function MetricCalendar({
           </>
         )}
       />
-    </div>
+    </section>
   )
 }

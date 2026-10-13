@@ -1,9 +1,25 @@
-import { addDoc, deleteDoc, onSnapshot, Timestamp, updateDoc } from 'firebase/firestore'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  addDoc,
+  arrayUnion,
+  deleteDoc,
+  type FieldValue,
+  onSnapshot,
+  orderBy,
+  query,
+  runTransaction,
+  Timestamp,
+  updateDoc,
+} from 'firebase/firestore'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { pediatricianVisitsCollection } from '../lib/paths'
+import { expectQuery } from '../test/expectQuery'
 import { fakeSnapshot } from '../test/fakeSnapshot'
+import type { VisitRemark } from '../types/models'
 import {
   addPediatricianVisit,
   deletePediatricianVisit,
+  appendVisitItem,
+  mutateVisitItems,
   subscribeToPediatricianVisits,
   updatePediatricianVisit,
 } from './pediatricianVisits'
@@ -16,6 +32,7 @@ vi.mock('firebase/firestore', async (importActual) => {
     updateDoc: vi.fn(),
     deleteDoc: vi.fn(),
     onSnapshot: vi.fn(),
+    runTransaction: vi.fn(),
   }
 })
 
@@ -23,6 +40,7 @@ const addDocMock = vi.mocked(addDoc)
 const updateDocMock = vi.mocked(updateDoc)
 const deleteDocMock = vi.mocked(deleteDoc)
 const onSnapshotMock = vi.mocked(onSnapshot)
+const runTransactionMock = vi.mocked(runTransaction)
 
 describe('pediatricianVisits repository', () => {
   beforeEach(() => {
@@ -97,5 +115,111 @@ describe('pediatricianVisits repository', () => {
         createdAt: '2026-10-08T10:00:00.000Z',
       },
     ])
+  })
+})
+
+describe('pediatricianVisits queries and robustness', () => {
+  beforeEach(() => {
+    onSnapshotMock.mockReset().mockReturnValue(vi.fn())
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('subscribes to the visits, most recent appointment first', () => {
+    subscribeToPediatricianVisits('h1', 'b1', vi.fn())
+
+    expectQuery(
+      onSnapshotMock.mock.calls[0][0],
+      query(pediatricianVisitsCollection('h1', 'b1'), orderBy('date', 'desc')),
+    )
+  })
+
+  it('skips a malformed visit and falls back to the visit date for a missing createdAt', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const onChange = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, next: (snapshot: unknown) => void) => {
+      next(fakeSnapshot([{ id: 'broken', data: {} }, { id: 'v1', data: { date: '2026-10-08', createdBy: 'uid1' } }]))
+      return vi.fn()
+    }) as never)
+
+    subscribeToPediatricianVisits('h1', 'b1', onChange)
+
+    expect(onChange).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 'v1', vaccinated: false, createdAt: '2026-10-08T00:00:00.000Z' }),
+    ])
+  })
+
+  it('forwards listener errors to onError', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const onError = vi.fn()
+    onSnapshotMock.mockImplementation(((_query: unknown, _next: unknown, error: (e: Error) => void) => {
+      error(new Error('permission-denied'))
+      return vi.fn()
+    }) as never)
+
+    subscribeToPediatricianVisits('h1', 'b1', vi.fn(), onError)
+
+    expect(onError).toHaveBeenCalledWith(new Error('permission-denied'))
+  })
+})
+
+describe('appendVisitItem', () => {
+  it('adds the item with an array union on the visit document', async () => {
+    updateDocMock.mockReset().mockResolvedValue(undefined)
+
+    await appendVisitItem('h1', 'b1', 'v1', 'remarks', { id: 'r1', text: 'Good weight' })
+
+    const [ref, payload] = updateDocMock.mock.calls[0] as unknown as [{ path: string }, { remarks: FieldValue }]
+    expect(ref.path).toBe('households/h1/babies/b1/pediatricianVisits/v1')
+    expect(payload.remarks.isEqual(arrayUnion({ id: 'r1', text: 'Good weight' }))).toBe(true)
+  })
+})
+
+describe('mutateVisitItems', () => {
+  const fromOtherPhone: VisitRemark = { id: 'r-other', text: 'Added on the other phone' }
+  const mine: VisitRemark = { id: 'r-mine', text: 'Mine' }
+
+  function runWith(stored: Record<string, unknown> | null) {
+    const transaction = {
+      get: vi.fn().mockResolvedValue({ exists: () => stored !== null, data: () => stored }),
+      update: vi.fn(),
+    }
+    runTransactionMock.mockReset().mockImplementation(((_db: unknown, apply: (t: unknown) => Promise<unknown>) =>
+      apply(transaction)) as never)
+    return transaction
+  }
+
+  it('applies the change to the stored list, keeping an item this phone never saw', async () => {
+    const transaction = runWith({ remarks: [fromOtherPhone] })
+
+    await mutateVisitItems('h1', 'b1', 'v1', 'remarks', (items) => [...items, mine])
+
+    const [ref] = transaction.get.mock.calls[0] as [{ path: string }]
+    expect(ref.path).toBe('households/h1/babies/b1/pediatricianVisits/v1')
+    expect(transaction.update).toHaveBeenCalledWith(ref, { remarks: [fromOtherPhone, mine] })
+  })
+
+  it('starts from an empty list when the field is missing', async () => {
+    const transaction = runWith({ date: '2026-10-08' })
+
+    await mutateVisitItems('h1', 'b1', 'v1', 'discussions', (items) => [
+      ...items,
+      { id: 'd1', question: 'Q', answer: '' },
+    ])
+
+    expect(transaction.update).toHaveBeenCalledWith(expect.anything(), {
+      discussions: [{ id: 'd1', question: 'Q', answer: '' }],
+    })
+  })
+
+  it('fails when the visit was deleted meanwhile', async () => {
+    const transaction = runWith(null)
+
+    await expect(mutateVisitItems('h1', 'b1', 'v1', 'remarks', (items) => items)).rejects.toThrow(
+      'This visit no longer exists.',
+    )
+    expect(transaction.update).not.toHaveBeenCalled()
   })
 })

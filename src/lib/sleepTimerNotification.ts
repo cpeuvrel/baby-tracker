@@ -1,10 +1,27 @@
 import { formatDuration, secondsBetween } from './duration'
 
-/** One notification per device, replaced in place while the timer runs. */
+/** Prefix of the timer notifications' tags: one per baby, replaced in place while its timer runs. */
 export const SLEEP_TIMER_NOTIFICATION_TAG = 'sleep-timer'
+
+export function sleepTimerTag(babyId: string): string {
+  return `${SLEEP_TIMER_NOTIFICATION_TAG}-${babyId}`
+}
+
+/** Whether a notification is a sleep timer one (any baby, or the single tag of older versions). */
+export function isSleepTimerTag(tag: string): boolean {
+  return tag === SLEEP_TIMER_NOTIFICATION_TAG || tag.startsWith(`${SLEEP_TIMER_NOTIFICATION_TAG}-`)
+}
 
 /** Opens the Activity screen with the running sleep timer on top. */
 export const SLEEP_TIMER_URL = '/?timer=sleep'
+
+/** Query param naming the timer's child, selected on arrival. */
+export const SLEEP_TIMER_BABY_PARAM = 'baby'
+
+/** The timer of a given child (the notification's tap): selects that child first. */
+export function sleepTimerUrl(babyId: string): string {
+  return `${SLEEP_TIMER_URL}&${SLEEP_TIMER_BABY_PARAM}=${encodeURIComponent(babyId)}`
+}
 
 export function sleepTimerNotificationBody(babyName: string, startedAt: Date, now: Date): string {
   return `${babyName} — ${formatDuration(secondsBetween(startedAt, now))}`
@@ -17,44 +34,56 @@ export const SLEEP_TIMER_PUSH = 'sleep-timer'
 export const SLEEP_TIMER_STOP_PUSH = 'sleep-timer-stop'
 
 /** Shared by the app and the service worker (server pushes while the app is in the background). */
-export function sleepTimerNotificationOptions(babyName: string, startedAt: Date, now: Date): NotificationOptions {
+export function sleepTimerNotificationOptions(
+  babyId: string,
+  babyName: string,
+  startedAt: Date,
+  now: Date,
+): NotificationOptions {
   return {
     body: sleepTimerNotificationBody(babyName, startedAt, now),
     icon: '/icon-192.png',
     // Status bar glyph on Android: white on transparent, else it shows Chrome's.
     badge: '/badge-96.png',
-    tag: SLEEP_TIMER_NOTIFICATION_TAG,
+    tag: sleepTimerTag(babyId),
     silent: true,
     requireInteraction: true,
     timestamp: startedAt.getTime(),
-    data: { url: SLEEP_TIMER_URL },
+    data: { url: sleepTimerUrl(babyId) },
   } as NotificationOptions
+}
+
+/** Closes the timer notification of a baby, or every timer notification without `babyId`. */
+export async function closeSleepTimerNotifications(
+  registration: ServiceWorkerRegistration,
+  babyId?: string,
+): Promise<void> {
+  const notifications = await registration.getNotifications(babyId ? { tag: sleepTimerTag(babyId) } : undefined)
+  notifications
+    .filter((notification) => (babyId ? true : isSleepTimerTag(notification.tag)))
+    .forEach((notification) => notification.close())
 }
 
 function notificationsAllowed(): boolean {
   return typeof Notification !== 'undefined' && Notification.permission === 'granted' && 'serviceWorker' in navigator
 }
 
-/** Asks once, from the tap that starts the timer (browsers require a user gesture). */
-export async function requestSleepTimerNotificationPermission(): Promise<void> {
-  if (typeof Notification === 'undefined' || Notification.permission !== 'default') return
-  try {
-    await Notification.requestPermission()
-  } catch {
-    // Older Safari only has the callback form; the notification is a nicety.
-  }
-}
-
-/** Shows or silently refreshes the "Sleep Timer" notification. */
-export async function showSleepTimerNotification(babyName: string, startedAt: Date, now: Date): Promise<void> {
+/** Shows or silently refreshes the "Sleep Timer" notification of a baby. */
+export async function showSleepTimerNotification(
+  babyId: string,
+  babyName: string,
+  startedAt: Date,
+  now: Date,
+): Promise<void> {
   if (!notificationsAllowed()) return
   const registration = await navigator.serviceWorker.ready
-  await registration.showNotification(SLEEP_TIMER_TITLE, sleepTimerNotificationOptions(babyName, startedAt, now))
+  await registration.showNotification(
+    SLEEP_TIMER_TITLE,
+    sleepTimerNotificationOptions(babyId, babyName, startedAt, now),
+  )
 }
 
-export async function closeSleepTimerNotification(): Promise<void> {
+export async function closeSleepTimerNotification(babyId: string): Promise<void> {
   if (!notificationsAllowed()) return
-  const registration = await navigator.serviceWorker.ready
-  const notifications = await registration.getNotifications({ tag: SLEEP_TIMER_NOTIFICATION_TAG })
-  notifications.forEach((notification) => notification.close())
+  await closeSleepTimerNotifications(await navigator.serviceWorker.ready, babyId)
 }

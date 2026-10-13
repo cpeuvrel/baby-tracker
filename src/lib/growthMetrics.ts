@@ -18,14 +18,14 @@ export const GROWTH_METRIC_FIELD: Record<GrowthMetric, keyof GrowthEntry> = {
 export const GRAMS_PER_POUND = 453.592
 export const MM_PER_INCH = 25.4
 
-export function formatWeightG(valueG: number, unit: UnitSystem = 'metric'): string {
+function formatWeightG(valueG: number, unit: UnitSystem = 'metric'): string {
   if (unit === 'imperial') {
     return `${(valueG / GRAMS_PER_POUND).toFixed(2)} lb`
   }
   return `${(valueG / 1000).toFixed(2)} kg`
 }
 
-export function formatLengthMm(valueMm: number, unit: UnitSystem = 'metric'): string {
+function formatLengthMm(valueMm: number, unit: UnitSystem = 'metric'): string {
   if (unit === 'imperial') {
     return `${(valueMm / MM_PER_INCH).toFixed(1)} in`
   }

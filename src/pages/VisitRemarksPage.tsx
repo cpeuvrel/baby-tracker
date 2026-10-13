@@ -4,9 +4,9 @@ import { EmptyState } from '../components/EmptyState'
 import { NotebookIcon } from '../components/icons'
 import { VisitItemEditorModal } from '../components/VisitItemEditorModal'
 import { useCurrentVisit } from '../hooks/useCurrentVisit'
-import { newItemId } from '../lib/visitItems'
+import { editItem, newItemId, removeItem } from '../lib/visitItems'
 import { formatVisitDate } from '../lib/visitDate'
-import { updatePediatricianVisit } from '../repositories/pediatricianVisits'
+import { appendVisitItem, mutateVisitItems } from '../repositories/pediatricianVisits'
 import type { VisitRemark } from '../types/models'
 
 const FIELDS = [{ name: 'text', label: 'Remark' }]
@@ -19,7 +19,9 @@ export function VisitRemarksPage() {
   if (visit === null) return <Navigate to="/account/pediatrician" replace />
   if (!household || !baby || !visit) return null
 
-  const save = (remarks: VisitRemark[]) => updatePediatricianVisit(household.id, baby.id, visit.id, { remarks })
+  // Each change applies to the latest stored remarks: the other parent's changes stay.
+  const change = (mutate: (remarks: VisitRemark[]) => VisitRemark[]) =>
+    mutateVisitItems(household.id, baby.id, visit.id, 'remarks', mutate)
 
   return (
     <div>
@@ -57,17 +59,12 @@ export function VisitRemarksPage() {
           fields={FIELDS}
           initialValues={{ text: editing === 'new' ? '' : editing.text }}
           onSave={({ text }) =>
-            save(
-              editing === 'new'
-                ? [...visit.remarks, { id: newItemId(), text }]
-                : visit.remarks.map((remark) => (remark.id === editing.id ? { ...remark, text } : remark)),
-            )
-          }
-          onDelete={
             editing === 'new'
-              ? undefined
-              : () => save(visit.remarks.filter((remark) => remark.id !== editing.id))
+              ? // A plain array union: queued while offline, merged with the other phone's additions.
+                appendVisitItem(household.id, baby.id, visit.id, 'remarks', { id: newItemId(), text })
+              : change(editItem(editing.id, { text }))
           }
+          onDelete={editing === 'new' ? undefined : () => change(removeItem(editing.id))}
           onClose={() => setEditing(null)}
         />
       )}

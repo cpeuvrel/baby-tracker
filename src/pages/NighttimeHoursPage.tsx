@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
 import { updateNighttimeHours } from '../repositories/babies'
 import { TimeSelect } from '../components/TimeSelect'
@@ -13,14 +14,22 @@ export function NighttimeHoursPage() {
   const current = baby?.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
   const [start, setStart] = useState(current.start)
   const [end, setEnd] = useState(current.end)
+  const { run, pending, error } = useAsyncAction()
 
-  if (!household || !baby) return null
+  if (!household) return null
+  if (!baby) return <Navigate to="/account/family" replace />
 
   const backTo = `/account/family/${baby.id}`
+  // A night starting and ending at the same time would be no night at all.
+  const sameTime = start === end
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    void updateNighttimeHours(household.id, baby.id, { start, end }).then(() => navigate(backTo))
+    if (sameTime) return
+    void run(async () => {
+      await updateNighttimeHours(household.id, baby.id, { start, end })
+      navigate(backTo)
+    })
   }
 
   return (
@@ -30,7 +39,7 @@ export function NighttimeHoursPage() {
           ‹
         </button>
         <h2>Nighttime Hours</h2>
-        <button type="submit" className="modal-header-action">
+        <button type="submit" className="modal-header-action" disabled={sameTime || pending}>
           Save
         </button>
       </div>
@@ -43,6 +52,8 @@ export function NighttimeHoursPage() {
         <span className="field-label">To</span>
         <TimeSelect label="To" value={end} onChange={setEnd} />
       </div>
+      {sameTime && <p role="alert">From and To must be different times.</p>}
+      {error && <p role="alert">{error}</p>}
     </form>
   )
 }

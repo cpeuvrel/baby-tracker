@@ -1,13 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
 import { zonedTime } from '../lib/appTime'
+import { mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry, SleepEntry } from '../types/models'
 import { SummarySheet } from './SummarySheet'
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 const now = zonedTime(2026, 9, 25, 18, 3)
 
@@ -33,15 +32,8 @@ describe('SummarySheet', () => {
     vi.useFakeTimers({ toFake: ['Date'] })
     vi.setSystemTime(now)
     localStorage.clear()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
-    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+    mockHousehold({ babies: [baby], selectedBaby: baby })
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRangeState').mockReturnValue({
       feeding: [
         bottle(zonedTime(2026, 9, 24, 20, 30), 150),
         bottle(zonedTime(2026, 9, 25, 8, 15), 140),
@@ -54,11 +46,14 @@ describe('SummarySheet', () => {
       diaper: [],
       medication: [],
       bath: [],
+      loading: false,
+      error: null,
     })
   })
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   it("totals today's entries, with last night's sleep in full on the morning it ended", () => {
@@ -86,5 +81,38 @@ describe('SummarySheet', () => {
 
     expect(screen.getByText('Bottle Feed')).toBeInTheDocument()
     expect(screen.queryByText('Sleep')).not.toBeInTheDocument()
+  })
+
+  it('says Loading… rather than "Nothing logged yet." until the entries arrive', () => {
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRangeState').mockReturnValue({
+      feeding: [],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+      loading: true,
+      error: null,
+    })
+
+    render(<SummarySheet onClose={vi.fn()} />)
+
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByText('Nothing logged yet.')).not.toBeInTheDocument()
+  })
+
+  it('warns when live updates stopped', () => {
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRangeState').mockReturnValue({
+      feeding: [],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+      loading: false,
+      error: new Error('permission-denied'),
+    })
+
+    render(<SummarySheet onClose={vi.fn()} />)
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Live updates stopped')
   })
 })

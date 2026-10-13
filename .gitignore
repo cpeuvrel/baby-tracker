@@ -12,6 +12,12 @@ dist
 dist-ssr
 *.local
 
+# Env files: only the template and the committed live-mode flag are tracked
+.env
+.env.*
+!.env.example
+!.env.live
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

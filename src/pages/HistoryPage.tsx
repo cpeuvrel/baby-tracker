@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { DailyTimeline } from '../components/DailyTimeline'
 import { HistoryFiltersModal } from '../components/HistoryFiltersModal'
 import { GrowthIcon, ListViewIcon, SlidersIcon } from '../components/icons'
@@ -13,9 +14,27 @@ function formatDayTitle(date: Date): string {
 
 type HistoryView = 'graph' | 'data'
 
+/** What a link to History can ask for, e.g. the Activity cards' "Entries before 20:00": a day's list. */
+export interface HistoryLocationState {
+  view?: HistoryView
+  /** ISO instant in the day to show. */
+  date?: string
+}
+
+function readLocationState(state: unknown): { view: HistoryView; date: Date } {
+  const requested = (state ?? {}) as HistoryLocationState
+  const date = requested.date ? new Date(requested.date) : null
+  return {
+    view: requested.view === 'data' ? 'data' : 'graph',
+    date: date && !Number.isNaN(date.getTime()) ? date : new Date(),
+  }
+}
+
 export function HistoryPage() {
-  const [selectedDate, setSelectedDate] = useState(() => new Date())
-  const [view, setView] = useState<HistoryView>('graph')
+  const location = useLocation()
+  const [initial] = useState(() => readLocationState(location.state))
+  const [selectedDate, setSelectedDate] = useState(initial.date)
+  const [view, setView] = useState<HistoryView>(initial.view)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [visibleKinds, setVisibleKinds] = useState<Set<EntryKind>>(() => new Set(ALL_ENTRY_KINDS))
 

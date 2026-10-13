@@ -1,16 +1,18 @@
 import { useState, type ReactNode } from 'react'
 import { BlobIcon } from './BlobIcon'
-import { EntryRowItem, type CategoryCardEntryRow } from './EntryRowItem'
+import { EntryRowItem, type CategoryCardEntryRow as EntryRow } from './EntryRowItem'
 
-export type { CategoryCardEntryRow } from './EntryRowItem'
+/** A card row; `id` (the entry's, or a fixed one for a pinned row) keys it in its list. */
+export type CategoryCardEntryRow = EntryRow & { id: string }
 
 const EXPANDED_STORAGE_PREFIX = 'baby-tracker:expandedCard:'
 
+/** Cards open expanded; only an explicit Show Less (remembered per card) collapses them. */
 function readExpanded(title: string): boolean {
   try {
-    return localStorage.getItem(EXPANDED_STORAGE_PREFIX + title) === 'true'
+    return localStorage.getItem(EXPANDED_STORAGE_PREFIX + title) !== 'false'
   } catch {
-    return false
+    return true
   }
 }
 
@@ -34,6 +36,8 @@ interface CategoryCardProps {
   primary: { label: string; meta: string } | null
   onSelectPrimary?: () => void
   emptyLabel: string
+  /** The card's data has not arrived yet: "Loading…" in place of the empty label. */
+  loading?: boolean
   highlight?: { value: string; unit?: string }
   /** Always-visible rows (e.g. Growth's measurements, Routine's bath and vitamin). */
   pinnedRows?: CategoryCardEntryRow[]
@@ -57,6 +61,7 @@ export function CategoryCard({
   primary,
   onSelectPrimary,
   emptyLabel,
+  loading = false,
   highlight,
   pinnedRows = [],
   lines = [],
@@ -73,15 +78,15 @@ export function CategoryCard({
 
   const primaryText = (
     <span className="category-card-primary-text">
-      <span className="category-card-label">{primary ? primary.label : emptyLabel}</span>
+      <span className="category-card-label">{primary ? primary.label : loading ? 'Loading…' : emptyLabel}</span>
       {primary && <span className="category-card-meta">{primary.meta}</span>}
     </span>
   )
 
   const rowList = (rows: CategoryCardEntryRow[]) => (
     <ul className="category-card-rows">
-      {rows.map((row, index) => (
-        <EntryRowItem key={index} {...row} colorVar={colorVar} />
+      {rows.map(({ id, ...row }) => (
+        <EntryRowItem key={id} {...row} colorVar={colorVar} />
       ))}
     </ul>
   )

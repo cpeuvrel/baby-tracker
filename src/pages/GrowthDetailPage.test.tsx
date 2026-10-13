@@ -1,11 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { GrowthEntry } from '../types/models'
 import { GrowthDetailPage } from './GrowthDetailPage'
 
@@ -42,7 +40,6 @@ vi.mock('../components/charts/GrowthPercentileChart', () => ({
   ),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const babyGirl = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: 'female' as const }
 const babyNoSex = { id: 'b1', name: 'Léo', birthDate: '2026-03-01', sex: null }
 
@@ -82,23 +79,8 @@ function renderPage(metric = 'weight') {
 
 describe('GrowthDetailPage', () => {
   beforeEach(() => {
-    vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-      user: { uid: 'uid1' } as User,
-      loading: false,
-      error: null,
-      devLoginAvailable: false,
-      loginWithGoogle: vi.fn(),
-      loginWithPassword: vi.fn(),
-      logout: vi.fn(),
-    })
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [babyGirl],
-      loading: false,
-      error: null,
-      selectedBaby: babyGirl,
-      selectBaby: vi.fn(),
-    })
+    mockAuth()
+    mockHousehold({ babies: [babyGirl], selectedBaby: babyGirl })
     vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue(entries)
   })
 
@@ -132,10 +114,26 @@ describe('GrowthDetailPage', () => {
     })
   })
 
-  it('renders nothing for an unknown metric', () => {
-    const { container } = renderPage('not-a-metric')
+  it('goes back to the activity page for an unknown metric', () => {
+    renderPage('not-a-metric')
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Activity page')).toBeInTheDocument()
+  })
+
+  it('notes the measurements after 24 months that the chart leaves out', () => {
+    const later = (id: string, measuredAt: string): GrowthEntry => ({ ...entries[0], id, measuredAt, createdAt: measuredAt })
+    // Born 2026-03-01: 2028-09-01 is 30 months old.
+    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([
+      ...entries,
+      later('g3', '2028-09-01T09:00:00.000Z'),
+    ])
+    const { unmount } = renderPage('weight')
+    expect(screen.getByText('1 measurement after 24 months not shown (WHO range)')).toBeInTheDocument()
+    unmount()
+
+    vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue(entries)
+    renderPage('weight')
+    expect(screen.queryByText(/after 24 months not shown/)).not.toBeInTheDocument()
   })
 
   it('shows only the chart until a point is tapped', () => {
@@ -234,18 +232,19 @@ describe('GrowthDetailPage', () => {
     expect(screen.getByLabelText('Weight (kg)')).toHaveValue(6.48)
   })
 
-  it('prompts to set the sex in settings when unknown, and still allows the list view', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [babyNoSex],
-      loading: false,
-      error: null,
-      selectedBaby: babyNoSex,
-      selectBaby: vi.fn(),
-    })
+  it('prompts to set the sex on the child screen when unknown, and still allows the list view', async () => {
+    mockHousehold({ babies: [babyNoSex], selectedBaby: babyNoSex })
+    const user = userEvent.setup()
 
     renderPage('weight')
 
-    expect(screen.getByText(/Set the baby's sex in Settings/)).toBeInTheDocument()
+    expect(
+      screen.getByText("Set the baby's sex in Account › Family › Léo to see WHO percentile curves."),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Show list' }))
+    expect(screen.getByText('6.48 kg')).toBeInTheDocument()
+    // Without a sex, no percentile: no "Boys Percentile" either.
+    expect(screen.queryByText(/Percentile/)).not.toBeInTheDocument()
   })
 })

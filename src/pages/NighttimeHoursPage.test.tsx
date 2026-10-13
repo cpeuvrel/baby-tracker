@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { NighttimeHoursPage } from './NighttimeHoursPage'
+import { mockHousehold } from '../test/mockContexts'
 import { timeValue } from '../test/timeFields'
 
 const updateNighttimeHours = vi.fn()
@@ -12,7 +12,6 @@ vi.mock('../repositories/babies', () => ({
   updateNighttimeHours: (...args: unknown[]) => updateNighttimeHours(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
 const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null, nighttimeHours: null }
 
 function renderPage(babyId = 'b1') {
@@ -20,6 +19,8 @@ function renderPage(babyId = 'b1') {
     <MemoryRouter initialEntries={[`/account/family/${babyId}/nighttime-hours`]}>
       <Routes>
         <Route path="/account/family/:babyId/nighttime-hours" element={<NighttimeHoursPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
+        <Route path="/account/family/:babyId" element={<p>Child screen</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -28,20 +29,17 @@ function renderPage(babyId = 'b1') {
 describe('NighttimeHoursPage', () => {
   beforeEach(() => {
     updateNighttimeHours.mockReset()
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ babies: [baby], selectedBaby: baby })
   })
 
-  it('renders nothing when the baby cannot be found', () => {
-    const { container } = renderPage('unknown')
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
 
-    expect(container).toBeEmptyDOMElement()
+  it('redirects to the children list when the baby cannot be found', () => {
+    renderPage('unknown')
+
+    expect(screen.getByText('Children list')).toBeInTheDocument()
   })
 
   it('defaults to 20:00–08:00 when the baby has no setting yet', () => {
@@ -52,13 +50,9 @@ describe('NighttimeHoursPage', () => {
   })
 
   it('pre-fills with the baby\'s existing setting', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
+    mockHousehold({
       babies: [{ ...baby, nighttimeHours: { start: '21:00', end: '06:30' } }],
-      loading: false,
-      error: null,
       selectedBaby: baby,
-      selectBaby: vi.fn(),
     })
 
     renderPage()
@@ -77,5 +71,34 @@ describe('NighttimeHoursPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateNighttimeHours).toHaveBeenCalledWith('h1', 'b1', { start: '21:30', end: '08:00' })
+    expect(await screen.findByText('Child screen')).toBeInTheDocument()
+  })
+
+  it('stays on the screen and says so when the range cannot be saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateNighttimeHours.mockRejectedValue(new Error('permission-denied'))
+    const user = userEvent.setup()
+    renderPage()
+
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save. Try again.')
+    expect(screen.queryByText('Child screen')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  })
+
+  it('refuses a night that starts and ends at the same time', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('To hour'), '20')
+    await user.type(screen.getByLabelText('To minute'), '00')
+
+    expect(timeValue('To')).toBe('20:00')
+    expect(screen.getByRole('alert')).toHaveTextContent('From and To must be different times.')
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(updateNighttimeHours).not.toHaveBeenCalled()
   })
 })

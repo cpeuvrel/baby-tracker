@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { TrendMetricIcon } from '../components/TrendMetricIcon'
 import { TrendRow } from '../components/TrendRow'
 import { useHousehold } from '../contexts/HouseholdContext'
@@ -8,6 +8,7 @@ import { dayKeysInRange, dayRange, lastNDaysRange, precedingRange } from '../lib
 import {
   computeMetricBreakdown,
   computeMetricSummary,
+  displayDelta,
   formatMetricHeadline,
   formatMetricValue,
   metricHeadlineDayKey,
@@ -26,7 +27,8 @@ const SECTIONS = Array.from(new Set(TREND_METRICS.map((metric) => metric.section
 export function TrendsPage() {
   const { household, selectedBaby } = useHousehold()
   const [days, setDays] = useState(7)
-  const now = useMemo(() => new Date(), [])
+  // Fixed while the page is open: a moving range would re-subscribe to the entries on every tick.
+  const [now] = useState(() => new Date())
   const currentRange = days === 1 ? dayRange(now) : lastNDaysRange(now, days)
   const previousRange = precedingRange(currentRange)
 
@@ -72,20 +74,20 @@ export function TrendsPage() {
           {TREND_METRICS.filter((metric) => metric.section === section).map((metric) => {
             const currentValue = computeMetricSummary(metric.id, currentDayKeys, current, nightRange, now)
             const previousValue = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange, now)
-            const delta = computeDelta(currentValue, previousValue)
+            const delta = displayDelta(metric.id, computeDelta(currentValue, previousValue))
             const deltaLabel = formatMetricValue(metric.id, Math.abs(delta.value))
-            const shownDelta = deltaLabel === formatMetricValue(metric.id, 0) ? { ...delta, direction: 'flat' as const } : delta
-            // A headline from one day (the longest sleep) opens the calendar on that day.
+            // The detail opens on the same period; a headline from one day (the longest sleep)
+            // opens its calendar on that day.
             const headlineDay = metricHeadlineDayKey(metric.id, currentDayKeys, current, nightRange, now)
 
             return (
               <TrendRow
                 key={metric.id}
-                to={headlineDay ? `/trends/${metric.id}?day=${headlineDay}` : `/trends/${metric.id}`}
+                to={`/trends/${metric.id}?days=${days}${headlineDay ? `&day=${headlineDay}` : ''}`}
                 icon={<TrendMetricIcon id={metric.id} colorVar={metric.colorVar} />}
                 title={metric.title}
                 subtitle={formatMetricHeadline(metric.id, currentValue)}
-                delta={shownDelta}
+                delta={delta}
                 deltaLabel={deltaLabel}
                 colorVar={metric.colorVar}
                 breakdown={computeMetricBreakdown(metric.id, currentDayKeys, current, now).map((item) => ({

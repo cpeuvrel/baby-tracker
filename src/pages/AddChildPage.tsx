@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useHousehold } from '../contexts/HouseholdContext'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { addBaby } from '../repositories/babies'
 import type { BabySex } from '../types/models'
 
@@ -10,13 +11,17 @@ export function AddChildPage() {
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [sex, setSex] = useState<BabySex | null>(null)
+  const { run, pending, error } = useAsyncAction('Could not add the child. Try again.')
 
   if (!household) return null
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (name.trim() === '' || birthDate.trim() === '' || sex === null) return
-    void addBaby(household.id, name.trim(), birthDate, sex).then(() => navigate('/account/family'))
+    void run(async () => {
+      await addBaby(household.id, name.trim(), birthDate, sex)
+      navigate('/account/family')
+    })
   }
 
   return (
@@ -26,10 +31,11 @@ export function AddChildPage() {
           ‹
         </button>
         <h2>Add Child</h2>
-        <button type="submit" className="modal-header-action">
+        <button type="submit" className="modal-header-action" disabled={pending}>
           Save
         </button>
       </div>
+      {error && <p role="alert">{error}</p>}
 
       <div>
         <label htmlFor="add-child-name">First Name</label>

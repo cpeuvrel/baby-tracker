@@ -10,6 +10,11 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
+    // Each test starts from a clean slate: vi.spyOn spies, stubbed globals and stubbed env
+    // vars are restored automatically (module-level vi.fn() mocks are left untouched).
+    restoreMocks: true,
+    unstubGlobals: true,
+    unstubEnvs: true,
     setupFiles: ['./src/test/setup.ts'],
     // Dummy Firebase config: tests mock Firestore / Auth and never reach a real project.
     env: {
@@ -22,10 +27,10 @@ export default defineConfig({
       VITE_USE_FIREBASE_EMULATORS: 'true',
       VITE_FCM_VAPID_KEY: 'test-vapid-key',
     },
-    include: ['src/**/*.test.{ts,tsx}'],
+    include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.mjs'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text-summary', 'html', 'json-summary'],
       include: ['src/**'],
       exclude: ['src/main.tsx', 'src/vite-env.d.ts', 'src/sw.ts', 'src/test/**'],
       thresholds: {

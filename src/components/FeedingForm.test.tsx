@@ -1,9 +1,7 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry } from '../types/models'
 import { FeedingForm } from './FeedingForm'
 
@@ -17,9 +15,6 @@ vi.mock('../repositories/feedingEntries', () => ({
   deleteFeedingEntry: (...args: unknown[]) => deleteFeedingEntry(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
-
 const entry: FeedingEntry = {
   id: 'f1',
   type: 'bottle',
@@ -32,31 +27,20 @@ const entry: FeedingEntry = {
 }
 
 function renderFeedingForm(onClose = vi.fn(), feedingEntry?: FeedingEntry) {
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-    user: { uid: 'uid1' } as User,
-    loading: false,
-    error: null,
-    devLoginAvailable: false,
-    loginWithGoogle: vi.fn(),
-    loginWithPassword: vi.fn(),
-    logout: vi.fn(),
-  })
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
+  mockAuth()
+  mockHousehold()
   render(<FeedingForm entry={feedingEntry} onClose={onClose} />)
 }
 
 describe('FeedingForm', () => {
   beforeEach(() => {
-    logFeeding.mockReset()
-    updateFeedingEntry.mockReset()
-    deleteFeedingEntry.mockReset()
+    logFeeding.mockReset().mockResolvedValue(undefined)
+    updateFeedingEntry.mockReset().mockResolvedValue(undefined)
+    deleteFeedingEntry.mockReset().mockResolvedValue(undefined)
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('logs a bottle feeding with the entered volume, defaulting the time to now, then calls onClose', async () => {
@@ -126,5 +110,56 @@ describe('FeedingForm', () => {
 
     expect(deleteFeedingEntry).toHaveBeenCalledWith('h1', 'b1', 'f1')
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it.each(['-5', '0'])('refuses a volume of %s with a message under the field', async (volume) => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    renderFeedingForm(onClose)
+    await user.type(screen.getByLabelText('Volume (mL, optional)'), volume)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(logFeeding).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter a volume above 0')
+  })
+
+  it('refuses to save without a date', async () => {
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    renderFeedingForm(onClose)
+    fireEvent.change(screen.getByLabelText('Time'), { target: { value: '' } })
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(logFeeding).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Pick a date.')
+  })
+
+  it('tells the user when the save is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    logFeeding.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    renderFeedingForm()
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not save the feeding. Please try again.'))
+  })
+
+  it('tells the user when the delete is refused', async () => {
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    deleteFeedingEntry.mockRejectedValue(new Error('denied'))
+    const user = userEvent.setup()
+
+    renderFeedingForm(vi.fn(), entry)
+    await user.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await vi.waitFor(() => expect(alert).toHaveBeenCalledWith('Could not delete the feeding. Please try again.'))
   })
 })

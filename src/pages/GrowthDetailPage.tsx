@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
   GrowthPercentileChart,
   PROJECTION_ID,
@@ -9,22 +9,23 @@ import { GrowthForm } from '../components/GrowthForm'
 import { LineChartIcon, MenuIcon } from '../components/icons'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useNow } from '../hooks/useNow'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import { formatDate } from '../lib/appTime'
-import { ageInMonths, formatAge } from '../lib/age'
+import { ageInMonths, DAYS_PER_WHO_MONTH, formatAge } from '../lib/age'
 import {
   formatGrowthValue,
   GROWTH_METRIC_FIELD,
   GROWTH_METRIC_LABELS,
   type GrowthMetric,
 } from '../lib/growthMetrics'
-import { percentileForValue, projectOnSamePercentile } from '../lib/growthPercentiles'
+import { percentileForValue, projectOnSamePercentile, WHO_MAX_AGE_MONTHS } from '../lib/growthPercentiles'
 import type { GrowthEntry } from '../types/models'
 
 const METRICS: GrowthMetric[] = ['weight', 'height', 'headCircumference']
 
 /** Below about a week since the last measurement, a projection to today would sit on top of it. */
-const MIN_PROJECTION_GAP_MONTHS = 7 / 30
+const MIN_PROJECTION_GAP_MONTHS = 7 / DAYS_PER_WHO_MONTH
 
 type ViewMode = 'chart' | 'list'
 
@@ -52,8 +53,10 @@ export function GrowthDetailPage() {
   const [view, setView] = useState<ViewMode>('chart')
   const [selectedId, setSelectedId] = useState<string | undefined>()
   const [editingEntry, setEditingEntry] = useState<GrowthEntry | undefined>()
+  const now = useNow()
 
-  if (!household || !selectedBaby || !isGrowthMetric(metricParam)) return null
+  if (!isGrowthMetric(metricParam)) return <Navigate to="/" replace />
+  if (!household || !selectedBaby) return null
 
   const metric = metricParam
   const field = GROWTH_METRIC_FIELD[metric]
@@ -73,11 +76,12 @@ export function GrowthDetailPage() {
   const percentileOf = (point: GrowthPoint) =>
     sex ? percentileForValue(metric, sex, point.ageMonths, point.value) : undefined
   const selectedPercentile = selectedPoint ? percentileOf(selectedPoint) : undefined
-  const sexPercentileLabel = sex === 'female' ? 'Girls Percentile' : 'Boys Percentile'
+  // No percentile (nor a label claiming one) without the baby's sex.
+  const sexPercentileLabel = sex === 'female' ? 'Girls Percentile' : sex === 'male' ? 'Boys Percentile' : null
 
   // Where the child would be today if they stayed on the last measurement's percentile.
   const lastPoint = points[points.length - 1]
-  const todayAgeMonths = ageInMonths(selectedBaby.birthDate, new Date())
+  const todayAgeMonths = ageInMonths(selectedBaby.birthDate, now)
   const projectedValue =
     sex && lastPoint && todayAgeMonths - lastPoint.ageMonths >= MIN_PROJECTION_GAP_MONTHS
       ? projectOnSamePercentile(metric, sex, lastPoint, todayAgeMonths)
@@ -92,6 +96,8 @@ export function GrowthDetailPage() {
   }))
 
   const listEntries = [...points].reverse()
+  /** Measurements past the WHO range: in the list, but off the chart. */
+  const hiddenCount = points.filter((point) => point.ageMonths > WHO_MAX_AGE_MONTHS).length
 
   return (
     <div>
@@ -127,7 +133,7 @@ export function GrowthDetailPage() {
 
       {!sex && (
         <p className="detail-delta-caption">
-          Set the baby&apos;s sex in Settings to see WHO percentile curves.
+          Set the baby&apos;s sex in Account › Family › {selectedBaby.name} to see WHO percentile curves.
         </p>
       )}
 
@@ -142,6 +148,12 @@ export function GrowthDetailPage() {
             selectedId={isProjectionSelected ? PROJECTION_ID : selectedPoint?.id}
             onSelectPoint={setSelectedId}
           />
+          {hiddenCount > 0 && (
+            <p className="detail-delta-caption growth-chart-note">
+              {hiddenCount} {hiddenCount === 1 ? 'measurement' : 'measurements'} after {WHO_MAX_AGE_MONTHS} months
+              not shown (WHO range)
+            </p>
+          )}
           {isProjectionSelected && lastPoint && (
             <div className="growth-selection-card" role="region" aria-label="Projection">
               <div className="growth-selection-header">
@@ -219,24 +231,34 @@ export function GrowthDetailPage() {
                 <li key={point.id} className="growth-entry-item">
                   {dateLabel !== previousDateLabel && <p className="growth-entry-date">{dateLabel}</p>}
                   <button type="button" className="growth-entry-row" onClick={() => setEditingEntry(point.entry)}>
-                    <p className="growth-entry-line">
-                      {GROWTH_METRIC_LABELS[metric]}{' '}
-                      <strong>{formatGrowthValue(metric, point.value, unit)}</strong>
-                    </p>
-                    <p className="growth-entry-line growth-entry-line-chevron">
+                    {/* The chevron goes on the percentile line, or on the value line without one. */}
+                    <p className={`growth-entry-line${sexPercentileLabel ? '' : ' growth-entry-line-chevron'}`}>
                       <span>
-                        {sexPercentileLabel}
-                        {pointPercentile != null && (
-                          <>
-                            {' '}
-                            <strong>{Math.round(pointPercentile)}%</strong>
-                          </>
-                        )}
+                        {GROWTH_METRIC_LABELS[metric]}{' '}
+                        <strong>{formatGrowthValue(metric, point.value, unit)}</strong>
                       </span>
-                      <span className="list-row-chevron" aria-hidden="true">
-                        ›
-                      </span>
+                      {!sexPercentileLabel && (
+                        <span className="list-row-chevron" aria-hidden="true">
+                          ›
+                        </span>
+                      )}
                     </p>
+                    {sexPercentileLabel && (
+                      <p className="growth-entry-line growth-entry-line-chevron">
+                        <span>
+                          {sexPercentileLabel}
+                          {pointPercentile != null && (
+                            <>
+                              {' '}
+                              <strong>{Math.round(pointPercentile)}%</strong>
+                            </>
+                          )}
+                        </span>
+                        <span className="list-row-chevron" aria-hidden="true">
+                          ›
+                        </span>
+                      </p>
+                    )}
                     <p className="growth-entry-line">
                       Age <strong>{formatAge(selectedBaby.birthDate, new Date(point.entry.measuredAt))}</strong>
                     </p>

@@ -1,11 +1,38 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
+import { rollingDayFrame } from '../lib/timeline'
 import { MetricCalendar } from './MetricCalendar'
 
 const dayKeys = ['2026-03-03', '2026-03-04', '2026-03-05']
 
 describe('MetricCalendar', () => {
+  it('labels the hour axis from midnight for calendar days', () => {
+    const { container } = render(
+      <MetricCalendar dayKeys={dayKeys} colorVar="--category-sleep" selectedKey={null} onSelectDay={() => {}} />,
+    )
+
+    const labels = [...container.querySelectorAll('.timeline-grid-axis span')].map((label) => label.textContent)
+    expect(labels).toEqual(['00', '03', '06', '09', '12', '15', '18', '21', '24'])
+  })
+
+  it('labels the axis with the exact times of a rolling window\'s grid lines', () => {
+    const now = new Date('2026-03-05T14:37:00+01:00')
+    const { container } = render(
+      <MetricCalendar
+        dayKeys={dayKeys}
+        colorVar="--category-sleep"
+        selectedKey={null}
+        onSelectDay={() => {}}
+        now={now}
+        frame={rollingDayFrame(now)}
+      />,
+    )
+
+    const labels = [...container.querySelectorAll('.timeline-grid-axis span')].map((label) => label.textContent)
+    expect(labels).toEqual(['14:37', '17:37', '20:37', '23:37', '02:37', '05:37', '08:37', '11:37', '14:37'])
+  })
+
   it('renders one column per day key', () => {
     render(<MetricCalendar dayKeys={dayKeys} colorVar="--category-sleep" selectedKey={null} onSelectDay={() => {}} />)
 

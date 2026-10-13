@@ -1,4 +1,6 @@
-import { parseCsv, toCsv } from './csv'
+import { deleteDoc } from 'firebase/firestore'
+import { parseCsv, stripFormulaGuard, toCsv } from './csv'
+import { secondsBetween } from './duration'
 import { batchDeleteAll } from './firestoreBatch'
 import {
   bathEntriesCollection,
@@ -9,6 +11,7 @@ import {
   pediatricianVisitsCollection,
   remindersCollection,
   sleepEntriesCollection,
+  sleepTimerLockDoc,
 } from './paths'
 import { deleteBaby } from '../repositories/babies'
 import { getAllBathEntries, importBathEntries } from '../repositories/bathEntries'
@@ -70,17 +73,29 @@ export async function deleteAllBabyData(householdId: string, babyId: string): Pr
   return counts.reduce((sum, count) => sum + count, 0)
 }
 
+/** Deletes the sleep timer lock; firestore.rules allow it once the sleep it names is gone. */
+async function deleteSleepTimerLock(householdId: string, babyId: string): Promise<void> {
+  try {
+    await deleteDoc(sleepTimerLockDoc(householdId, babyId))
+  } catch (error) {
+    // FirebaseError resets its prototype: `instanceof FirestoreError` would not match.
+    if ((error as { code?: unknown } | null)?.code !== 'not-found') throw error
+  }
+}
+
 /**
- * Deletes a baby with everything stored under it (entries, reminders, pediatrician visits):
- * Firestore keeps subcollections of a deleted document, so they are emptied first.
+ * Deletes a baby with everything stored under it (entries, reminders, pediatrician visits, the
+ * sleep timer lock): Firestore keeps subcollections of a deleted document, so they are emptied
+ * first. Order matters: entries, then the lock (freed once its sleep is deleted), then the baby.
  */
 export async function deleteBabyWithData(householdId: string, babyId: string): Promise<void> {
   await deleteAllBabyData(householdId, babyId)
-  await Promise.all(
-    [remindersCollection, pediatricianVisitsCollection].map((collectionFor) =>
+  await Promise.all([
+    ...[remindersCollection, pediatricianVisitsCollection].map((collectionFor) =>
       batchDeleteAll(collectionFor(householdId, babyId)),
     ),
-  )
+    deleteSleepTimerLock(householdId, babyId),
+  ])
   await deleteBaby(householdId, babyId)
 }
 
@@ -173,91 +188,142 @@ export function serializeBabyExport(data: BabyExport): string {
   return toCsv(rows)
 }
 
-function num(value: string): number | null {
-  return value === '' ? null : Number(value)
+const FEEDING_TYPES: readonly FeedingType[] = ['bottle', 'solid']
+const DIAPER_TYPES: readonly DiaperType[] = ['wet', 'dirty', 'both', 'dry']
+
+/** Reads the cells of one data row of a native file; `line` is its row number in the file. */
+function nativeRowReader(row: string[], line: number) {
+  const fail = (reason: string): never => {
+    throw new Error(`Line ${line}: ${reason}.`)
+  }
+  const cell = (index: number) => stripFormulaGuard(row[index])
+  const date = (index: number): string => {
+    const value = cell(index)
+    if (Number.isNaN(Date.parse(value))) fail(`invalid ${NATIVE_HEADER[index]} "${value}"`)
+    return value
+  }
+  return {
+    fail,
+    text: cell,
+    date,
+    optionalDate: (index: number): string | null => (cell(index) === '' ? null : date(index)),
+    number: (index: number): number | null => {
+      const value = cell(index)
+      if (value === '') return null
+      const amount = Number(value)
+      if (!Number.isFinite(amount)) fail(`invalid ${NATIVE_HEADER[index]} "${value}"`)
+      return amount
+    },
+    oneOf: <T extends string>(index: number, allowed: readonly T[]): T => {
+      const value = cell(index)
+      if (!allowed.includes(value as T)) {
+        fail(`invalid ${NATIVE_HEADER[index]} "${value}" (expected ${allowed.join(', ')})`)
+      }
+      return value as T
+    },
+  }
 }
 
-function parseNativeRows(dataRows: string[][]): BabyExport {
+/**
+ * Validates and reads the data rows of a native file. A malformed row (edited in a spreadsheet)
+ * throws an error naming its line, before anything is written; a row of an unknown category is
+ * counted as skipped.
+ */
+/** A stopped sleep without a duration column gets its length from its bounds (LIB-13). */
+function sleepDurationOrNull(startedAt: string, endedAt: string | null): number | null {
+  return endedAt ? secondsBetween(new Date(startedAt), new Date(endedAt)) : null
+}
+
+function parseNativeRows(
+  dataRows: string[][],
+  currentUserUid: string,
+): { data: BabyExport; skipped: number } {
   const feedingEntries: FeedingEntry[] = []
   const sleepEntries: SleepEntry[] = []
   const diaperEntries: DiaperEntry[] = []
   const growthEntries: GrowthEntry[] = []
   const medicationEntries: MedicationEntry[] = []
   const bathEntries: BathEntry[] = []
+  let skipped = 0
   let nextId = 0
 
-  for (const row of dataRows) {
+  dataRows.forEach((row, index) => {
+    const line = index + 2 // the header is line 1
+    if (row.length !== NATIVE_HEADER.length) {
+      throw new Error(`Line ${line}: expected ${NATIVE_HEADER.length} columns, found ${row.length}.`)
+    }
+    const read = nativeRowReader(row, line)
     const id = `native-${nextId++}`
-    switch (row[CATEGORY]) {
-      case 'feeding':
+    const at = () => read.date(AT)
+    const common = (occurredAt: string) => ({
+      notes: read.text(NOTES),
+      createdBy: read.text(CREATED_BY) || currentUserUid,
+      createdAt: read.text(CREATED_AT) === '' ? occurredAt : read.date(CREATED_AT),
+    })
+
+    switch (read.text(CATEGORY)) {
+      case 'feeding': {
+        const occurredAt = at()
         feedingEntries.push({
           id,
-          type: row[SUBTYPE] as FeedingType,
-          occurredAt: row[AT],
-          volumeMl: num(row[VOLUME_ML]),
-          foodType: row[FOOD_TYPE] || null,
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
+          type: read.oneOf(SUBTYPE, FEEDING_TYPES),
+          occurredAt,
+          volumeMl: read.number(VOLUME_ML),
+          foodType: read.text(FOOD_TYPE) || null,
+          ...common(occurredAt),
         })
         break
-      case 'sleep':
+      }
+      case 'sleep': {
+        const startedAt = at()
+        const endedAt = read.optionalDate(END_AT)
         sleepEntries.push({
           id,
-          startedAt: row[AT],
-          endedAt: row[END_AT] || null,
-          durationSeconds: num(row[DURATION]),
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
+          startedAt,
+          endedAt,
+          durationSeconds: read.number(DURATION) ?? sleepDurationOrNull(startedAt, endedAt),
+          ...common(startedAt),
         })
         break
-      case 'diaper':
-        diaperEntries.push({
-          id,
-          type: row[SUBTYPE] as DiaperType,
-          occurredAt: row[AT],
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
-        })
+      }
+      case 'diaper': {
+        const occurredAt = at()
+        diaperEntries.push({ id, type: read.oneOf(SUBTYPE, DIAPER_TYPES), occurredAt, ...common(occurredAt) })
         break
-      case 'growth':
+      }
+      case 'growth': {
+        const measuredAt = at()
         growthEntries.push({
           id,
-          measuredAt: row[AT],
-          weightG: num(row[WEIGHT_G]),
-          heightMm: num(row[HEIGHT_MM]),
-          headCircumferenceMm: num(row[HEAD_MM]),
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
+          measuredAt,
+          weightG: read.number(WEIGHT_G),
+          heightMm: read.number(HEIGHT_MM),
+          headCircumferenceMm: read.number(HEAD_MM),
+          ...common(measuredAt),
         })
         break
-      case 'medication':
-        medicationEntries.push({
-          id,
-          name: row[MED_NAME],
-          givenAt: row[AT],
-          dose: row[DOSE],
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
-        })
+      }
+      case 'medication': {
+        const givenAt = at()
+        const name = read.text(MED_NAME)
+        if (name.trim() === '') read.fail('missing medicationName')
+        medicationEntries.push({ id, name, givenAt, dose: read.text(DOSE), ...common(givenAt) })
         break
-      case 'bath':
-        bathEntries.push({
-          id,
-          occurredAt: row[AT],
-          notes: row[NOTES],
-          createdBy: row[CREATED_BY],
-          createdAt: row[CREATED_AT],
-        })
+      }
+      case 'bath': {
+        const occurredAt = at()
+        bathEntries.push({ id, occurredAt, ...common(occurredAt) })
         break
+      }
+      default:
+        skipped += 1
     }
-  }
+  })
 
-  return { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries }
+  return {
+    data: { feedingEntries, sleepEntries, diaperEntries, growthEntries, medicationEntries, bathEntries },
+    skipped,
+  }
 }
 
 // --- Format Nara (export RGPD) ---
@@ -276,27 +342,37 @@ const NARA_MEAL_LABELS: Record<string, string> = {
   SNACK: 'Snack',
 }
 
-function epochToIso(value: string): string {
-  return new Date(Number(value)).toISOString()
+/** An epoch in milliseconds as ISO, or null when empty or not a number (`Number('')` is 1970). */
+function epochToIso(value: string | undefined): string | null {
+  if (value == null || value.trim() === '') return null
+  const epoch = Number(value)
+  return Number.isFinite(epoch) ? new Date(epoch).toISOString() : null
+}
+
+/** A number cell, or null when empty or unreadable (never NaN). */
+function naraNumber(value: string | undefined): number | null {
+  if (value == null || value.trim() === '') return null
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount : null
 }
 
 function naraVolumeToMl(value: string, unit: string): number | null {
-  if (value === '') return null
-  const amount = Number(value)
+  const amount = naraNumber(value)
+  if (amount == null) return null
   return Math.round(unit === 'OZ' ? amount * 29.5735 : amount)
 }
 
 function naraWeightToGrams(value: string, unit: string): number | null {
-  if (value === '') return null
-  const amount = Number(value)
+  const amount = naraNumber(value)
+  if (amount == null) return null
   if (unit === 'LB') return Math.round(amount * 453.592)
   if (unit === 'G') return Math.round(amount)
   return Math.round(amount * 1000)
 }
 
 function naraLengthToMm(value: string, unit: string): number | null {
-  if (value === '') return null
-  const amount = Number(value)
+  const amount = naraNumber(value)
+  if (amount == null) return null
   if (unit === 'IN') return Math.round(amount * 25.4)
   if (unit === 'MM') return Math.round(amount)
   return Math.round(amount * 10)
@@ -354,10 +430,16 @@ function parseNaraRows(
 
   for (const row of dataRows) {
     const note = row[NOTE] ?? ''
+    // A row without a readable start time cannot be placed: skipped rather than dated 1970.
+    const start = epochToIso(row[START_EPOCH])
+    if (start === null) {
+      skipped += 1
+      continue
+    }
 
     switch (row[TYPE]) {
       case 'Bottle Feed': {
-        const occurredAt = epochToIso(row[START_EPOCH])
+        const occurredAt = start
         const breastMl = naraVolumeToMl(row[BREAST_VOL], row[BREAST_UNIT]) ?? 0
         const formulaMl = naraVolumeToMl(row[FORMULA_VOL], row[FORMULA_UNIT]) ?? 0
         const combinedMl = breastMl + formulaMl
@@ -375,7 +457,7 @@ function parseNaraRows(
         break
       }
       case 'Solid Feed': {
-        const occurredAt = epochToIso(row[START_EPOCH])
+        const occurredAt = start
         const meal = row[SOLID_MEAL]
         feedingEntries.push({
           id: newId(),
@@ -390,12 +472,13 @@ function parseNaraRows(
         break
       }
       case 'Sleep': {
-        const startedAt = epochToIso(row[START_EPOCH])
+        const startedAt = start
+        const endedAt = epochToIso(row[SLEEP_END_EPOCH])
         sleepEntries.push({
           id: newId(),
           startedAt,
-          endedAt: row[SLEEP_END_EPOCH] ? epochToIso(row[SLEEP_END_EPOCH]) : null,
-          durationSeconds: row[SLEEP_DURATION] ? Number(row[SLEEP_DURATION]) : null,
+          endedAt,
+          durationSeconds: naraNumber(row[SLEEP_DURATION]) ?? sleepDurationOrNull(startedAt, endedAt),
           notes: note,
           createdBy: currentUserUid,
           createdAt: startedAt,
@@ -408,7 +491,7 @@ function parseNaraRows(
           skipped += 1
           break
         }
-        const occurredAt = epochToIso(row[START_EPOCH])
+        const occurredAt = start
         diaperEntries.push({
           id: newId(),
           type: diaperType,
@@ -420,7 +503,7 @@ function parseNaraRows(
         break
       }
       case 'Growth': {
-        const measuredAt = epochToIso(row[START_EPOCH])
+        const measuredAt = start
         growthEntries.push({
           id: newId(),
           measuredAt,
@@ -435,7 +518,7 @@ function parseNaraRows(
       }
       case 'Routine': {
         if (row[ROUTINE] === 'Vitamin/Probiotic') {
-          const givenAt = epochToIso(row[START_EPOCH])
+          const givenAt = start
           medicationEntries.push({
             id: newId(),
             name: row[ROUTINE],
@@ -446,7 +529,7 @@ function parseNaraRows(
             createdAt: givenAt,
           })
         } else if (row[ROUTINE] === 'Bath') {
-          const occurredAt = epochToIso(row[START_EPOCH])
+          const occurredAt = start
           bathEntries.push({ id: newId(), occurredAt, notes: note, createdBy: currentUserUid, createdAt: occurredAt })
         } else {
           skipped += 1
@@ -479,7 +562,7 @@ export function parseImportFile(
   const [header, ...dataRows] = rows
 
   if (headerEquals(header, NATIVE_HEADER)) {
-    return { data: parseNativeRows(dataRows), skipped: 0 }
+    return parseNativeRows(dataRows, currentUserUid)
   }
   if (header[0] === 'Type' && header.includes('_familyKey')) {
     return parseNaraRows(header, dataRows, currentUserUid)
@@ -517,15 +600,24 @@ function withoutDuplicates<T>(incoming: T[], existing: T[], keyOf: (entry: T) =>
 }
 
 export interface ImportResult {
+  /** Entries actually written. */
   imported: number
+  /** Entries matching one already logged in the app (or earlier in the file): ignored. */
   duplicates: number
+  /** Sleeps still running in the file (no end): ignored, a stale timer cannot be resumed. */
+  skippedRunning: number
 }
 
-/** Imports the entries into the baby, ignoring those that conflict with the app (see the keys above). */
+/**
+ * Imports the entries into the baby, ignoring those that conflict with the app (see the keys
+ * above). Every written entry is authored by `currentUid`, whatever the file says: firestore.rules
+ * only accept entries created by the signed-in user (an export may come from another account).
+ */
 export async function importBabyData(
   householdId: string,
   babyId: string,
   data: BabyExport,
+  currentUid: string,
 ): Promise<ImportResult> {
   const [feeding, sleep, diaper, growth, medication, bath] = await Promise.all([
     getAllFeedingEntries(householdId, babyId),
@@ -545,17 +637,24 @@ export async function importBabyData(
     bathEntries: withoutDuplicates(data.bathEntries, bath, bathKey),
   }
 
+  const freshSleeps = fresh.sleepEntries
+  fresh.sleepEntries = freshSleeps.filter((entry) => entry.endedAt != null)
+  const skippedRunning = freshSleeps.length - fresh.sleepEntries.length
+
+  const authored = <T extends { createdBy: string }>(entries: T[]): T[] =>
+    entries.map((entry) => ({ ...entry, createdBy: currentUid }))
+
   await Promise.all([
-    importFeedingEntries(householdId, babyId, fresh.feedingEntries),
-    importSleepEntries(householdId, babyId, fresh.sleepEntries),
-    importDiaperEntries(householdId, babyId, fresh.diaperEntries),
-    importGrowthEntries(householdId, babyId, fresh.growthEntries),
-    importMedicationEntries(householdId, babyId, fresh.medicationEntries),
-    importBathEntries(householdId, babyId, fresh.bathEntries),
+    importFeedingEntries(householdId, babyId, authored(fresh.feedingEntries)),
+    importSleepEntries(householdId, babyId, authored(fresh.sleepEntries)),
+    importDiaperEntries(householdId, babyId, authored(fresh.diaperEntries)),
+    importGrowthEntries(householdId, babyId, authored(fresh.growthEntries)),
+    importMedicationEntries(householdId, babyId, authored(fresh.medicationEntries)),
+    importBathEntries(householdId, babyId, authored(fresh.bathEntries)),
   ])
 
   const imported = countEntries(fresh)
-  return { imported, duplicates: countEntries(data) - imported }
+  return { imported, duplicates: countEntries(data) - imported - skippedRunning, skippedRunning }
 }
 
 export function countEntries(data: BabyExport): number {

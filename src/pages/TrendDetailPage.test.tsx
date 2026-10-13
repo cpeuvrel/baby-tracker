@@ -1,16 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { addDays, formatDate } from '../lib/appTime'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
+import { mockHousehold } from '../test/mockContexts'
 import type { FeedingEntry } from '../types/models'
 import { dayKey } from '../lib/timeline'
 import { TrendDetailPage } from './TrendDetailPage'
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 const now = new Date()
 
@@ -40,14 +37,7 @@ function renderPage(metricId = 'feedSessions', search = '') {
 
 describe('TrendDetailPage', () => {
   beforeEach(() => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
       feeding,
       sleep: [],
@@ -57,10 +47,51 @@ describe('TrendDetailPage', () => {
     })
   })
 
-  it('renders nothing for an unknown metric id', () => {
-    const { container } = renderPage('not-a-metric')
+  it('goes back to the trends list for an unknown metric id', () => {
+    renderPage('not-a-metric')
 
-    expect(container).toBeEmptyDOMElement()
+    expect(screen.getByText('Trends list')).toBeInTheDocument()
+  })
+
+  it('opens on the period of the link, 14 days without a valid one', () => {
+    const { unmount } = renderPage('feedSessions', '?days=7')
+    expect(screen.getByLabelText('Period')).toHaveValue('7')
+    unmount()
+
+    renderPage('feedSessions', '?days=3')
+    expect(screen.getByLabelText('Period')).toHaveValue('14')
+  })
+
+  it('shows no change when it rounds to nothing', () => {
+    const bottleAt = (id: string, at: Date, volumeMl: number): FeedingEntry => ({
+      ...feeding[0],
+      id,
+      occurredAt: at.toISOString(),
+      volumeMl,
+    })
+    const twoWeeksAgo = addDays(now, -14)
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding: [bottleAt('now', now, 120.3), bottleAt('before', twoWeeksAgo, 120)],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+    })
+    const { container, unmount } = renderPage('feedAvgVolume')
+    // 0.3 mL bigger: shown as "0 mL", so not shown at all.
+    expect(container.querySelector('.detail-delta')).toBeNull()
+    unmount()
+
+    vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
+      feeding: [bottleAt('now', now, 125), bottleAt('before', twoWeeksAgo, 120)],
+      sleep: [],
+      diaper: [],
+      medication: [],
+      bath: [],
+    })
+    renderPage('feedAvgVolume')
+    expect(screen.getByText('5 mL')).toBeInTheDocument()
+    expect(screen.getByText(/Bigger bottles than the previous 14 days/)).toBeInTheDocument()
   })
 
   it('shows the metric title and headline', () => {
@@ -83,10 +114,10 @@ describe('TrendDetailPage', () => {
     const user = userEvent.setup()
     renderPage('feedSessions')
 
-    expect(screen.getByLabelText('Metric calendar')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Metric calendar' })).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Graph' }))
-    expect(screen.getByLabelText('Metric graph')).toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Metric graph' })).toBeInTheDocument()
     expect(screen.getByText('AVG')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Entries' }))
@@ -278,5 +309,36 @@ describe('TrendDetailPage', () => {
     await user.click(screen.getByRole('button', { name: 'Calendar' }))
     await user.click(screen.getByRole('button', { name: 'Show calendar days' }))
     expect(screen.queryByText(/Rolling 24 h/)).toBeNull()
+  })
+
+  describe('in rolling mode', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('keeps the same entry listeners when switching views', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      const start = new Date('2026-03-05T12:00:00+01:00').getTime()
+      vi.setSystemTime(start)
+      const user = userEvent.setup()
+      renderPage('feedSessions')
+      await user.click(screen.getByRole('button', { name: 'Show rolling 24 hours' }))
+
+      const subscribed = () =>
+        new Set(
+          vi
+            .mocked(useEntriesInRangeModule.useEntriesInRange)
+            .mock.calls.map(([, , range]) => `${range.start.toISOString()} → ${range.end.toISOString()}`),
+        )
+      const before = subscribed()
+      // Each view change takes a new `now`, a few seconds later.
+      for (const [index, view] of ['Graph', 'Entries', 'Calendar'].entries()) {
+        vi.setSystemTime(start + (index + 1) * 7_000)
+        await user.click(screen.getByRole('button', { name: view }))
+      }
+
+      expect(subscribed()).toEqual(before)
+      expect(screen.getByText('Rolling 24 h, ending at 12:00')).toBeInTheDocument()
+    })
   })
 })

@@ -415,6 +415,21 @@ main {
   font-size: 13px;
 }
 
+/* Same banner, without role=status: its counter changes every second and must not be announced. */
+.active-timers-banner {
+  padding: 10px 16px;
+  background: var(--category-sleep);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.active-timers-banner button {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  padding: 4px 12px;
+  font-size: 13px;
+}
+
 /* Category cards (Activity screen) */
 .category-card {
   border-radius: 20px;

@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { addBaby } from '../repositories/babies'
-import { createHousehold } from '../repositories/households'
+import { createHouseholdWithBaby } from '../repositories/households'
 import type { BabySex } from '../types/models'
 
 export function CreateFamilyPage() {
@@ -10,6 +9,7 @@ export function CreateFamilyPage() {
   const [birthDate, setBirthDate] = useState('')
   const [sex, setSex] = useState<BabySex | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   if (!user) return null
 
@@ -17,8 +17,16 @@ export function CreateFamilyPage() {
     event.preventDefault()
     if (name.trim() === '' || birthDate.trim() === '' || sex === null) return
     setSubmitting(true)
-    const householdId = await createHousehold(user.uid)
-    await addBaby(householdId, name.trim(), birthDate, sex)
+    setError(null)
+    try {
+      // On success the household listener switches the app to the new family.
+      await createHouseholdWithBaby(user.uid, { name: name.trim(), birthDate, sex })
+    } catch (cause) {
+      console.error('[family] creation failed', cause)
+      setError('Could not create your family. Check your connection and try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -56,6 +64,8 @@ export function CreateFamilyPage() {
             onChange={(event) => setBirthDate(event.target.value)}
           />
         </div>
+
+        {error && <p role="alert">{error}</p>}
 
         <button type="submit" disabled={submitting}>
           Add child

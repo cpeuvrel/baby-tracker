@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 
 export function AccountSettingsPage() {
-  const { user, logout } = useAuth()
+  const { user, error, logout } = useAuth()
   const navigate = useNavigate()
 
   return (
@@ -24,6 +24,7 @@ export function AccountSettingsPage() {
       <button type="button" onClick={() => void logout()}>
         Log out
       </button>
+      {error && <p role="alert">{error}</p>}
     </div>
   )
 }

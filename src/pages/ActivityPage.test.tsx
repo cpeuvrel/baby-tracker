@@ -1,28 +1,31 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { User } from 'firebase/auth'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { zonedTime } from '../lib/appTime'
-import * as AuthContext from '../contexts/AuthContext'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useActiveSleepEntryModule from '../hooks/useActiveSleepEntry'
 import * as useGrowthEntriesModule from '../hooks/useGrowthEntries'
 import * as useRecentBathEntriesModule from '../hooks/useRecentBathEntries'
 import * as useRecentDiaperEntriesModule from '../hooks/useRecentDiaperEntries'
 import * as useRecentFeedingEntriesModule from '../hooks/useRecentFeedingEntries'
-import * as useRecentMedicationEntriesModule from '../hooks/useRecentMedicationEntries'
 import * as useRecentSleepEntriesModule from '../hooks/useRecentSleepEntries'
 import * as useReminderModule from '../hooks/useReminder'
-import type { BathEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
+import type { EntriesInRangeState } from '../hooks/useEntriesInRange'
+import { mockAuth, mockHousehold } from '../test/mockContexts'
+import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { ActivityPage } from './ActivityPage'
+
+function HistoryProbe() {
+  const location = useLocation()
+  return <p>History screen {JSON.stringify(location.state)}</p>
+}
 
 function renderPage(initialEntry = '/') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/" element={<ActivityPage />} />
-        <Route path="/history" element={<p>History screen</p>} />
+        <Route path="/history" element={<HistoryProbe />} />
       </Routes>
     </MemoryRouter>,
   )
@@ -30,14 +33,14 @@ function renderPage(initialEntry = '/') {
 
 const startSleep = vi.fn().mockResolvedValue(undefined)
 const updateSleepEntry = vi.fn().mockResolvedValue(undefined)
-const deleteSleepEntry = vi.fn()
-const logFeeding = vi.fn()
-const updateFeedingEntry = vi.fn()
-const deleteFeedingEntry = vi.fn()
-const logDiaper = vi.fn()
-const logMedication = vi.fn()
-const setReminder = vi.fn()
-const addGrowthEntry = vi.fn()
+const deleteSleepEntry = vi.fn().mockResolvedValue(undefined)
+const logFeeding = vi.fn().mockResolvedValue(undefined)
+const updateFeedingEntry = vi.fn().mockResolvedValue(undefined)
+const deleteFeedingEntry = vi.fn().mockResolvedValue(undefined)
+const logDiaper = vi.fn().mockResolvedValue(undefined)
+const logMedication = vi.fn().mockResolvedValue(undefined)
+const setReminder = vi.fn().mockResolvedValue(undefined)
+const addGrowthEntry = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../repositories/sleepEntries', () => ({
   startSleep: (...args: unknown[]) => startSleep(...args),
@@ -60,67 +63,75 @@ vi.mock('../repositories/medicationEntries', () => ({
 vi.mock('../repositories/reminders', () => ({
   setReminder: (...args: unknown[]) => setReminder(...args),
 }))
+// What every range query returns (the cards' window and the Today recap alike).
+let rangeState: EntriesInRangeState
 vi.mock('../hooks/useEntriesInRange', () => ({
-  useEntriesInRange: () => ({ feeding: [], sleep: [], diaper: [], medication: [], bath: [] }),
+  useEntriesInRange: () => rangeState,
+  useEntriesInRangeState: () => rangeState,
 }))
 vi.mock('../repositories/growthEntries', () => ({
   addGrowthEntry: (...args: unknown[]) => addGrowthEntry(...args),
 }))
 
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
+function stateOf<T>(entries: T[], loading = false, error: Error | null = null) {
+  return { entries, loading, error }
+}
 
+/**
+ * Mocks the page's data: `recent*` are the entries since a day before last night (newest first),
+ * their first one also being the latest of its kind.
+ */
 function setupHooks(
   activeSleepEntry: SleepEntry | null = null,
   options: {
     recentSleep?: SleepEntry[]
     recentFeeding?: FeedingEntry[]
+    recentDiaper?: DiaperEntry[]
     recentMedication?: MedicationEntry[]
     recentBath?: BathEntry[]
+    loading?: boolean
+    error?: Error
   } = {},
 ) {
-  vi.spyOn(AuthContext, 'useAuth').mockReturnValue({
-    user: { uid: 'uid1' } as User,
-    loading: false,
-    error: null,
-    devLoginAvailable: false,
-    loginWithGoogle: vi.fn(),
-    loginWithPassword: vi.fn(),
-    logout: vi.fn(),
-  })
-  vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-    household,
-    babies: [baby],
-    loading: false,
-    error: null,
-    selectedBaby: baby,
-    selectBaby: vi.fn(),
-  })
+  const loading = options.loading ?? false
+  const error = options.error ?? null
+  rangeState = {
+    feeding: options.recentFeeding ?? [],
+    sleep: options.recentSleep ?? [],
+    diaper: options.recentDiaper ?? [],
+    medication: options.recentMedication ?? [],
+    bath: options.recentBath ?? [],
+    loading,
+    error,
+  }
+  const latest = <T,>(entries: T[] | undefined) => stateOf(entries?.slice(0, 1) ?? [], loading)
+  mockAuth()
+  mockHousehold()
+  // The sleep modals read the running sleep and the latest one through these.
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntry').mockReturnValue(activeSleepEntry)
   vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntries').mockReturnValue(activeSleepEntry ? [activeSleepEntry] : [])
-  vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue(
-    options.recentSleep ?? [],
+  vi.spyOn(useActiveSleepEntryModule, 'useActiveSleepEntriesState').mockReturnValue(
+    stateOf(activeSleepEntry ? [activeSleepEntry] : [], loading),
   )
-  vi.spyOn(useRecentFeedingEntriesModule, 'useRecentFeedingEntries').mockReturnValue(
-    options.recentFeeding ?? [],
+  vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntries').mockReturnValue(options.recentSleep?.slice(0, 1) ?? [])
+  vi.spyOn(useRecentSleepEntriesModule, 'useRecentSleepEntriesState').mockReturnValue(latest(options.recentSleep))
+  vi.spyOn(useRecentFeedingEntriesModule, 'useRecentFeedingEntriesState').mockReturnValue(
+    latest(options.recentFeeding),
   )
-  vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntries').mockReturnValue([])
-  vi.spyOn(useRecentMedicationEntriesModule, 'useRecentMedicationEntries').mockReturnValue(
-    options.recentMedication ?? [],
-  )
-  vi.spyOn(useRecentBathEntriesModule, 'useRecentBathEntries').mockReturnValue(options.recentBath ?? [])
+  vi.spyOn(useRecentDiaperEntriesModule, 'useRecentDiaperEntriesState').mockReturnValue(latest(options.recentDiaper))
+  vi.spyOn(useRecentBathEntriesModule, 'useRecentBathEntriesState').mockReturnValue(latest(options.recentBath))
   vi.spyOn(useReminderModule, 'useReminder').mockReturnValue(null)
-  vi.spyOn(useGrowthEntriesModule, 'useGrowthEntries').mockReturnValue([])
+  vi.spyOn(useGrowthEntriesModule, 'useGrowthEntriesState').mockReturnValue(stateOf([], loading, error))
 }
 
 describe('ActivityPage', () => {
   beforeEach(() => {
     startSleep.mockReset().mockResolvedValue(undefined)
-    logFeeding.mockReset()
-    logDiaper.mockReset()
-    logMedication.mockReset()
-    setReminder.mockReset()
-    addGrowthEntry.mockReset()
+    logFeeding.mockReset().mockResolvedValue(undefined)
+    logDiaper.mockReset().mockResolvedValue(undefined)
+    logMedication.mockReset().mockResolvedValue(undefined)
+    setReminder.mockReset().mockResolvedValue(undefined)
+    addGrowthEntry.mockReset().mockResolvedValue(undefined)
     localStorage.clear()
   })
 
@@ -320,11 +331,9 @@ describe('ActivityPage', () => {
           makeSleepEntry('yesterday-nap', zonedTime(2026, 3, 4, 13, 0), zonedTime(2026, 3, 4, 15, 15)),
         ],
       })
-      const user = userEvent.setup()
 
       renderPage()
       const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
-      await user.click(sleepCard.getByRole('button', { name: 'Show More' }))
 
       expect(sleepCard.getByText('YD 19:37 – 07:25')).toBeInTheDocument()
       expect(sleepCard.getByText('11h 48m')).toBeInTheDocument()
@@ -344,14 +353,16 @@ describe('ActivityPage', () => {
       renderPage()
       const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
       expect(feedCard.getByText('180')).toBeInTheDocument()
-      await user.click(feedCard.getByRole('button', { name: 'Show More' }))
 
       expect(feedCard.getByText('YD 22:00 Bottle')).toBeInTheDocument()
       expect(feedCard.queryByText('77 mL')).not.toBeInTheDocument()
 
       await user.click(feedCard.getByRole('button', { name: 'Entries before 20:00' }))
 
-      expect(screen.getByText('History screen')).toBeInTheDocument()
+      // History opens on yesterday's list, where the entries before 20:00 are.
+      expect(screen.getByText(/History screen/)).toHaveTextContent(
+        JSON.stringify({ view: 'data', date: zonedTime(2026, 3, 4, 20, 0).toISOString() }),
+      )
     })
   })
 
@@ -375,15 +386,12 @@ describe('ActivityPage', () => {
       createdAt: zonedTime(2026, 3, 5, 16, 3).toISOString(),
     }
     setupHooks(null, { recentBath: [bath], recentMedication: [vitamin] })
-    const user = userEvent.setup()
 
     try {
       renderPage()
       const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
       expect(routineCard.getByText('23h 3m ago')).toBeInTheDocument()
       expect(routineCard.getByText('2h 0m ago')).toBeInTheDocument()
-
-      await user.click(routineCard.getByRole('button', { name: 'Show More' }))
       expect(routineCard.getByText('16:03 Vitamin/Probiotic')).toBeInTheDocument()
       // Yesterday 19:00 is before last night's 20:00 start.
       expect(routineCard.queryByText('YD 19:00 Bath')).not.toBeInTheDocument()
@@ -460,5 +468,122 @@ describe('ActivityPage', () => {
     await user.click(screen.getByRole('button', { name: 'Weight' }))
 
     expect(screen.getByText('Growth detail')).toBeInTheDocument()
+  })
+
+  describe('since last night, without a cap on the count', () => {
+    const now = zonedTime(2026, 3, 5, 18, 3)
+
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(now)
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('lists all 25 feeds of a busy day', async () => {
+      const feeds: FeedingEntry[] = Array.from({ length: 25 }, (_, index) => {
+        const at = new Date(now.getTime() - (index + 1) * 50 * 60_000)
+        return {
+          id: `f${index}`,
+          type: 'bottle',
+          occurredAt: at.toISOString(),
+          volumeMl: 60 + index,
+          foodType: null,
+          notes: '',
+          createdBy: 'uid1',
+          createdAt: at.toISOString(),
+        }
+      })
+      setupHooks(null, { recentFeeding: feeds })
+
+      renderPage()
+      const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
+
+      expect(feedCard.getAllByText(/Bottle$/)).toHaveLength(25)
+    })
+
+    it('lists a running sleep started long before the loaded range', async () => {
+      const running: SleepEntry = {
+        id: 'forgotten',
+        startedAt: zonedTime(2026, 3, 1, 21, 0).toISOString(),
+        endedAt: null,
+        durationSeconds: null,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: zonedTime(2026, 3, 1, 21, 0).toISOString(),
+      }
+      setupHooks(running, { recentSleep: [] })
+
+      renderPage()
+      const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
+
+      expect(sleepCard.getByText('21:00 Timer running')).toBeInTheDocument()
+    })
+
+    it('sizes the sleep bars on a sleep without a recorded duration (imported)', async () => {
+      const imported: SleepEntry = {
+        id: 'imported',
+        startedAt: zonedTime(2026, 3, 5, 13, 0).toISOString(),
+        endedAt: zonedTime(2026, 3, 5, 15, 0).toISOString(),
+        durationSeconds: null,
+        notes: '',
+        createdBy: 'uid1',
+        createdAt: zonedTime(2026, 3, 5, 13, 0).toISOString(),
+      }
+      const nap: SleepEntry = {
+        ...imported,
+        id: 'nap',
+        startedAt: zonedTime(2026, 3, 5, 10, 0).toISOString(),
+        endedAt: zonedTime(2026, 3, 5, 11, 0).toISOString(),
+        durationSeconds: 3600,
+      }
+      setupHooks(null, { recentSleep: [imported, nap] })
+
+      const { container } = renderPage()
+      const sleepCard = within(screen.getByRole('region', { name: 'Sleep' }))
+
+      expect(sleepCard.getByText('2h 00m')).toBeInTheDocument()
+      const bars = [...container.querySelectorAll<HTMLElement>('.category-card-row-bar')].map((bar) => bar.style.width)
+      // The longest (2 h, imported) is the full bar, the 1 h nap half of it.
+      expect(bars).toEqual(['70%', '35%'])
+    })
+  })
+
+  it('says Loading… in the cards until their data arrives, not "No entries"', () => {
+    setupHooks(null, { loading: true })
+
+    renderPage()
+
+    const feedCard = within(screen.getByRole('region', { name: 'Feed' }))
+    expect(feedCard.getByText('Loading…')).toBeInTheDocument()
+    expect(feedCard.queryByText('No entries')).not.toBeInTheDocument()
+    const routineCard = within(screen.getByRole('region', { name: 'Routine' }))
+    expect(routineCard.queryByText('Not yet')).not.toBeInTheDocument()
+  })
+
+  it('warns that live updates stopped when a listener failed', () => {
+    setupHooks(null, { error: new Error('permission-denied') })
+
+    renderPage()
+
+    // One warning for the screen, not one more for the Today recap.
+    expect(screen.getByRole('alert')).toHaveTextContent('Live updates stopped')
+    expect(screen.getByRole('button', { name: 'reload' })).toBeInTheDocument()
+  })
+
+  it('closes the Add to Routine menu on Escape, and focuses it when it opens', async () => {
+    setupHooks()
+    const user = userEvent.setup()
+
+    renderPage()
+    await user.click(screen.getByRole('button', { name: 'Add a routine entry' }))
+    expect(screen.getByRole('dialog', { name: 'Add to Routine' })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog', { name: 'Add to Routine' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add a routine entry' })).toHaveFocus()
   })
 })

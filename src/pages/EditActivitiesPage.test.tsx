@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { EditActivitiesPage } from './EditActivitiesPage'
+import { mockHousehold } from '../test/mockContexts'
 
-function renderPage() {
+function renderPage(babyId = 'b1') {
   return render(
-    <MemoryRouter initialEntries={['/account/family/b1/activities']}>
+    <MemoryRouter initialEntries={[`/account/family/${babyId}/activities`]}>
       <Routes>
         <Route path="/account/family/:babyId/activities" element={<EditActivitiesPage />} />
+        <Route path="/account/family" element={<p>Children list</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -17,6 +19,13 @@ function renderPage() {
 describe('EditActivitiesPage', () => {
   beforeEach(() => {
     localStorage.clear()
+    mockHousehold()
+  })
+
+  it('redirects to the children list when the baby cannot be found', () => {
+    renderPage('unknown')
+
+    expect(screen.getByText('Children list')).toBeInTheDocument()
   })
 
   it('lists only the categories tracked by this app, all checked by default', () => {
@@ -37,5 +46,11 @@ describe('EditActivitiesPage', () => {
 
     expect(screen.getByLabelText('Growth')).not.toBeChecked()
     expect(JSON.parse(localStorage.getItem('baby-tracker:hiddenActivities') ?? '[]')).toEqual(['growth'])
+  })
+
+  it('says the setting stays on this device', () => {
+    renderPage()
+
+    expect(screen.getByText(/This setting is saved on this device only\./)).toBeInTheDocument()
   })
 })

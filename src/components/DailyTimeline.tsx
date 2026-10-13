@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useDayTimeline } from '../hooks/useDayTimeline'
-import { computeFeedingStats, computeSleepStats } from '../lib/aggregations'
+import { useNow } from '../hooks/useNow'
+import { sleepSecondsInRange } from '../lib/activitySummary'
+import { computeFeedingStats } from '../lib/aggregations'
 import { formatDuration } from '../lib/duration'
 import {
+  sleepDurationSeconds,
   summarizeBathRow,
   summarizeDiaperRow,
   summarizeFeedingRow,
@@ -11,7 +14,7 @@ import {
   summarizeSleepRow,
 } from '../lib/entrySummary'
 import { KIND_OPTIONS, type EntryKind } from '../lib/historyFilters'
-import type { TimelineEntry } from '../lib/timeline'
+import { dayRange, type TimelineEntry } from '../lib/timeline'
 import type { BathEntry, DiaperEntry, FeedingEntry, MedicationEntry, SleepEntry } from '../types/models'
 import { BathForm } from './BathForm'
 import { DiaperForm } from './DiaperForm'
@@ -51,8 +54,13 @@ interface DailyTimelineProps {
 
 export function DailyTimeline({ date, title = 'Today', visibleKinds }: DailyTimelineProps) {
   const { household, selectedBaby } = useHousehold()
-  const referenceDate = date ?? new Date()
-  const fullTimeline = useDayTimeline(household?.id ?? null, selectedBaby?.id ?? null, referenceDate)
+  const now = useNow()
+  const referenceDate = date ?? now
+  const { timeline: fullTimeline, sleep: loadedSleeps } = useDayTimeline(
+    household?.id ?? null,
+    selectedBaby?.id ?? null,
+    referenceDate,
+  )
   const [modal, setModal] = useState<ModalState>(null)
 
   if (!household || !selectedBaby) return null
@@ -65,12 +73,15 @@ export function DailyTimeline({ date, title = 'Today', visibleKinds }: DailyTime
     .filter((item): item is Extract<TimelineEntry, { kind: 'feeding' }> => item.kind === 'feeding')
     .map((item) => item.entry)
   const feedingStats = computeFeedingStats(feedingEntries)
-  const sleepStats = computeSleepStats(sleepEntries, 1)
+  // Like everywhere else, a sleep counts whole on the day the baby woke up (a running one up to
+  // now): last night is in this morning's total, though it is listed under the day it started.
+  const day = dayRange(referenceDate)
+  const countedSleepSeconds = loadedSleeps
+    .map((entry) => sleepSecondsInRange(entry, day, now))
+    .filter((seconds) => seconds > 0)
+  const totalSleepSeconds = countedSleepSeconds.reduce((sum, seconds) => sum + seconds, 0)
 
-  const maxSleepSeconds = Math.max(
-    0,
-    ...sleepEntries.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
-  )
+  const maxSleepSeconds = Math.max(0, ...sleepEntries.map(sleepDurationSeconds))
   const maxVolumeMl = Math.max(
     0,
     ...feedingEntries
@@ -139,9 +150,9 @@ export function DailyTimeline({ date, title = 'Today', visibleKinds }: DailyTime
           </span>
           <div>
             <p className="history-summary-card-title">
-              Sleep <span className="history-summary-card-badge">{sleepEntries.length}</span>
+              Sleep <span className="history-summary-card-badge">{countedSleepSeconds.length}</span>
             </p>
-            <p className="history-summary-card-line">{formatDuration(sleepStats.totalSeconds)} total sleep</p>
+            <p className="history-summary-card-line">{formatDuration(totalSleepSeconds)} total sleep</p>
           </div>
         </div>
       </div>

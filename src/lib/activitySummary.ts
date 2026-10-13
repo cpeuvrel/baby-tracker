@@ -33,9 +33,10 @@ function isInRange(iso: string, range: DateRange): boolean {
 
 /**
  * A sleep's full length if the baby woke up within `range` (a running sleep: if `now` is in it,
- * counted up to `now`), else 0: sleeps are never split, they count on the day they end.
+ * counted up to `now`), else 0: sleeps are never split, they count on the day they end. The
+ * app's one rule for a day's total sleep (Today recap, Summary, History, Trends).
  */
-function sleepSecondsInRange(entry: SleepEntry, range: DateRange, now: Date): number {
+export function sleepSecondsInRange(entry: SleepEntry, range: DateRange, now: Date): number {
   const end = entry.endedAt ? new Date(entry.endedAt).getTime() : now.getTime()
   const endsInRange = entry.endedAt
     ? end >= range.start.getTime() && end < range.end.getTime()

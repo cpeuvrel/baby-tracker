@@ -1,20 +1,14 @@
 import { initializeApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
 import {
+  clearIndexedDbPersistence,
   connectFirestoreEmulator,
   initializeFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  terminate,
 } from 'firebase/firestore'
-
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-}
+import { firebaseConfig } from './firebaseConfig'
 
 /** True when the app talks to the local emulators rather than the real Firebase project. */
 export const usingEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true'
@@ -28,4 +22,20 @@ export const db = initializeFirestore(app, {
 if (usingEmulators) {
   connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
   connectFirestoreEmulator(db, '127.0.0.1', 8080)
+}
+
+/**
+ * After sign-out: drops the Firestore data cached on this device (a shared
+ * phone keeps nothing readable), then reloads the app, as the terminated
+ * Firestore instance can't be used again.
+ */
+export async function clearLocalDataAndReload(): Promise<void> {
+  try {
+    // The SDK only clears the cache of a terminated instance.
+    await terminate(db)
+    await clearIndexedDbPersistence(db)
+  } catch (cause) {
+    console.error('[auth] could not clear the local Firestore cache', cause)
+  }
+  window.location.reload()
 }

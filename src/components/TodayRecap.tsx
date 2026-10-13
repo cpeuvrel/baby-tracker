@@ -1,19 +1,26 @@
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility } from '../hooks/useActivityVisibility'
-import { useEntriesInRange } from '../hooks/useEntriesInRange'
+import { useEntriesInRangeState } from '../hooks/useEntriesInRange'
 import { buildTodayTotals } from '../lib/activitySummary'
 import { addDays } from '../lib/appTime'
 import { formatDuration } from '../lib/duration'
 import { dayRange } from '../lib/timeline'
+import { LiveUpdatesAlert } from './LiveUpdatesAlert'
+
+interface TodayRecapProps {
+  now: Date
+  /** The screen already warns that live updates stopped: no second warning here. */
+  errorShownAbove?: boolean
+}
 
 /** Today's milk, sleep and diapers at a glance, above the activity cards. */
-export function TodayRecap({ now }: { now: Date }) {
+export function TodayRecap({ now, errorShownAbove = false }: TodayRecapProps) {
   const { household, selectedBaby } = useHousehold()
   const { isVisible } = useActivityVisibility()
   const range = dayRange(now)
   // Sleeps are queried by start time: look back a day to catch last night's.
   const queryRange = { start: addDays(range.start, -1), end: range.end }
-  const entries = useEntriesInRange(household?.id ?? null, selectedBaby?.id ?? null, queryRange)
+  const entries = useEntriesInRangeState(household?.id ?? null, selectedBaby?.id ?? null, queryRange)
   const totals = buildTodayTotals(entries, range, now)
 
   const items = [
@@ -31,14 +38,19 @@ export function TodayRecap({ now }: { now: Date }) {
   return (
     <section className="today-recap" aria-label="Today">
       <h2 className="today-recap-title">Today so far</h2>
-      <div className="today-recap-items">
-        {items.map((item) => (
-          <p key={item.category} className={`today-recap-item today-recap-${item.category}`}>
-            <span className="today-recap-value">{item.value}</span>
-            {item.label}
-          </p>
-        ))}
-      </div>
+      {entries.error && !errorShownAbove && <LiveUpdatesAlert />}
+      {entries.loading ? (
+        <p className="hint">Loading…</p>
+      ) : (
+        <div className="today-recap-items">
+          {items.map((item) => (
+            <p key={item.category} className={`today-recap-item today-recap-${item.category}`}>
+              <span className="today-recap-value">{item.value}</span>
+              {item.label}
+            </p>
+          ))}
+        </div>
+      )}
     </section>
   )
 }

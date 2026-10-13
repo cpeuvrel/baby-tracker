@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { DiaperForm } from '../components/DiaperForm'
 import { FeedingForm } from '../components/FeedingForm'
 import { CalendarIcon, ClockIcon, DiaperIcon, FeedIcon, SleepIcon } from '../components/icons'
@@ -18,6 +18,7 @@ import {
   computeAxisTicks,
   computeMetricSeries,
   computeMetricSummary,
+  displayDelta,
   formatMetricAxisValue,
   formatMetricDayHeadline,
   formatMetricHeadline,
@@ -32,6 +33,7 @@ import {
 import type { DiaperEntry, FeedingEntry, SleepEntry } from '../types/models'
 
 const RANGE_DAYS = [1, 7, 14]
+const DEFAULT_DAYS = 14
 type ViewMode = 'calendar' | 'graph' | 'entries'
 /** How the Calendar and Graph views cut the period into days: calendar days, or rolling 24 hours ending now. */
 type DayMode = 'calendar' | 'rolling'
@@ -57,12 +59,16 @@ export function TrendDetailPage() {
   const { metricId } = useParams<{ metricId: string }>()
   const navigate = useNavigate()
   const { household, selectedBaby } = useHousehold()
-  const [days, setDays] = useState(14)
+  // Opened from the Trends list: its period (`?days=`), and the day its headline comes from
+  // (`?day=`, e.g. the longest sleep).
+  const [searchParams] = useSearchParams()
+  const [days, setDays] = useState(() => {
+    const fromLink = Number(searchParams.get('days'))
+    return RANGE_DAYS.includes(fromLink) ? fromLink : DEFAULT_DAYS
+  })
   const [view, setView] = useState<ViewMode>('calendar')
   const [editing, setEditing] = useState<EditState>(null)
   /** Day selected in the Calendar or Graph view: shown in the headline and focused in the Entries view. */
-  // Opened from a headline that comes from one day (`?day=`, e.g. the longest sleep): that day.
-  const [searchParams] = useSearchParams()
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(() => searchParams.get('day'))
   const [dayMode, setDayMode] = useState<DayMode>('calendar')
   /** Taken when the page opens and again whenever the display changes: rolling days end at this time. */
@@ -72,20 +78,19 @@ export function TrendDetailPage() {
 
   const metric = metricId ? getTrendMetric(metricId) : undefined
   const frame = useMemo(() => (dayMode === 'rolling' ? rollingDayFrame(now) : CALENDAR_DAYS), [dayMode, now])
-  const { range: currentRange, dayKeys: currentDayKeys } = framePeriod(
-    frame,
-    dayKey(addDays(now, -periodsBack * days)),
-    days,
+  const { range: currentRange, dayKeys: currentDayKeys } = useMemo(
+    () => framePeriod(frame, dayKey(addDays(now, -periodsBack * days)), days),
+    [frame, now, periodsBack, days],
   )
-  const { range: previousRange, dayKeys: previousDayKeys } = framePeriod(
-    frame,
-    dayKey(addDays(now, -(periodsBack + 1) * days)),
-    days,
+  const { range: previousRange, dayKeys: previousDayKeys } = useMemo(
+    () => framePeriod(frame, dayKey(addDays(now, -(periodsBack + 1) * days)), days),
+    [frame, now, periodsBack, days],
   )
 
   const nightRange = selectedBaby?.nighttimeHours ?? DEFAULT_NIGHTTIME_HOURS
 
-  // Loaded from the night before each period, as a period's first sleep day starts then.
+  // Loaded from the night before each period, as a period's first sleep day starts then, in
+  // whole calendar days: switching views in rolling mode (a new `now`) keeps the same listeners.
   const current = useEntriesInRange(
     household?.id ?? null,
     selectedBaby?.id ?? null,
@@ -96,8 +101,62 @@ export function TrendDetailPage() {
     selectedBaby?.id ?? null,
     trendFetchRange(previousRange),
   )
+  const currentEntries = useMemo(
+    () => ({ feeding: current.feeding, sleep: current.sleep, diaper: current.diaper }),
+    [current.feeding, current.sleep, current.diaper],
+  )
+  const previousEntries = useMemo(
+    () => ({ feeding: previous.feeding, sleep: previous.sleep, diaper: previous.diaper }),
+    [previous.feeding, previous.sleep, previous.diaper],
+  )
 
-  if (!household || !selectedBaby || !metric) return null
+  /** Day an entry counts on in the period (its rolling window in rolling mode). */
+  const frameKeyOf = useMemo(() => metricDayKeyOf(frame), [frame])
+  const inPeriod = useMemo(() => new Set(currentDayKeys), [currentDayKeys])
+  const sleepSegments = useMemo(
+    () =>
+      metric?.kind === 'sleep'
+        ? metricSleepSegments(metric.id, currentDayKeys, currentEntries.sleep, nightRange, now, frame)
+        : [],
+    [metric, currentDayKeys, currentEntries.sleep, nightRange, now, frame],
+  )
+  // What the Entries view lists: the period's entries that make up the metric (e.g. only the
+  // sleeps with a daytime part for Daytime Sleep, each day's longest for Longest Sleep).
+  const shown = useMemo(() => {
+    const inMetric = new Set(sleepSegments.filter((segment) => segment.inMetric).map((segment) => segment.entry.id))
+    const periodEntries = {
+      feeding: currentEntries.feeding.filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt))),
+      sleep: currentEntries.sleep.filter((entry) => inMetric.has(entry.id)),
+      diaper: currentEntries.diaper.filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt))),
+    }
+    return metric
+      ? filterMetricEntries(metric.id, periodEntries, nightRange, currentDayKeys, now, frame)
+      : periodEntries
+  }, [metric, sleepSegments, currentEntries, inPeriod, frameKeyOf, nightRange, currentDayKeys, now, frame])
+  // In the Calendar, a selected day brings out what the metric counts on it, the rest faded:
+  // its feeds or diapers, the sleeps counted on it (its longest, for Longest Sleep).
+  const calendarSleepSegments = useMemo(
+    () =>
+      metric?.kind === 'sleep' && selectedDayKey
+        ? metricSleepSegments(metric.id, currentDayKeys, currentEntries.sleep, nightRange, now, frame, selectedDayKey)
+        : sleepSegments,
+    [metric, selectedDayKey, currentDayKeys, currentEntries.sleep, nightRange, now, frame, sleepSegments],
+  )
+  const series = useMemo(
+    () => (metric ? computeMetricSeries(metric.id, currentDayKeys, currentEntries, nightRange, now, frame) : []),
+    [metric, currentDayKeys, currentEntries, nightRange, now, frame],
+  )
+  const currentAvg = useMemo(
+    () => (metric ? computeMetricSummary(metric.id, currentDayKeys, currentEntries, nightRange, now, frame) : 0),
+    [metric, currentDayKeys, currentEntries, nightRange, now, frame],
+  )
+  const previousAvg = useMemo(
+    () => (metric ? computeMetricSummary(metric.id, previousDayKeys, previousEntries, nightRange, now, frame) : 0),
+    [metric, previousDayKeys, previousEntries, nightRange, now, frame],
+  )
+
+  if (!metric) return <Navigate to="/trends" replace />
+  if (!household || !selectedBaby) return null
 
   const changePeriod = (update: (back: number) => number) => {
     setSelectedDayKey(null)
@@ -114,48 +173,19 @@ export function TrendDetailPage() {
     setNow(currentTime())
   }
 
-  /** Day an entry counts on in the period (its rolling window in rolling mode). */
-  const frameKeyOf = metricDayKeyOf(frame)
   /** Day the Entries view lists an entry under: always its calendar day. */
   const dayKeyOf = metricDayKeyOf()
-  const inPeriod = new Set(currentDayKeys)
-  const sleepSegments =
-    metric.kind === 'sleep'
-      ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now, frame)
-      : []
-  // What the Entries view lists: the period's entries that make up the metric (e.g. only the
-  // sleeps with a daytime part for Daytime Sleep, each day's longest for Longest Sleep).
-  const shown = filterMetricEntries(
-    metric.id,
-    {
-      feeding: current.feeding.filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt))),
-      sleep: current.sleep.filter((entry) =>
-        sleepSegments.some((segment) => segment.inMetric && segment.entry.id === entry.id),
-      ),
-      diaper: current.diaper.filter((entry) => inPeriod.has(frameKeyOf(entry.occurredAt))),
-    },
-    nightRange,
-    currentDayKeys,
-    now,
-    frame,
-  )
-  // In the Calendar, a selected day brings out what the metric counts on it, the rest faded:
-  // its feeds or diapers, the sleeps counted on it (its longest, for Longest Sleep).
   const onSelectedDay = (iso: string) => !selectedDayKey || frameKeyOf(iso) === selectedDayKey
-  const calendarSleepSegments =
-    metric.kind === 'sleep' && selectedDayKey
-      ? metricSleepSegments(metric.id, currentDayKeys, current.sleep, nightRange, now, frame, selectedDayKey)
-      : sleepSegments
   const isMetricDiaper = (iso: string) =>
     metric.id === 'diaperDay'
       ? !startsDuringNight(iso, nightRange)
       : metric.id === 'diaperNight'
         ? startsDuringNight(iso, nightRange)
         : true
-  const series = computeMetricSeries(metric.id, currentDayKeys, current, nightRange, now, frame)
-  const currentAvg = computeMetricSummary(metric.id, currentDayKeys, current, nightRange, now, frame)
-  const previousAvg = computeMetricSummary(metric.id, previousDayKeys, previous, nightRange, now, frame)
-  const delta = computeDelta(currentAvg, previousAvg)
+  // A change too small to show at the metric's precision is no change ("↑ 0 mL").
+  const delta = displayDelta(metric.id, computeDelta(currentAvg, previousAvg))
+  /** Top of the Graph view's y axis: its ticks and their labels share one unit. */
+  const axisMax = Math.max(currentAvg, ...series.map((point) => point.value))
   const selectedPoint = series.find((point) => point.dayKey === selectedDayKey)
 
   return (
@@ -255,13 +285,13 @@ export function TrendDetailPage() {
           key={`${dayMode}-${currentDayKeys[0]}`}
           data={series}
           average={currentAvg}
-          ticks={computeAxisTicks(metric.id, Math.max(currentAvg, ...series.map((point) => point.value)))}
+          ticks={computeAxisTicks(metric.id, axisMax)}
           chartStyle={chartStyleOf(metric)}
           colorVar={metric.colorVar}
           icon={KIND_ICONS[metric.kind]}
           seriesLabel={metric.seriesLabel}
           formatValue={(value) => formatMetricValue(metric.id, value)}
-          formatTick={(value) => formatMetricAxisValue(metric.id, value)}
+          formatTick={(value) => formatMetricAxisValue(metric.id, value, axisMax)}
           selectedKey={selectedDayKey}
           onSelectDay={setSelectedDayKey}
           onPrevious={() => changePeriod((back) => back + 1)}

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../lib/datetimeInput'
+import { reportWriteError } from '../lib/reportWriteError'
 import { deleteDiaperEntry, logDiaper, updateDiaperEntry } from '../repositories/diaperEntries'
 import type { DiaperEntry, DiaperType } from '../types/models'
 import { Modal } from './Modal'
@@ -13,6 +14,8 @@ const DIAPER_TYPES: { value: DiaperType; label: string }[] = [
   { value: 'both', label: 'Both' },
   { value: 'dry', label: 'Dry' },
 ]
+
+const FORM_ID = 'diaper-form'
 
 interface DiaperFormProps {
   entry?: DiaperEntry
@@ -31,22 +34,23 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
   if (!household || !selectedBaby || !user) return null
 
   const handleLog = (loggedType: DiaperType) => {
-    void logDiaper(household.id, selectedBaby.id, user.uid, {
+    if (!occurredAt) return
+    logDiaper(household.id, selectedBaby.id, user.uid, {
       type: loggedType,
       occurredAt: fromDatetimeLocalValue(occurredAt),
       notes,
-    })
+    }).catch(reportWriteError('save the diaper change'))
     setNotes('')
     onClose()
   }
 
   const submit = () => {
-    if (!entry) return
-    void updateDiaperEntry(household.id, selectedBaby.id, entry.id, {
+    if (!entry || !occurredAt) return
+    updateDiaperEntry(household.id, selectedBaby.id, entry.id, {
       type,
       occurredAt: fromDatetimeLocalValue(occurredAt),
       notes,
-    })
+    }).catch(reportWriteError('save the diaper change'))
     onClose()
   }
 
@@ -58,7 +62,7 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
   const handleDelete = () => {
     if (!entry) return
     if (!window.confirm('Delete this entry?')) return
-    void deleteDiaperEntry(household.id, selectedBaby.id, entry.id)
+    deleteDiaperEntry(household.id, selectedBaby.id, entry.id).catch(reportWriteError('delete the diaper change'))
     onClose()
   }
 
@@ -67,10 +71,15 @@ export function DiaperForm({ entry, onClose }: DiaperFormProps) {
       title="Diaper"
       bandColorVar="--category-diaper"
       onClose={onClose}
-      headerAction={entry ? { label: 'Save', onClick: submit } : undefined}
+      headerAction={entry ? { label: 'Save', formId: FORM_ID } : undefined}
     >
-      <form onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         <DateTimeField id="diaper-occurred-at" label="Time" value={occurredAt} onChange={setOccurredAt} />
+        {!occurredAt && (
+          <p role="alert" className="form-error">
+            Pick a date.
+          </p>
+        )}
         <div>
           <label htmlFor="diaper-notes">Notes (optional)</label>
           <input

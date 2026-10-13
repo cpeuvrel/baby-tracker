@@ -85,16 +85,11 @@ export interface MedicationEntry {
 }
 
 export interface Reminder {
+  /** Firestore document id, derived from the medication name (see `reminderDocId`): not read back. */
   id: string
   medicationName: string
   timeOfDay: string
   active: boolean
-}
-
-export interface FcmToken {
-  id: string
-  token: string
-  createdAt: string
 }
 
 export interface VisitRemark {

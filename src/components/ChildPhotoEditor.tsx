@@ -1,4 +1,5 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { useAsyncAction } from '../hooks/useAsyncAction'
 import { updateBabyPhoto } from '../repositories/babies'
 import type { Baby } from '../types/models'
 import { BabyAvatarIcon, CameraIcon } from './icons'
@@ -10,6 +11,27 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
   const [pickedFile, setPickedFile] = useState<File | null>(null)
   const libraryInput = useRef<HTMLInputElement>(null)
   const cameraInput = useRef<HTMLInputElement>(null)
+  const photoButton = useRef<HTMLButtonElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
+  const { run, pending, error } = useAsyncAction('Could not save the photo. Try again.')
+
+  const closeMenu = () => {
+    setMenuOpen(false)
+    photoButton.current?.focus()
+  }
+
+  // Keyboard: the menu takes the focus on its first choice, and Escape closes it.
+  useEffect(() => {
+    if (!menuOpen) return
+    menu.current?.querySelector('button')?.focus()
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      setMenuOpen(false)
+      photoButton.current?.focus()
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [menuOpen])
 
   const pick = (input: HTMLInputElement | null) => {
     setMenuOpen(false)
@@ -25,20 +47,22 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
 
   const handleDelete = () => {
     setMenuOpen(false)
-    void updateBabyPhoto(householdId, baby.id, null)
+    void run(() => updateBabyPhoto(householdId, baby.id, null))
   }
 
   const handleSave = (photoDataUrl: string) => {
     setPickedFile(null)
-    void updateBabyPhoto(householdId, baby.id, photoDataUrl)
+    void run(() => updateBabyPhoto(householdId, baby.id, photoDataUrl))
   }
 
   return (
     <>
       <button
+        ref={photoButton}
         type="button"
         className="child-photo-button"
         aria-label="Change Child Photo"
+        disabled={pending}
         onClick={() => setMenuOpen(true)}
       >
         {baby.photoDataUrl ? <img src={baby.photoDataUrl} alt="" /> : <BabyAvatarIcon />}
@@ -46,6 +70,7 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
           <CameraIcon />
         </span>
       </button>
+      {error && <p role="alert">{error}</p>}
       <input
         ref={libraryInput}
         type="file"
@@ -65,8 +90,11 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
       />
 
       {menuOpen && (
-        <div className="action-menu-overlay" onClick={() => setMenuOpen(false)}>
+        // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- tapping the dimmed area is a pointer shortcut: Escape and the buttons close it from the keyboard
+        <div className="action-menu-overlay" onClick={closeMenu}>
+          {/* oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions -- only stops the tap reaching the overlay */}
           <div
+            ref={menu}
             className="action-menu"
             role="dialog"
             aria-modal="true"
@@ -85,7 +113,7 @@ export function ChildPhotoEditor({ householdId, baby }: { householdId: string; b
                 Delete Photo
               </button>
             )}
-            <button type="button" onClick={() => setMenuOpen(false)}>
+            <button type="button" onClick={closeMenu}>
               Cancel
             </button>
           </div>

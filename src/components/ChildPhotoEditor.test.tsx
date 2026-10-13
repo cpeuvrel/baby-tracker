@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ChildPhotoEditor } from './ChildPhotoEditor'
 
 const updateBabyPhoto = vi.fn()
@@ -17,7 +17,7 @@ vi.mock('../lib/photoExport', () => ({
 const baby = { id: 'b1', name: 'Maëlys', birthDate: '2026-01-11', sex: 'female' as const }
 
 function loadImage(width: number, height: number) {
-  const image = screen.getByAltText('Photo to crop')
+  const image = screen.getByAltText('Crop preview')
   Object.defineProperty(image, 'naturalWidth', { value: width })
   Object.defineProperty(image, 'naturalHeight', { value: height })
   fireEvent.load(image)
@@ -29,6 +29,36 @@ describe('ChildPhotoEditor', () => {
     exportCroppedPhoto.mockReset()
     URL.createObjectURL = vi.fn(() => 'blob:photo')
     URL.revokeObjectURL = vi.fn()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('focuses the first choice of the menu, and closes it with Escape', async () => {
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={baby} />)
+
+    await user.click(screen.getByRole('button', { name: 'Change Child Photo' }))
+    expect(screen.getByRole('button', { name: 'Choose From Library' })).toHaveFocus()
+
+    await user.keyboard('{Escape}')
+
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Change Child Photo' })).toHaveFocus()
+  })
+
+  it('says so when the photo cannot be saved', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    updateBabyPhoto.mockRejectedValue(new Error('too large'))
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={{ ...baby, photoDataUrl: 'data:image/jpeg;base64,AAA' }} />)
+
+    await user.click(screen.getByRole('button', { name: 'Change Child Photo' }))
+    await user.click(screen.getByRole('button', { name: 'Delete Photo' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the photo.')
+    expect(screen.getByRole('button', { name: 'Change Child Photo' })).toBeEnabled()
   })
 
   it('offers library and camera, and Delete only when there is a photo', async () => {
@@ -85,7 +115,7 @@ describe('ChildPhotoEditor', () => {
 
     await user.upload(screen.getByTestId('photo-library-input'), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
     loadImage(4000, 3000)
-    const viewport = screen.getByAltText('Photo to crop').parentElement as HTMLElement
+    const viewport = screen.getByAltText('Crop preview').parentElement as HTMLElement
     fireEvent.pointerDown(viewport, { pointerId: 1, clientX: 100, clientY: 100 })
     fireEvent.pointerMove(viewport, { pointerId: 1, clientX: 1000, clientY: 100 })
     fireEvent.pointerUp(viewport, { pointerId: 1 })
@@ -96,6 +126,21 @@ describe('ChildPhotoEditor', () => {
     expect(square.x).toBeCloseTo(0)
     expect(square.y).toBeCloseTo(0)
     expect(square.size).toBeCloseTo(3000)
+  })
+
+  it('zooms with the wheel without scrolling the page behind', async () => {
+    const user = userEvent.setup()
+    render(<ChildPhotoEditor householdId="h1" baby={baby} />)
+
+    await user.upload(screen.getByTestId('photo-library-input'), new File(['x'], 'photo.jpg', { type: 'image/jpeg' }))
+    loadImage(4000, 3000)
+    const viewport = screen.getByAltText('Crop preview').parentElement as HTMLElement
+    const zoomBefore = Number((screen.getByLabelText('Zoom') as HTMLInputElement).value)
+
+    const notCancelled = fireEvent.wheel(viewport, { deltaY: -200, cancelable: true })
+
+    expect(notCancelled).toBe(false)
+    expect(Number((screen.getByLabelText('Zoom') as HTMLInputElement).value)).toBeGreaterThan(zoomBefore)
   })
 
   it('discards the picture on Close', async () => {

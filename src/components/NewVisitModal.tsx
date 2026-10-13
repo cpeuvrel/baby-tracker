@@ -2,7 +2,6 @@ import { useState, type FormEvent } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { registerPush } from '../lib/pushRegistration'
-import { requestSleepTimerNotificationPermission } from '../lib/sleepTimerNotification'
 import { todayDateValue } from '../lib/visitDate'
 import { addPediatricianVisit } from '../repositories/pediatricianVisits'
 import { Modal } from './Modal'
@@ -35,9 +34,7 @@ export function NewVisitModal({ onClose, onCreated }: NewVisitModalProps) {
   const chooseVaccine = () => {
     setVaccinated(true)
     // The vaccine reminders come as notifications; this tap is the gesture asking needs.
-    void requestSleepTimerNotificationPermission()
-      .then(() => registerPush(user.uid))
-      .catch(() => {})
+    void registerPush(user.uid).catch(() => {})
   }
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -55,9 +52,9 @@ export function NewVisitModal({ onClose, onCreated }: NewVisitModalProps) {
       <form onSubmit={handleSubmit}>
         <p className="hint">For {selectedBaby.name}</p>
         <div>
-          <label htmlFor="visit-date">Date</label>
+          <label htmlFor="new-visit-date">Date</label>
           <input
-            id="visit-date"
+            id="new-visit-date"
             type="date"
             required
             value={date}

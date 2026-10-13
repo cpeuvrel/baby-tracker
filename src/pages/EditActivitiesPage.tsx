@@ -1,10 +1,15 @@
-import { useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { useHousehold } from '../contexts/HouseholdContext'
 import { ACTIVITY_CATEGORIES, useActivityVisibility } from '../hooks/useActivityVisibility'
 
 export function EditActivitiesPage() {
   const { babyId } = useParams<{ babyId: string }>()
   const navigate = useNavigate()
+  const { babies } = useHousehold()
   const { isVisible, toggle } = useActivityVisibility()
+
+  // Unknown child (deleted, stale link): its Back button would lead nowhere.
+  if (!babies.some((baby) => baby.id === babyId)) return <Navigate to="/account/family" replace />
 
   return (
     <div>
@@ -30,7 +35,7 @@ export function EditActivitiesPage() {
       </ul>
       <p className="hint">
         Turn off an activity to hide it from the Activity screen. Only the activities tracked by
-        this app are listed here.
+        this app are listed here. This setting is saved on this device only.
       </p>
     </div>
   )

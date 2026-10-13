@@ -1,69 +1,39 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
+import type { GrowthMetric } from './growthMetrics'
 import {
-  getLmsAt,
-  isWithinWhoRange,
   percentileForValue,
   projectOnSamePercentile,
   referenceCurves,
   REFERENCE_PERCENTILES,
+  type Sex,
 } from './growthPercentiles'
 
-describe('isWithinWhoRange', () => {
-  it('accepts ages from birth to 24 months', () => {
-    expect(isWithinWhoRange(0)).toBe(true)
-    expect(isWithinWhoRange(12)).toBe(true)
-    expect(isWithinWhoRange(24)).toBe(true)
-  })
+const TABLES: Array<[GrowthMetric, Sex]> = [
+  ['weight', 'male'],
+  ['weight', 'female'],
+  ['height', 'male'],
+  ['height', 'female'],
+  ['headCircumference', 'male'],
+  ['headCircumference', 'female'],
+]
 
-  it('rejects ages outside 0-24 months', () => {
-    expect(isWithinWhoRange(-1)).toBe(false)
-    expect(isWithinWhoRange(25)).toBe(false)
-  })
-})
+/**
+ * Published WHO percentiles (CDC "WHO-*-Percentiles.csv", internal units) at 0, 6, 12 and
+ * 24 months: [age, P5, P50, P95]. They check the embedded LMS parameters, all 6 tables.
+ */
+const PUBLISHED: Record<string, Array<[number, number, number, number]>> = {
+  'weight/male': [[0, 2603.99, 3346.4, 4214.53], [6, 6611.7, 7934, 9481.94], [12, 8052.58, 9647.9, 11535.26], [24, 10071.94, 12151.5, 14667.53]],
+  'weight/female': [[0, 2532.15, 3232.2, 4040.96], [6, 5978.88, 7297, 8932.89], [12, 7342.38, 8948.1, 10995.31], [24, 9416.52, 11477.5, 14161.81]],
+  'height/male': [[0, 467.7, 498.84, 529.98], [6, 641.03, 676.24, 711.44], [12, 718.4, 757.49, 796.57], [24, 827.91, 878.16, 928.41]],
+  'height/female': [[0, 460.84, 491.48, 522.12], [6, 620.03, 657.31, 694.59], [12, 697.8, 740.15, 782.5], [24, 811.08, 864.15, 917.23]],
+  'headCircumference/male': [[0, 323.72, 344.62, 365.51], [6, 413.23, 433.31, 453.38], [12, 439.53, 460.66, 481.79], [24, 460.13, 482.52, 504.9]],
+  'headCircumference/female': [[0, 319.31, 338.79, 358.27], [6, 400.57, 422, 443.42], [12, 426.61, 448.97, 471.32], [24, 448.87, 471.82, 494.77]],
+}
 
-describe('getLmsAt', () => {
-  it('returns the exact table row for a whole month', () => {
-    const lms = getLmsAt('weight', 'male', 0)
-    expect(lms?.M).toBeCloseTo(3346.4, 1)
-  })
-
-  it('linearly interpolates between two months', () => {
-    const start = getLmsAt('weight', 'male', 6)!
-    const end = getLmsAt('weight', 'male', 7)!
-    const mid = getLmsAt('weight', 'male', 6.5)!
-    expect(mid.M).toBeCloseTo((start.M + end.M) / 2, 5)
-  })
-
-  it('returns undefined outside the WHO age range', () => {
-    expect(getLmsAt('weight', 'male', 30)).toBeUndefined()
-  })
-})
-
-describe('percentileForValue', () => {
-  it('reports 50th percentile for the median value at a given age', () => {
-    const lms = getLmsAt('weight', 'female', 6)!
-    expect(percentileForValue('weight', 'female', 6, lms.M)).toBeCloseTo(50, 0)
-  })
-
-  it('matches the table reference points closely for weight', () => {
-    const lms = getLmsAt('weight', 'male', 12)!
-    REFERENCE_PERCENTILES.forEach((percentile, index) => {
-      const value = lms.p[index]
-      expect(percentileForValue('weight', 'male', 12, value)).toBeCloseTo(percentile, 0)
-    })
-  })
-
-  it('reports a higher percentile for a larger measurement', () => {
-    const lms = getLmsAt('height', 'male', 12)!
-    const low = percentileForValue('height', 'male', 12, lms.M - 20)!
-    const high = percentileForValue('height', 'male', 12, lms.M + 20)!
-    expect(high).toBeGreaterThan(low)
-  })
-
-  it('returns undefined outside the WHO age range', () => {
-    expect(percentileForValue('weight', 'male', 36, 12000)).toBeUndefined()
-  })
-})
+const P5 = REFERENCE_PERCENTILES.indexOf(5)
+const P50 = REFERENCE_PERCENTILES.indexOf(50)
+const P95 = REFERENCE_PERCENTILES.indexOf(95)
 
 describe('referenceCurves', () => {
   it('returns one point per WHO age row, each with 9 percentile values', () => {
@@ -75,13 +45,60 @@ describe('referenceCurves', () => {
     curve.forEach((point) => expect(point.values).toHaveLength(REFERENCE_PERCENTILES.length))
   })
 
-  it('keeps each percentile curve monotonically increasing with age', () => {
-    const curve = referenceCurves('weight', 'male')
-    for (let i = 1; i < curve.length; i++) {
-      curve[i].values.forEach((value, index) => {
-        expect(value).toBeGreaterThan(curve[i - 1].values[index])
+  it.each(TABLES)('matches the published WHO percentiles (%s, %s)', (metric, sex) => {
+    const curve = referenceCurves(metric, sex)
+    for (const [age, p5, p50, p95] of PUBLISHED[`${metric}/${sex}`]) {
+      const { values } = curve[age]
+      expect(Math.abs(values[P5] / p5 - 1)).toBeLessThan(0.003)
+      expect(Math.abs(values[P50] / p50 - 1)).toBeLessThan(0.003)
+      expect(Math.abs(values[P95] / p95 - 1)).toBeLessThan(0.003)
+    }
+  })
+
+  it.each(TABLES)('increases with age and with the percentile (%s, %s)', (metric, sex) => {
+    const curve = referenceCurves(metric, sex)
+    const violations: string[] = []
+    curve.forEach((point, row) => {
+      point.values.forEach((value, index) => {
+        if (index > 0 && !(value > point.values[index - 1])) violations.push(`row ${row}: percentile ${index} does not rise`)
+        if (row > 0 && !(value > curve[row - 1].values[index])) violations.push(`row ${row}: percentile ${index} does not grow with age`)
+      })
+    })
+    expect(violations).toEqual([])
+  })
+
+  it.each(TABLES)('draws each curve exactly at its percentile, the outer ones included (%s, %s)', (metric, sex) => {
+    for (const point of referenceCurves(metric, sex)) {
+      REFERENCE_PERCENTILES.forEach((percentile, index) => {
+        expect(percentileForValue(metric, sex, point.ageMonths, point.values[index])).toBeCloseTo(percentile, 3)
       })
     }
+  })
+
+  it('puts the 2nd percentile below z = -2 (the 2.3rd percentile)', () => {
+    // Boys at birth: z = -2 is 2459.3 g, the true 2nd percentile 2437.9 g.
+    expect(referenceCurves('weight', 'male')[0].values[0]).toBeCloseTo(2437.9, 0)
+  })
+})
+
+describe('percentileForValue', () => {
+  it('reports the 50th percentile for the median, interpolating between months', () => {
+    expect(percentileForValue('weight', 'male', 6, 7934)).toBeCloseTo(50, 5)
+    // Halfway between the 6- and 7-month medians at 6.5 months.
+    expect(percentileForValue('weight', 'male', 6.5, (7934 + 8297) / 2)).toBeCloseTo(50, 5)
+  })
+
+  it('reports a higher percentile for a larger measurement', () => {
+    const low = percentileForValue('height', 'male', 12, 740)!
+    const high = percentileForValue('height', 'male', 12, 780)!
+    expect(high).toBeGreaterThan(low)
+  })
+
+  it('covers birth to 24 months, and nothing outside', () => {
+    expect(percentileForValue('weight', 'male', 0, 3346.4)).toBeCloseTo(50, 5)
+    expect(percentileForValue('weight', 'male', 24, 12151.5)).toBeCloseTo(50, 5)
+    expect(percentileForValue('weight', 'male', 24.5, 12000)).toBeUndefined()
+    expect(percentileForValue('weight', 'male', 36, 12000)).toBeUndefined()
   })
 })
 
@@ -98,10 +115,8 @@ describe('projectOnSamePercentile', () => {
   })
 
   it('projects the median onto the median', () => {
-    expect(projectOnSamePercentile('height', 'male', { ageMonths: 3, value: getLmsAt('height', 'male', 3)!.M }, 6)).toBeCloseTo(
-      getLmsAt('height', 'male', 6)!.M,
-      6,
-    )
+    const median = (age: number) => referenceCurves('height', 'male')[age].values[P50]
+    expect(projectOnSamePercentile('height', 'male', { ageMonths: 3, value: median(3) }, 6)).toBeCloseTo(median(6), 6)
   })
 
   it('returns undefined when the target age is outside the WHO range', () => {

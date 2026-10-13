@@ -1,25 +1,6 @@
+// @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { formatGrowthValue, formatLengthMm, formatWeightG } from './growthMetrics'
-
-describe('formatWeightG', () => {
-  it('formats grams as kilograms with two decimals by default', () => {
-    expect(formatWeightG(6200)).toBe('6.20 kg')
-  })
-
-  it('formats grams as pounds when imperial is requested', () => {
-    expect(formatWeightG(6200, 'imperial')).toBe('13.67 lb')
-  })
-})
-
-describe('formatLengthMm', () => {
-  it('formats millimeters as centimeters with one decimal by default', () => {
-    expect(formatLengthMm(620)).toBe('62.0 cm')
-  })
-
-  it('formats millimeters as inches when imperial is requested', () => {
-    expect(formatLengthMm(620, 'imperial')).toBe('24.4 in')
-  })
-})
+import { formatGrowthValue } from './growthMetrics'
 
 describe('formatGrowthValue', () => {
   it('uses the weight formatter for the weight metric', () => {
@@ -31,7 +12,12 @@ describe('formatGrowthValue', () => {
     expect(formatGrowthValue('headCircumference', 410)).toBe('41.0 cm')
   })
 
-  it('forwards the unit system to the underlying formatter', () => {
+  it('formats weights in kilograms (two decimals) or pounds', () => {
+    expect(formatGrowthValue('weight', 6200)).toBe('6.20 kg')
     expect(formatGrowthValue('weight', 6200, 'imperial')).toBe('13.67 lb')
+  })
+
+  it('formats lengths in centimetres (one decimal) or inches', () => {
+    expect(formatGrowthValue('height', 620, 'imperial')).toBe('24.4 in')
   })
 })

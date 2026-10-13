@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { ActionMenu } from '../components/ActionMenu'
 import { BathForm } from '../components/BathForm'
 import { CategoryCard, type CategoryCardEntryRow } from '../components/CategoryCard'
 import { DiaperForm } from '../components/DiaperForm'
@@ -19,6 +20,7 @@ import {
   SleepIcon,
   TimerIcon,
 } from '../components/icons'
+import { LiveUpdatesAlert } from '../components/LiveUpdatesAlert'
 import { MedicationForm } from '../components/MedicationForm'
 import { ReminderSettingsModal } from '../components/ReminderSettingsModal'
 import { SleepEntryEditModal } from '../components/SleepEntryEditModal'
@@ -27,18 +29,20 @@ import { TodayRecap } from '../components/TodayRecap'
 import { useAuth } from '../contexts/AuthContext'
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useActivityVisibility } from '../hooks/useActivityVisibility'
-import { useActiveSleepEntry } from '../hooks/useActiveSleepEntry'
-import { useGrowthEntries } from '../hooks/useGrowthEntries'
+import { useActiveSleepEntriesState } from '../hooks/useActiveSleepEntry'
+import { useEntriesInRangeState } from '../hooks/useEntriesInRange'
+import { useGrowthEntriesState } from '../hooks/useGrowthEntries'
 import { useNow } from '../hooks/useNow'
-import { useRecentBathEntries } from '../hooks/useRecentBathEntries'
-import { useRecentDiaperEntries } from '../hooks/useRecentDiaperEntries'
-import { useRecentFeedingEntries } from '../hooks/useRecentFeedingEntries'
-import { useRecentMedicationEntries } from '../hooks/useRecentMedicationEntries'
-import { useRecentSleepEntries } from '../hooks/useRecentSleepEntries'
+import { useRecentBathEntriesState } from '../hooks/useRecentBathEntries'
+import { useRecentDiaperEntriesState } from '../hooks/useRecentDiaperEntries'
+import { useRecentFeedingEntriesState } from '../hooks/useRecentFeedingEntries'
+import { useRecentSleepEntriesState } from '../hooks/useRecentSleepEntries'
+import { useSleepTimerBabyParam } from '../hooks/useSleepTimerNotification'
 import { useUnitPreference } from '../hooks/useUnitPreference'
 import {
   latestGrowthEntryWithField,
   DIAPER_SHORT_LABELS,
+  sleepDurationSeconds,
   summarizeBathRow,
   summarizeDiaperPrimary,
   summarizeDiaperRow,
@@ -51,7 +55,7 @@ import {
 } from '../lib/entrySummary'
 import { formatGrowthValue, GROWTH_METRIC_FIELD, GROWTH_METRIC_LABELS, type GrowthMetric } from '../lib/growthMetrics'
 import { DEFAULT_NIGHTTIME_HOURS } from '../lib/aggregations'
-import { formatDate } from '../lib/appTime'
+import { addDays, formatDate } from '../lib/appTime'
 import { formatRelativeTime } from '../lib/duration'
 import { activityWindowStart } from '../lib/timeline'
 import type {
@@ -62,28 +66,30 @@ import type {
   MedicationEntry,
   SleepEntry,
 } from '../types/models'
+import type { HistoryLocationState } from './HistoryPage'
 
-// Enough to cover a full day of entries since last night's start.
-const RECENT_COUNT = 20
 const DEFAULT_MEDICATION_NAME = 'Vitamin D'
+/** The cards list entries from a window start onwards: no entry is later than this. */
+const FAR_FUTURE = new Date(Date.UTC(9999, 0, 1))
 
 /** Vitamin doses, whatever their exact name ("Vitamin D", Nara's "Vitamin/Probiotic"). */
 function isVitamin(name: string): boolean {
   return name.trim().toLowerCase().startsWith('vitamin')
 }
 
-/** Rows for the entries at or after `windowStart` (the card only lists recent ones). */
-function windowLines<T>(
+/** The entries at or after `windowStart` (the cards only list recent ones). */
+function inWindow<T>(entries: T[], windowStart: Date, getIso: (entry: T) => string): T[] {
+  return entries.filter((entry) => new Date(getIso(entry)).getTime() >= windowStart.getTime())
+}
+
+/** A card row per entry, keyed by the entry's id. */
+function entryLines<T extends { id: string }>(
   entries: T[],
-  windowStart: Date,
-  getIso: (entry: T) => string,
   summarize: (entry: T) => EntryRow,
   onSelect: (entry: T) => void,
   icon?: ReactNode,
 ): CategoryCardEntryRow[] {
-  return entries
-    .filter((entry) => new Date(getIso(entry)).getTime() >= windowStart.getTime())
-    .map((entry) => ({ ...summarize(entry), icon, onClick: () => onSelect(entry) }))
+  return entries.map((entry) => ({ ...summarize(entry), id: entry.id, icon, onClick: () => onSelect(entry) }))
 }
 
 const GROWTH_METRIC_ICONS: Record<GrowthMetric, typeof ScaleIcon> = {
@@ -112,48 +118,46 @@ export function ActivityPage() {
   // "?timer=sleep" (the sleep timer notification, the timer banner) opens the running timer.
   const [searchParams, setSearchParams] = useSearchParams()
   const sleepTimerRequested = searchParams.get('timer') === 'sleep'
+  useSleepTimerBabyParam()
   const [unit] = useUnitPreference()
   const { isVisible } = useActivityVisibility()
   // Keeps "… ago" labels and the recent-entries window current without a reload.
   const now = useNow()
 
-  const activeSleepEntry = useActiveSleepEntry(household?.id ?? null, selectedBaby?.id ?? null)
-  const recentSleep = useRecentSleepEntries(
-    household?.id ?? null,
-    selectedBaby?.id ?? null,
-    RECENT_COUNT,
-  )
-  const recentFeeding = useRecentFeedingEntries(
-    household?.id ?? null,
-    selectedBaby?.id ?? null,
-    RECENT_COUNT,
-  )
-  const recentDiaper = useRecentDiaperEntries(
-    household?.id ?? null,
-    selectedBaby?.id ?? null,
-    RECENT_COUNT,
-  )
-  const recentMedication = useRecentMedicationEntries(
-    household?.id ?? null,
-    selectedBaby?.id ?? null,
-    RECENT_COUNT,
-  )
-  const recentBath = useRecentBathEntries(household?.id ?? null, selectedBaby?.id ?? null, RECENT_COUNT)
+  const householdId = household?.id ?? null
+  const babyId = selectedBaby?.id ?? null
+  const nightStart = selectedBaby?.nighttimeHours?.start ?? DEFAULT_NIGHTTIME_HOURS.start
+  // Since last night's start (yesterday 20:00 by default): stable for the whole day.
+  const windowStart = activityWindowStart(now, nightStart)
+  // Every entry since a day before the window, not just the latest few: a busy day never loses
+  // its oldest rows. The extra day catches a sleep that started before the window and ended in
+  // it, and yesterday's vitamin dose.
+  const recent = useEntriesInRangeState(householdId, babyId, { start: addDays(windowStart, -1), end: FAR_FUTURE })
+  // The latest entry of each kind, however old, for the cards' headline.
+  const latestFeedingState = useRecentFeedingEntriesState(householdId, babyId, 1)
+  const latestDiaperState = useRecentDiaperEntriesState(householdId, babyId, 1)
+  const latestSleepState = useRecentSleepEntriesState(householdId, babyId, 1)
+  const latestBathState = useRecentBathEntriesState(householdId, babyId, 1)
+  const activeSleepState = useActiveSleepEntriesState(householdId, babyId)
+  const growthState = useGrowthEntriesState(householdId, babyId)
 
-  const growthEntries = useGrowthEntries(household?.id ?? null, selectedBaby?.id ?? null)
+  const states = [recent, latestFeedingState, latestDiaperState, latestSleepState, latestBathState, activeSleepState, growthState]
+  const loading = states.some((state) => state.loading)
+  const error = states.find((state) => state.error)?.error ?? null
 
   if (!household || !selectedBaby || !user) return null
 
-  const nightStart = selectedBaby.nighttimeHours?.start ?? DEFAULT_NIGHTTIME_HOURS.start
-  const windowStart = activityWindowStart(now, nightStart)
   const historyLabel = `Entries before ${nightStart}`
+  const activeSleepEntry = activeSleepState.entries[0] ?? null
+  const growthEntries = growthState.entries
 
-  const latestFeeding = recentFeeding[0]
+  const latestFeeding = latestFeedingState.entries[0]
   const feedingHighlight =
     latestFeeding?.type === 'bottle' && latestFeeding.volumeMl != null
       ? { value: String(latestFeeding.volumeMl), unit: 'mL' }
       : undefined
-  const latestDiaper = recentDiaper[0]
+  const latestDiaper = latestDiaperState.entries[0]
+  const latestSleep = latestSleepState.entries[0]
 
   const handleAddSleep = () => {
     setModal({ kind: 'sleep-active' })
@@ -168,71 +172,89 @@ export function ActivityPage() {
     if (sleepTimerRequested) setSearchParams({}, { replace: true })
   }
 
-  const handleShowHistory = () => navigate('/history')
+  // Opens yesterday's list, where the entries before the window are.
+  const handleShowHistory = () =>
+    navigate('/history', { state: { view: 'data', date: windowStart.toISOString() } satisfies HistoryLocationState })
 
-  const maxSleepSeconds = Math.max(
-    0,
-    ...recentSleep.filter((entry) => entry.durationSeconds != null).map((entry) => entry.durationSeconds as number),
+  // A running sleep is always recent (even one started before the loaded range); a finished one
+  // counts when it ended in the window.
+  const runningOutsideRange = activeSleepState.entries.filter(
+    (active) => !recent.sleep.some((entry) => entry.id === active.id),
   )
-  // A running sleep is always recent; a finished one counts when it ended in the window.
-  const sleepLines = windowLines(
-    recentSleep,
-    windowStart,
-    (entry) => entry.endedAt ?? now.toISOString(),
+  const windowSleeps = inWindow([...recent.sleep, ...runningOutsideRange], windowStart, (entry) =>
+    entry.endedAt ?? now.toISOString(),
+  )
+  const maxSleepSeconds = Math.max(0, ...windowSleeps.map(sleepDurationSeconds))
+  const sleepLines = entryLines(
+    windowSleeps,
     (entry) => summarizeSleepRow(entry, now, maxSleepSeconds),
     handleSelectSleep,
   )
 
+  const windowFeedings = inWindow(recent.feeding, windowStart, (entry) => entry.occurredAt)
   const maxVolumeMl = Math.max(
     0,
-    ...recentFeeding
+    ...windowFeedings
       .filter((entry) => entry.type === 'bottle' && entry.volumeMl != null)
       .map((entry) => entry.volumeMl as number),
   )
-  const feedingLines = windowLines(
-    recentFeeding,
-    windowStart,
-    (entry) => entry.occurredAt,
+  const feedingLines = entryLines(
+    windowFeedings,
     (entry) => summarizeFeedingRow(entry, maxVolumeMl, now),
     (entry) => setModal({ kind: 'feeding', entry }),
     <FeedIcon />,
   )
 
-  const diaperLines = windowLines(
-    recentDiaper,
-    windowStart,
-    (entry) => entry.occurredAt,
+  const diaperLines = entryLines(
+    inWindow(recent.diaper, windowStart, (entry) => entry.occurredAt),
     (entry) => summarizeDiaperRow(entry, now),
     (entry) => setModal({ kind: 'diaper', entry }),
     <DiaperIcon />,
   )
 
-  const lastBath = recentBath[0]
-  const lastVitamin = recentMedication.find((entry) => isVitamin(entry.name))
+  const lastBath = latestBathState.entries[0]
+  // Latest first: the newest vitamin dose of the loaded range (since the day before last night).
+  const lastVitamin = recent.medication.find((entry) => isVitamin(entry.name))
   const routineRows: CategoryCardEntryRow[] = [
     {
+      id: 'bath',
       icon: <BathIcon />,
       title: 'Bath',
-      subtitle: lastBath ? formatRelativeTime(new Date(lastBath.occurredAt), now) : 'Not yet',
+      subtitle: lastBath
+        ? formatRelativeTime(new Date(lastBath.occurredAt), now)
+        : loading
+          ? 'Loading…'
+          : 'Not yet',
       onClick: () => setModal({ kind: 'bath' }),
     },
     {
+      id: 'vitamin',
       icon: <VitaminIcon />,
       title: DEFAULT_MEDICATION_NAME,
-      subtitle: lastVitamin ? formatRelativeTime(new Date(lastVitamin.givenAt), now) : 'Not yet',
+      subtitle: lastVitamin
+        ? formatRelativeTime(new Date(lastVitamin.givenAt), now)
+        : loading
+          ? 'Loading…'
+          : 'Not yet',
       onClick: () => setModal({ kind: 'medication', name: DEFAULT_MEDICATION_NAME }),
     },
   ]
   // Baths and doses since last night, newest first, each opening its own form.
   const routineLines = [
-    ...recentBath.map((entry) => ({
+    ...recent.bath.map((entry) => ({
       at: entry.occurredAt,
-      row: { ...summarizeBathRow(entry, now), icon: <BathIcon />, onClick: () => setModal({ kind: 'bath', entry }) },
+      row: {
+        ...summarizeBathRow(entry, now),
+        id: entry.id,
+        icon: <BathIcon />,
+        onClick: () => setModal({ kind: 'bath', entry }),
+      },
     })),
-    ...recentMedication.map((entry) => ({
+    ...recent.medication.map((entry) => ({
       at: entry.givenAt,
       row: {
         ...summarizeMedicationRow(entry, now),
+        id: entry.id,
         icon: isVitamin(entry.name) ? <VitaminIcon /> : <MedicationIcon />,
         onClick: () => setModal({ kind: 'medication', entry }),
       },
@@ -249,6 +271,7 @@ export function ActivityPage() {
       const value = entry ? (entry[field] as number | null) : null
       const RowIcon = GROWTH_METRIC_ICONS[metric]
       return {
+        id: metric,
         icon: <RowIcon />,
         title: GROWTH_METRIC_LABELS[metric],
         subtitle: entry ? formatDate(new Date(entry.measuredAt), { month: 'short', day: 'numeric', year: 'numeric' }) : '',
@@ -260,7 +283,8 @@ export function ActivityPage() {
 
   return (
     <div className="activity-page">
-      <TodayRecap now={now} />
+      {error && <LiveUpdatesAlert />}
+      <TodayRecap now={now} errorShownAbove={error != null} />
       {isVisible('feeding') && (
         <CategoryCard
           title="Feed"
@@ -271,6 +295,7 @@ export function ActivityPage() {
           primary={latestFeeding ? summarizeFeedingPrimary(latestFeeding, now) : null}
           onSelectPrimary={latestFeeding ? () => setModal({ kind: 'feeding', entry: latestFeeding }) : undefined}
           emptyLabel="No entries"
+          loading={loading}
           highlight={feedingHighlight}
           lines={feedingLines}
           onShowHistory={handleShowHistory}
@@ -287,6 +312,7 @@ export function ActivityPage() {
           primary={latestDiaper ? summarizeDiaperPrimary(latestDiaper, now) : null}
           onSelectPrimary={latestDiaper ? () => setModal({ kind: 'diaper', entry: latestDiaper }) : undefined}
           emptyLabel="No entries"
+          loading={loading}
           highlight={latestDiaper ? { value: DIAPER_SHORT_LABELS[latestDiaper.type] } : undefined}
           lines={diaperLines}
           onShowHistory={handleShowHistory}
@@ -302,9 +328,10 @@ export function ActivityPage() {
           addIcon={activeSleepEntry ? <TimerIcon /> : undefined}
           addActive={!!activeSleepEntry}
           icon={<SleepIcon />}
-          primary={recentSleep[0] ? summarizeSleepPrimary(recentSleep[0], now) : null}
-          onSelectPrimary={recentSleep[0] ? () => handleSelectSleep(recentSleep[0]) : undefined}
+          primary={latestSleep ? summarizeSleepPrimary(latestSleep, now) : null}
+          onSelectPrimary={latestSleep ? () => handleSelectSleep(latestSleep) : undefined}
           emptyLabel="No entries"
+          loading={loading}
           lines={sleepLines}
           onShowHistory={handleShowHistory}
           historyLabel={historyLabel}
@@ -337,6 +364,7 @@ export function ActivityPage() {
           showPrimary={false}
           primary={null}
           emptyLabel="No measurements"
+          loading={loading}
           pinnedRows={growthRows}
         />
       )}
@@ -364,29 +392,20 @@ export function ActivityPage() {
       )}
       {modal?.kind === 'bath' && <BathForm entry={modal.entry} onClose={closeModal} />}
       {modal?.kind === 'routine-menu' && (
-        <div className="action-menu-overlay" onClick={closeModal}>
-          <div
-            className="action-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Add to Routine"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2>Add to Routine</h2>
-            <button type="button" onClick={() => setModal({ kind: 'bath' })}>
-              Bath
-            </button>
-            <button type="button" onClick={() => setModal({ kind: 'medication', name: DEFAULT_MEDICATION_NAME })}>
-              {DEFAULT_MEDICATION_NAME}
-            </button>
-            <button type="button" onClick={() => setModal({ kind: 'medication', name: '' })}>
-              Other medication
-            </button>
-            <button type="button" onClick={closeModal}>
-              Cancel
-            </button>
-          </div>
-        </div>
+        <ActionMenu title="Add to Routine" onClose={closeModal}>
+          <button type="button" onClick={() => setModal({ kind: 'bath' })}>
+            Bath
+          </button>
+          <button type="button" onClick={() => setModal({ kind: 'medication', name: DEFAULT_MEDICATION_NAME })}>
+            {DEFAULT_MEDICATION_NAME}
+          </button>
+          <button type="button" onClick={() => setModal({ kind: 'medication', name: '' })}>
+            Other medication
+          </button>
+          <button type="button" onClick={closeModal}>
+            Cancel
+          </button>
+        </ActionMenu>
       )}
       {modal?.kind === 'reminder' && (
         <ReminderSettingsModal medicationName={DEFAULT_MEDICATION_NAME} onClose={closeModal} />

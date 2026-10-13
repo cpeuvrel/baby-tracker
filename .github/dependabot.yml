@@ -12,10 +12,11 @@ updates:
       day: monday
       time: "06:00"
       timezone: Europe/Paris
-    # Skip versions published less than 3 days ago: most hijacked npm releases
-    # are caught and unpublished within that window.
+    # Skip versions published less than 7 days ago: most hijacked npm releases
+    # are caught and unpublished within that window, and minor/patch updates
+    # are merged without review (ci.yml).
     cooldown:
-      default-days: 3
+      default-days: 7
     # @types/node must match the Node major we run on (24), not the latest.
     ignore:
       - dependency-name: "@types/node"
@@ -32,7 +33,7 @@ updates:
       time: "06:00"
       timezone: Europe/Paris
     cooldown:
-      default-days: 3
+      default-days: 7
     # @types/node must match the Node major we run on (24), not the latest.
     ignore:
       - dependency-name: "@types/node"
@@ -45,6 +46,10 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    # Workflows pin actions by commit SHA: Dependabot updates the SHA and the
+    # version comment together.
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]

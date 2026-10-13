@@ -1,15 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as HouseholdContext from '../contexts/HouseholdContext'
 import * as useEntriesInRangeModule from '../hooks/useEntriesInRange'
-import { dayKey } from '../lib/timeline'
+import { formatDate } from '../lib/appTime'
+import { dayKey, parseDayKey } from '../lib/timeline'
+import { defaultBaby, mockHousehold } from '../test/mockContexts'
 import type { SleepEntry } from '../types/models'
 import { nightFractions } from '../lib/weekTimeline'
 import { WeekTimelineChart } from './WeekTimelineChart'
-
-const household = { id: 'h1', name: 'Famille Test', memberUids: [] }
-const baby = { id: 'b1', name: 'Léo', birthDate: '2025-06-01', sex: null }
 
 describe('WeekTimelineChart', () => {
   afterEach(() => {
@@ -17,25 +15,11 @@ describe('WeekTimelineChart', () => {
   })
 
   beforeEach(() => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [baby],
-      loading: false,
-      error: null,
-      selectedBaby: baby,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold()
   })
 
   it('renders nothing without a resolved household and baby', () => {
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household: null,
-      babies: [],
-      loading: false,
-      error: null,
-      selectedBaby: null,
-      selectBaby: vi.fn(),
-    })
+    mockHousehold({ household: null, babies: [], selectedBaby: null })
     vi.spyOn(useEntriesInRangeModule, 'useEntriesInRange').mockReturnValue({
       feeding: [],
       sleep: [],
@@ -138,6 +122,23 @@ describe('WeekTimelineChart', () => {
     ])
   })
 
+  it('moves on to the new week at midnight between Sunday and Monday', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-04T23:59:00+02:00')) // Sunday 23:59
+    mockNoEntries()
+    render(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
+    const today = () => document.querySelector('.timeline-grid-day-header.is-today')
+    expect(today()).toHaveAccessibleName(`See details for ${formatDate(parseDayKey('2026-10-04'))}`)
+
+    act(() => {
+      vi.advanceTimersByTime(2 * 60_000)
+    })
+
+    expect(today()).toHaveAccessibleName(`See details for ${formatDate(parseDayKey('2026-10-05'))}`)
+    const lastRange = vi.mocked(useEntriesInRangeModule.useEntriesInRange).mock.lastCall?.[2]
+    expect(lastRange?.end).toEqual(parseDayKey('2026-10-12'))
+  })
+
   it('snaps on each Monday so a swipe moves one week at most', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-10-04T12:00:00.000Z'))
@@ -192,15 +193,8 @@ describe('WeekTimelineChart', () => {
       [`${(20 / 24) * 100}%`, `${(4 / 24) * 100}%`],
     ])
 
-    const nightOwl = { ...baby, nighttimeHours: { start: '19:00', end: '07:00' } }
-    vi.spyOn(HouseholdContext, 'useHousehold').mockReturnValue({
-      household,
-      babies: [nightOwl],
-      loading: false,
-      error: null,
-      selectedBaby: nightOwl,
-      selectBaby: vi.fn(),
-    })
+    const nightOwl = { ...defaultBaby, nighttimeHours: { start: '19:00', end: '07:00' } }
+    mockHousehold({ babies: [nightOwl], selectedBaby: nightOwl })
     rerender(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
     expect(bands()[1][0]).toBe(`${(19 / 24) * 100}%`)
   })

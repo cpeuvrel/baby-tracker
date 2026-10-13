@@ -1,8 +1,15 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useRef, type ReactNode } from 'react'
+import { useDialogBehavior } from '../hooks/useDialogBehavior'
 
 interface ModalHeaderAction {
   label: string
-  onClick: () => void
+  /** Called on click; not needed with `formId`, whose form's onSubmit runs instead. */
+  onClick?: () => void
+  /**
+   * Id of the `<form>` the action submits: the button becomes its submit button, so the
+   * browser checks the fields (`required`, `min`, `step`…) before the form's onSubmit runs.
+   */
+  formId?: string
   disabled?: boolean
 }
 
@@ -25,19 +32,12 @@ export function Modal({
   children,
 }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null)
+  useDialogBehavior(dialogRef, onClose)
   // Only a press that both starts and ends on the overlay closes it (not a drag out of the dialog).
   const pressStartedOnOverlay = useRef(false)
 
-  useEffect(() => {
-    dialogRef.current?.focus()
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
-
   return (
+    // oxlint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- tapping the dimmed area is a pointer shortcut: Escape and the buttons close it from the keyboard (useDialogBehavior)
     <div
       className="modal-overlay"
       onPointerDown={(event) => {
@@ -67,16 +67,27 @@ export function Modal({
             ✕
           </button>
           <h2>{title}</h2>
-          {headerAction && (
-            <button
-              type="button"
-              className="modal-header-action"
-              onClick={headerAction.onClick}
-              disabled={headerAction.disabled}
-            >
-              {headerAction.label}
-            </button>
-          )}
+          {headerAction &&
+            (headerAction.formId ? (
+              <button
+                type="submit"
+                form={headerAction.formId}
+                className="modal-header-action"
+                onClick={headerAction.onClick}
+                disabled={headerAction.disabled}
+              >
+                {headerAction.label}
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="modal-header-action"
+                onClick={headerAction.onClick}
+                disabled={headerAction.disabled}
+              >
+                {headerAction.label}
+              </button>
+            ))}
         </header>
         <div className="modal-body">{children}</div>
       </div>
