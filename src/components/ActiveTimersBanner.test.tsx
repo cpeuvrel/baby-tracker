@@ -93,7 +93,7 @@ describe('ActiveTimersBanner', () => {
     expect(screen.getByText(/Sleep in progress for/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Stop' }))
 
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1')
   })
   it('warns when two sleep timers run and stops them all', async () => {
     const first: SleepEntry = {
@@ -113,8 +113,8 @@ describe('ActiveTimersBanner', () => {
     expect(screen.getByText(/2 sleep timers were started at the same time/)).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Stop all' }))
 
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date(first.startedAt))
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep2', new Date(second.startedAt))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1')
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep2')
   })
 
   it('opens the sleep timer when the running time is tapped', async () => {

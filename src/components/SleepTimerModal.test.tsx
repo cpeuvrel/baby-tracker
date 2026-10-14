@@ -106,14 +106,14 @@ describe('SleepTimerModal', () => {
     expect(screen.getByRole('button', { name: 'Stop Timer' })).toHaveClass('button-timer-stop')
     await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
 
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date('2026-03-05T20:00:00.000Z'))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1')
     expect(onClose).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('button', { name: 'Save' }))
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('has no notes field and keeps the notes of the running sleep when it is stopped and saved', async () => {
+  it('has no notes field and keeps the notes of the running sleep when it is stopped, edited and saved', async () => {
     const setActive = mockActiveSleeps([{ ...runningSleep, notes: 'started on the other phone' }])
     const user = userEvent.setup()
 
@@ -122,9 +122,26 @@ describe('SleepTimerModal', () => {
     await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
     setActive([])
     rerender(<SleepTimerModal onClose={vi.fn()} />)
+    fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '30' } })
     await user.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', expect.objectContaining({ notes: 'started on the other phone' }))
+  })
+
+  it("keeps the server's stop time when a stopped sleep is saved unedited", async () => {
+    const setActive = mockActiveSleeps([runningSleep])
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+
+    const { rerender } = render(<SleepTimerModal onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+    setActive([])
+    rerender(<SleepTimerModal onClose={onClose} />)
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+
+    expect(updateSleepEntry).not.toHaveBeenCalled()
+    expect(logSleep).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('starts a sleep without notes', async () => {
@@ -134,7 +151,7 @@ describe('SleepTimerModal', () => {
     render(<SleepTimerModal onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
-    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', expect.any(Date), '')
+    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', undefined, '')
   })
 
   it('starts the timer at the tap, not when the modal opened', async () => {
@@ -147,7 +164,8 @@ describe('SleepTimerModal', () => {
     vi.setSystemTime(new Date('2026-03-05T20:05:42+01:00'))
     await user.click(screen.getByRole('button', { name: 'Start Timer' }))
 
-    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', new Date('2026-03-05T20:05:42+01:00'), '')
+    // Left to the server's clock; the form shows the tap's time.
+    expect(startSleep).toHaveBeenCalledWith('h1', 'b1', 'uid1', undefined, '')
     expect(dateTimeValue('Start Time')).toBe('2026-03-05T20:05')
   })
 
@@ -295,6 +313,40 @@ describe('SleepTimerModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('keeps the stop time as the end when the start is corrected after a stop', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-07-05T14:00:00+02:00'))
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-07-05T10:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-07-05T10:00:00.000Z',
+    }
+    const setActive = mockActiveSleeps([activeEntry])
+    const user = userEvent.setup()
+
+    const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+    setActive([])
+    rerender(<SleepTimerModal onClose={vi.fn()} />)
+
+    expect(dateTimeValue('End Time')).toBe('2026-07-05T14:00')
+
+    // The sleep really began two hours later than the timer says.
+    setDateTime('Start Time', '2026-07-05T13:30')
+
+    expect(dateTimeValue('End Time')).toBe('2026-07-05T14:00')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', {
+      startedAt: new Date('2026-07-05T13:30:00+02:00'),
+      endedAt: new Date('2026-07-05T14:00:00+02:00'),
+      notes: '',
+    })
+  })
+
   it('continues the same sleep when Start is pressed again after a stop', async () => {
     const activeEntry: SleepEntry = {
       id: 'sleep1',
@@ -342,8 +394,8 @@ describe('SleepTimerModal', () => {
     render(<SleepTimerModal onClose={vi.fn()} />)
     await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
 
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1', new Date(first.startedAt))
-    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep2', new Date(second.startedAt))
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep1')
+    expect(stopSleep).toHaveBeenCalledWith('h1', 'b1', 'sleep2')
   })
 
   it('tells when the start is refused because another sleep runs, and lets Start be pressed again', async () => {

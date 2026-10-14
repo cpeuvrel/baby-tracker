@@ -6,6 +6,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   Timestamp,
   updateDoc,
   where,
@@ -84,6 +85,8 @@ describe('sleepEntries repository', () => {
     expect(batch.set).toHaveBeenCalledTimes(2)
     const [entryRef, payload] = batch.set.mock.calls[0]
     expect(payload).toMatchObject({ endedAt: null, durationSeconds: null, createdBy: 'uid1' })
+    // Started now: the server's clock, not the phone's.
+    expect((payload as { startedAt: unknown }).startedAt).toEqual(serverTimestamp())
     const [lockRef, lock] = batch.set.mock.calls[1]
     expect(pathOf(lockRef)).toBe('households/h1/babies/b1/locks/sleepTimer')
     expect(lock).toEqual({ entryId: (entryRef as { id: string }).id })
@@ -119,14 +122,13 @@ describe('sleepEntries repository', () => {
     expect(payload).toMatchObject({ durationSeconds: 90 * 60, notes: 'sieste', createdBy: 'uid1' })
   })
 
-  it('closes a sleep entry with the elapsed duration on stop', async () => {
-    const startedAt = new Date('2026-03-05T20:30:00.000Z')
-
-    await stopSleep('h1', 'b1', 'entry1', startedAt)
+  it("ends a sleep at the server's time on stop, not the phone's", async () => {
+    await stopSleep('h1', 'b1', 'entry1')
 
     expect(updateDocMock).toHaveBeenCalledTimes(1)
-    const [, payload] = updateDocMock.mock.calls[0]
-    expect(payload).toMatchObject({ durationSeconds: 90 * 60 })
+    const [entryRef, payload] = updateDocMock.mock.calls[0]
+    expect(pathOf(entryRef)).toBe('households/h1/babies/b1/sleepEntries/entry1')
+    expect(payload).toEqual({ endedAt: serverTimestamp(), durationSeconds: null })
   })
 
   it('resumes a stopped sleep by clearing its end and duration', async () => {
@@ -427,7 +429,7 @@ describe('sleepEntries queries and robustness', () => {
     subscribeToRecentSleepEntries('h1', 'b1', 5, onChange)
 
     expect(onChange).toHaveBeenCalledWith([
-      { id: 'legacy', startedAt: AT_ISO, endedAt: '2026-03-05T09:00:00.000Z', durationSeconds: null, notes: '', createdBy: 'uid1', createdAt: AT_ISO },
+      { id: 'legacy', startedAt: AT_ISO, endedAt: '2026-03-05T09:00:00.000Z', durationSeconds: 3600, notes: '', createdBy: 'uid1', createdAt: AT_ISO },
     ])
   })
 

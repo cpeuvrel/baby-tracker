@@ -48,6 +48,8 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
   const maxStart = toDatetimeLocalValue(useNow())
   const [durationMinutes, setDurationMinutes] = useState<number | null>(null)
   const [timerEntryId, setTimerEntryId] = useState<string | null>(null)
+  // Whether the start, duration or end of the sleep just stopped was changed in the form.
+  const [stoppedEdited, setStoppedEdited] = useState(false)
   // Notes are no longer edited in this popup (main #56): a running sleep keeps its own, and so
   // does the one just stopped (its entry is no longer active while the form stays open).
   const [stoppedNotes, setStoppedNotes] = useState('')
@@ -88,9 +90,9 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
       const stoppedAt = new Date()
       const startDate = commitStartDraft() ?? new Date(activeEntry.startedAt)
       // Stops any sleep started at the same time on another device too.
+      // The end is the server's time; the form shows this phone's until the sleep is edited.
       for (const entry of activeEntries) {
-        const entryStart = entry.id === activeEntry.id ? startDate : new Date(entry.startedAt)
-        stopSleep(household.id, selectedBaby.id, entry.id, entryStart).catch(reportFailure(false))
+        stopSleep(household.id, selectedBaby.id, entry.id).catch(reportFailure(false))
       }
       setStartedAt(toDatetimeLocalValue(startDate))
       setDurationMinutes(Math.round((stoppedAt.getTime() - startDate.getTime()) / 60000))
@@ -113,8 +115,9 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
         )
         setDurationMinutes(null)
       } else {
-        const start = startTouched && startedAt !== '' ? fromDatetimeLocalValue(startedAt) : new Date()
-        setStartedAt(toDatetimeLocalValue(start))
+        // Untouched, the start is left to the server's clock (the form shows this phone's).
+        const start = startTouched && startedAt !== '' ? fromDatetimeLocalValue(startedAt) : undefined
+        setStartedAt(toDatetimeLocalValue(start ?? new Date()))
         startSleep(household.id, selectedBaby.id, user.uid, start, notes).catch(onRefused)
       }
     }
@@ -125,6 +128,12 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (activeEntry) {
       commitStartDraft()
     } else if (timerEntryId) {
+      // Only an edited stopped sleep is written: else its times stay the server's, not this
+      // form's copy from this phone's clock.
+      if (!stoppedEdited) {
+        onClose()
+        return
+      }
       // Without an end time the sleep runs again: refused if another one runs.
       const lockInvolved = endedAt === ''
       updateSleepEntry(household.id, selectedBaby.id, timerEntryId, {
@@ -158,12 +167,19 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (activeEntry) {
       setStartDraft(shown)
     } else {
+      // A stopped timer ended when Stop was tapped: moving its start keeps that end (the
+      // duration changes), else the end would follow the start, up into the future.
+      if (timerEntryId && endedAt !== '') {
+        setDurationMinutes(Math.round((fromDatetimeLocalValue(endedAt).getTime() - start.getTime()) / 60000))
+      }
+      setStoppedEdited(true)
       setStartedAt(shown)
       setStartTouched(true)
     }
   }
 
   const handleEndedAtChange = (value: string) => {
+    setStoppedEdited(true)
     if (value === '' || startedAt === '') {
       setDurationMinutes(null)
       return
@@ -213,7 +229,14 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
           commitStartDraft()
         }}
       />
-      <DurationInput totalMinutes={durationMinutes} onChange={setDurationMinutes} disabled={isActive} />
+      <DurationInput
+        totalMinutes={durationMinutes}
+        onChange={(minutes) => {
+          setDurationMinutes(minutes)
+          setStoppedEdited(true)
+        }}
+        disabled={isActive}
+      />
       <DateTimeField id="sleep-ended-at" label="End Time" value={endedAt} disabled={isActive} onChange={handleEndedAtChange} />
       {endBeforeStart && (
         <p role="alert" className="form-error">
