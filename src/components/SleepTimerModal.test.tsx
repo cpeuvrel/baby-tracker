@@ -295,6 +295,40 @@ describe('SleepTimerModal', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('keeps the stop time as the end when the start is corrected after a stop', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-07-05T14:00:00+02:00'))
+    const activeEntry: SleepEntry = {
+      id: 'sleep1',
+      startedAt: '2026-07-05T10:00:00.000Z',
+      endedAt: null,
+      durationSeconds: null,
+      notes: '',
+      createdBy: 'uid1',
+      createdAt: '2026-07-05T10:00:00.000Z',
+    }
+    const setActive = mockActiveSleeps([activeEntry])
+    const user = userEvent.setup()
+
+    const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+    setActive([])
+    rerender(<SleepTimerModal onClose={vi.fn()} />)
+
+    expect(dateTimeValue('End Time')).toBe('2026-07-05T14:00')
+
+    // The sleep really began two hours later than the timer says.
+    setDateTime('Start Time', '2026-07-05T13:30')
+
+    expect(dateTimeValue('End Time')).toBe('2026-07-05T14:00')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', {
+      startedAt: new Date('2026-07-05T13:30:00+02:00'),
+      endedAt: new Date('2026-07-05T14:00:00+02:00'),
+      notes: '',
+    })
+  })
+
   it('continues the same sleep when Start is pressed again after a stop', async () => {
     const activeEntry: SleepEntry = {
       id: 'sleep1',

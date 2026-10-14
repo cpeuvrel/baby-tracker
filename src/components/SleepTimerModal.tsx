@@ -158,6 +158,11 @@ export function SleepTimerModal({ onClose }: SleepTimerModalProps) {
     if (activeEntry) {
       setStartDraft(shown)
     } else {
+      // A stopped timer ended when Stop was tapped: moving its start keeps that end (the
+      // duration changes), else the end would follow the start, up into the future.
+      if (timerEntryId && endedAt !== '') {
+        setDurationMinutes(Math.round((fromDatetimeLocalValue(endedAt).getTime() - start.getTime()) / 60000))
+      }
       setStartedAt(shown)
       setStartTouched(true)
     }
