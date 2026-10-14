@@ -7,6 +7,7 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   Timestamp,
   updateDoc,
   where,
@@ -24,11 +25,16 @@ import type { DateRange } from '../lib/timeline'
 import type { SleepEntry } from '../types/models'
 
 function toSleepEntry(id: string, data: Record<string, unknown>): SleepEntry {
+  const startedAt = timestampToIso(data.startedAt)
+  const endedAt = nullableTimestampToIso(data.endedAt)
   return {
     id,
-    startedAt: timestampToIso(data.startedAt),
-    endedAt: nullableTimestampToIso(data.endedAt),
-    durationSeconds: (data.durationSeconds as number | null) ?? null,
+    startedAt,
+    endedAt,
+    // Always the stored start to end: a stop stamped by the server stores no duration.
+    durationSeconds: endedAt
+      ? secondsBetween(new Date(startedAt), new Date(endedAt))
+      : ((data.durationSeconds as number | null) ?? null),
     notes: (data.notes as string) ?? '',
     createdBy: data.createdBy as string,
     createdAt: timestampToIso(data.createdAt ?? data.startedAt),
@@ -143,11 +149,15 @@ export async function importSleepEntries(
   }))
 }
 
+/**
+ * Starts a sleep at `startedAt` (a time picked in the form), or without it now, as the Firebase
+ * server's clock says: a phone's clock never decides when a sleep starts or stops.
+ */
 export async function startSleep(
   householdId: string,
   babyId: string,
   createdBy: string,
-  startedAt: Date = new Date(),
+  startedAt?: Date,
   notes = '',
 ): Promise<void> {
   await writeRunningSleep(
@@ -155,7 +165,7 @@ export async function startSleep(
     babyId,
     doc(sleepEntriesCollection(householdId, babyId)),
     {
-      startedAt: Timestamp.fromDate(startedAt),
+      startedAt: startedAt ? Timestamp.fromDate(startedAt) : serverTimestamp(),
       endedAt: null,
       durationSeconds: null,
       notes,
@@ -188,16 +198,14 @@ export async function logSleep(
   })
 }
 
-export async function stopSleep(
-  householdId: string,
-  babyId: string,
-  entryId: string,
-  startedAt: Date,
-): Promise<void> {
-  const now = new Date()
+/**
+ * Ends a sleep now, as the Firebase server's clock says (not the phone's). Its duration is read
+ * from its start and end (see `toSleepEntry`).
+ */
+export async function stopSleep(householdId: string, babyId: string, entryId: string): Promise<void> {
   await updateDoc(doc(sleepEntriesCollection(householdId, babyId), entryId), {
-    endedAt: Timestamp.fromDate(now),
-    durationSeconds: secondsBetween(startedAt, now),
+    endedAt: serverTimestamp(),
+    durationSeconds: null,
   })
 }
 

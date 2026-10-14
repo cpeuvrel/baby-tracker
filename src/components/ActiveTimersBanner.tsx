@@ -52,7 +52,7 @@ export function ActiveTimersBanner() {
               type="button"
               onClick={() => {
                 for (const entry of sleepEntries) {
-                  stopSleep(household.id, selectedBaby.id, entry.id, new Date(entry.startedAt)).catch(
+                  stopSleep(household.id, selectedBaby.id, entry.id).catch(
                     (error: unknown) => alertSleepWriteFailed(error, false),
                   )
                 }

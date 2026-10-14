@@ -11,7 +11,8 @@ export function mapDocs<T>(
   const models: T[] = []
   for (const docSnap of snapshot.docs) {
     try {
-      models.push(toModel(docSnap.id, docSnap.data()))
+      // A time the server is still to stamp (e.g. a sleep just stopped) reads as its local estimate.
+      models.push(toModel(docSnap.id, docSnap.data({ serverTimestamps: 'estimate' })))
     } catch (error) {
       console.warn('[firestore] skipping malformed document', docSnap.ref?.path ?? docSnap.id, error)
     }
