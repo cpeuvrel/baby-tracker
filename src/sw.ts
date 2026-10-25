@@ -4,11 +4,11 @@
 // Type-checked by tsconfig.sw.json (WebWorker types, not DOM); bundled by
 // vite-plugin-pwa, which also substitutes the `import.meta.env` values.
 import { initializeApp } from 'firebase/app'
-import { getMessaging, onBackgroundMessage } from 'firebase/messaging/sw'
+import { getMessaging } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { registerNavigationFallback } from './lib/swNavigation'
-import { handleBackgroundPush } from './lib/backgroundPush'
+import { handleBackgroundPush, readPushData } from './lib/backgroundPush'
 import { firebaseConfig } from './lib/firebaseConfig'
 import { isSleepTimerTag } from './lib/sleepTimerNotification'
 import {
@@ -24,11 +24,25 @@ registerNavigationFallback()
 self.skipWaiting()
 clientsClaim()
 
-const messaging = getMessaging(initializeApp(firebaseConfig))
+// Keeps the FCM subscription current (pushsubscriptionchange). Its own push
+// listener is left without handlers: it hands pushes to any "visible" window
+// instead of the worker, and an Android app in the background can still count
+// as visible while frozen. The notification was then never refreshed and Chrome
+// added its own "This site has been updated in the background" one.
+getMessaging(initializeApp(firebaseConfig))
 
-// Every server push is data-only (functions/src/push.ts): the SDK shows
-// nothing by itself and this handler draws (or closes) the notification.
-onBackgroundMessage(messaging, (payload) => handleBackgroundPush(self.registration, payload.data ?? {}, new Date()))
+// Every server push is data-only (functions/src/push.ts) and this worker draws
+// (or closes) its notification, whether the app is open or not.
+self.addEventListener('push', (event) => {
+  let payload: unknown = null
+  try {
+    payload = event.data?.json()
+  } catch {
+    return
+  }
+  const data = readPushData(payload)
+  if (data) event.waitUntil(handleBackgroundPush(self.registration, data, new Date()))
+})
 
 // A tap on a notification (the running sleep timer, a vaccine reminder) opens
 // its screen in the app: an open window is focused and routes there itself (no

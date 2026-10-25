@@ -3,7 +3,6 @@ import { Link, Outlet, useLocation, useMatch, useNavigate } from 'react-router-d
 import { useHousehold } from '../contexts/HouseholdContext'
 import { useNow } from '../hooks/useNow'
 import { formatDate } from '../lib/appTime'
-import { routeForegroundPushes } from '../lib/foregroundPush'
 import { ActiveTimersBanner } from './ActiveTimersBanner'
 import { AppErrorBoundary } from './AppErrorBoundary'
 import { BabySelector } from './BabySelector'
@@ -44,18 +43,6 @@ export function Layout() {
     serviceWorker.addEventListener('message', onMessage)
     return () => serviceWorker.removeEventListener('message', onMessage)
   }, [navigate])
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-    let cancelled = false
-    void routeForegroundPushes()
-      .then((stop) => (cancelled ? stop() : (unsubscribe = stop)))
-      .catch(() => {})
-    return () => {
-      cancelled = true
-      unsubscribe?.()
-    }
-  }, [])
 
   return (
     <div className="app-shell">

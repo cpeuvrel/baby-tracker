@@ -9,7 +9,6 @@ import type { Baby } from '../types/models'
 import { Layout } from './Layout'
 
 vi.mock('../contexts/AuthContext', () => ({ useAuth: () => ({ user: { uid: 'uid1' } }) }))
-vi.mock('../lib/foregroundPush', () => ({ routeForegroundPushes: vi.fn().mockResolvedValue(() => {}) }))
 
 const baby: Baby = { id: 'b1', name: 'Maëlys', birthDate: '2025-06-01', sex: null }
 

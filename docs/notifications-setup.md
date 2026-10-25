@@ -47,9 +47,8 @@ every push to `main` that touches `firestore.rules` or `firestore.indexes.json`.
 
 Every push is **data-only** (`functions/src/push.ts`, with a TTL past which
 an undelivered push is dropped): the service worker
-(`src/lib/backgroundPush.ts`) builds the notification itself, and the open
-app does the same for the pushes it receives in the foreground
-(`src/lib/foregroundPush.ts`). A device registers its token when the user
+(`src/sw.ts`, `src/lib/backgroundPush.ts`) builds the notification itself,
+whether the app is open or not. A device registers its token when the user
 allows notifications (starting the sleep timer, choosing "Vaccine: Yes",
 "Enable notifications" in the reminder settings) and unregisters it on
 sign-out; tokens not seen for 60 days are dropped by the server.
