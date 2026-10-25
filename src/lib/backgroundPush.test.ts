@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleBackgroundPush, MEDICATION_REMINDER_PUSH, medicationNotification } from './backgroundPush'
+import { handleBackgroundPush, MEDICATION_REMINDER_PUSH, medicationNotification, readPushData } from './backgroundPush'
 
 function fakeRegistration(shown: Array<{ tag: string }> = []) {
   const notifications = shown.map((notification) => ({ ...notification, close: vi.fn() }))
@@ -93,5 +93,20 @@ describe('handleBackgroundPush', () => {
 describe('medicationNotification', () => {
   it('opens the app on tap', () => {
     expect(medicationNotification('Vitamin D').options.data).toEqual({ url: '/' })
+  })
+})
+
+describe('readPushData', () => {
+  it("keeps the string values of an FCM push's data", () => {
+    expect(readPushData({ data: { type: 'sleep-timer', babyId: 'b1', n: 3 }, from: '123' })).toEqual({
+      type: 'sleep-timer',
+      babyId: 'b1',
+    })
+  })
+
+  it('ignores pushes without data', () => {
+    expect(readPushData(null)).toBeNull()
+    expect(readPushData('text')).toBeNull()
+    expect(readPushData({ notification: { title: 'x' } })).toBeNull()
   })
 })

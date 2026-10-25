@@ -30,10 +30,22 @@ export function medicationNotification(medicationName: string): { title: string;
 }
 
 /**
+ * The `data` of an FCM push (the JSON body of the push event), or `null` when
+ * the push is not one of the server's: only string values are kept.
+ */
+export function readPushData(payload: unknown): Record<string, string> | null {
+  if (typeof payload !== 'object' || payload == null) return null
+  const data = (payload as { data?: unknown }).data
+  if (typeof data !== 'object' || data == null) return null
+  return Object.fromEntries(
+    Object.entries(data).filter((entry): entry is [string, string] => typeof entry[1] === 'string'),
+  )
+}
+
+/**
  * Turns a server push (all data-only, see functions/src/push.ts) into the
  * notification it stands for, or closes the one it settles. The service worker
- * runs it for pushes received in the background, the open app for those it
- * receives in the foreground. Unknown pushes are ignored.
+ * runs it for every push, app open or not. Unknown pushes are ignored.
  */
 export async function handleBackgroundPush(
   registration: ServiceWorkerRegistration,
