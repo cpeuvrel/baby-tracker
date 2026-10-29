@@ -1,5 +1,12 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleBackgroundPush, MEDICATION_REMINDER_PUSH, medicationNotification, readPushData } from './backgroundPush'
+import {
+  cacheSleepStopStore,
+  handleBackgroundPush,
+  MEDICATION_REMINDER_PUSH,
+  medicationNotification,
+  readPushData,
+  type SleepStopStore,
+} from './backgroundPush'
 
 function fakeRegistration(shown: Array<{ tag: string }> = []) {
   const notifications = shown.map((notification) => ({ ...notification, close: vi.fn() }))
@@ -108,5 +115,87 @@ describe('readPushData', () => {
     expect(readPushData(null)).toBeNull()
     expect(readPushData('text')).toBeNull()
     expect(readPushData({ notification: { title: 'x' } })).toBeNull()
+  })
+})
+
+function memoryStops(initial: Record<string, string> = {}): SleepStopStore & { saved: Map<string, string> } {
+  const saved = new Map(Object.entries(initial))
+  return {
+    saved,
+    get: async (babyId) => saved.get(babyId) ?? null,
+    set: async (babyId, asOf) => void saved.set(babyId, asOf),
+  }
+}
+
+describe('handleBackgroundPush: a stop beats the ticks that cross it', () => {
+  const tick = (asOf: string) => ({
+    type: 'sleep-timer',
+    babyId: 'b1',
+    babyName: 'Léo',
+    startedAt: '2026-03-05T20:00:00.000Z',
+    asOf,
+  })
+
+  it("remembers the baby's stop and closes its timer", async () => {
+    const { notifications, asRegistration } = fakeRegistration([{ tag: 'sleep-timer-b1' }])
+    const stops = memoryStops()
+
+    await handleBackgroundPush(asRegistration, { type: 'sleep-timer-stop', babyId: 'b1', asOf: '2026-03-05T21:00:00.000Z' }, now, stops)
+
+    expect(stops.saved.get('b1')).toBe('2026-03-05T21:00:00.000Z')
+    expect(notifications[0].close).toHaveBeenCalled()
+  })
+
+  it('does not bring the timer back for a tick read before the stop', async () => {
+    const { registration, notifications, asRegistration } = fakeRegistration([{ tag: 'sleep-timer-b1' }])
+    const stops = memoryStops({ b1: '2026-03-05T21:00:00.000Z' })
+
+    await handleBackgroundPush(asRegistration, tick('2026-03-05T20:59:59.000Z'), now, stops)
+
+    expect(registration.showNotification).not.toHaveBeenCalled()
+    expect(notifications[0].close).toHaveBeenCalled()
+  })
+
+  it('shows a sleep started (or resumed) after the stop', async () => {
+    const { registration, asRegistration } = fakeRegistration()
+    const stops = memoryStops({ b1: '2026-03-05T21:00:00.000Z' })
+
+    await handleBackgroundPush(asRegistration, tick('2026-03-05T21:00:01.000Z'), now, stops)
+
+    expect(registration.showNotification).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the latest stop when an older one arrives late, and leaves other babies' alone", async () => {
+    const { asRegistration } = fakeRegistration()
+    const stops = memoryStops({ b1: '2026-03-05T21:00:00.000Z', b2: '2026-03-05T19:00:00.000Z' })
+
+    await handleBackgroundPush(asRegistration, { type: 'sleep-timer-stop', babyId: 'b1', asOf: '2026-03-05T20:00:00.000Z' }, now, stops)
+
+    expect(stops.saved.get('b1')).toBe('2026-03-05T21:00:00.000Z')
+    expect(stops.saved.get('b2')).toBe('2026-03-05T19:00:00.000Z')
+  })
+
+  it("also closes Chrome's \"updated in the background\" notification on a stop", async () => {
+    const { notifications, asRegistration } = fakeRegistration([{ tag: 'user_visible_auto_notification' }])
+
+    await handleBackgroundPush(asRegistration, { type: 'sleep-timer-stop', babyId: 'b1' }, now)
+
+    expect(notifications[0].close).toHaveBeenCalled()
+  })
+})
+
+describe('cacheSleepStopStore', () => {
+  it('keeps one stop per baby in the Cache API', async () => {
+    const entries = new Map<string, string>()
+    const cache = {
+      match: vi.fn(async (key: string) => (entries.has(key) ? new Response(entries.get(key)) : undefined)),
+      put: vi.fn(async (key: string, response: Response) => void entries.set(key, await response.text())),
+    }
+    const stops = cacheSleepStopStore({ open: vi.fn(async () => cache) } as unknown as CacheStorage)
+
+    expect(await stops.get('b1')).toBeNull()
+    await stops.set('b1', '2026-03-05T21:00:00.000Z')
+    expect(await stops.get('b1')).toBe('2026-03-05T21:00:00.000Z')
+    expect(await stops.get('b2')).toBeNull()
   })
 })
