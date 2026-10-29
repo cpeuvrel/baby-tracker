@@ -8,7 +8,7 @@ import { getMessaging } from 'firebase/messaging/sw'
 import { clientsClaim } from 'workbox-core'
 import { precacheAndRoute } from 'workbox-precaching'
 import { registerNavigationFallback } from './lib/swNavigation'
-import { handleBackgroundPush, readPushData } from './lib/backgroundPush'
+import { cacheSleepStopStore, handleBackgroundPush, readPushData } from './lib/backgroundPush'
 import { firebaseConfig } from './lib/firebaseConfig'
 import { isSleepTimerTag } from './lib/sleepTimerNotification'
 import {
@@ -31,6 +31,8 @@ clientsClaim()
 // added its own "This site has been updated in the background" one.
 getMessaging(initializeApp(firebaseConfig))
 
+const sleepStops = cacheSleepStopStore(self.caches)
+
 // Every server push is data-only (functions/src/push.ts) and this worker draws
 // (or closes) its notification, whether the app is open or not.
 self.addEventListener('push', (event) => {
@@ -41,7 +43,7 @@ self.addEventListener('push', (event) => {
     return
   }
   const data = readPushData(payload)
-  if (data) event.waitUntil(handleBackgroundPush(self.registration, data, new Date()))
+  if (data) event.waitUntil(handleBackgroundPush(self.registration, data, new Date(), sleepStops))
 })
 
 // A tap on a notification (the running sleep timer, a vaccine reminder) opens

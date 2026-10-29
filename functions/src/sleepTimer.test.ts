@@ -33,6 +33,8 @@ describe('sleepChange', () => {
 
 const ts = (iso: string) => Timestamp.fromDate(new Date(iso))
 const household = 'households/h1'
+// The fake's read time: the server time each push is decided at.
+const AS_OF = '2026-03-05T22:30:00.000Z'
 const sleeps = `${household}/babies/b1/sleepEntries`
 
 describe('runSleepTick', () => {
@@ -55,12 +57,12 @@ describe('runSleepTick', () => {
     expect(sent).toEqual([
       {
         household,
-        data: { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:00:00.000Z' },
+        data: { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:00:00.000Z', asOf: AS_OF },
         ttlSeconds: TICK_TTL_SECONDS,
       },
       {
         household,
-        data: { type: 'sleep-timer', babyId: 'b2', babyName: 'Maëlys', startedAt: '2026-03-05T19:00:00.000Z' },
+        data: { type: 'sleep-timer', babyId: 'b2', babyName: 'Maëlys', startedAt: '2026-03-05T19:00:00.000Z', asOf: AS_OF },
         ttlSeconds: TICK_TTL_SECONDS,
       },
     ])
@@ -107,7 +109,7 @@ describe('handleSleepEntryWrite', () => {
     expect(sent).toEqual([
       {
         household,
-        data: { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:00:00.000Z' },
+        data: { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:00:00.000Z', asOf: AS_OF },
         ttlSeconds: TICK_TTL_SECONDS,
       },
     ])
@@ -124,7 +126,7 @@ describe('handleSleepEntryWrite', () => {
     await handleSleepEntryWrite(before, after, send)
 
     expect(sent).toEqual([
-      { household, data: { type: 'sleep-timer-stop', babyId: 'b1' }, ttlSeconds: STOP_TTL_SECONDS },
+      { household, data: { type: 'sleep-timer-stop', babyId: 'b1', asOf: AS_OF }, ttlSeconds: STOP_TTL_SECONDS },
     ])
     expect(STOP_TTL_SECONDS).toBe(24 * 60 * 60)
   })
@@ -143,7 +145,7 @@ describe('handleSleepEntryWrite', () => {
     await handleSleepEntryWrite(before, after, send)
 
     expect(sent.map(({ data }) => data)).toEqual([
-      { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:01:00.000Z' },
+      { type: 'sleep-timer', babyId: 'b1', babyName: 'Léo', startedAt: '2026-03-05T20:01:00.000Z', asOf: AS_OF },
     ])
   })
 

@@ -12,6 +12,9 @@ export function isSleepTimerTag(tag: string): boolean {
   return tag === SLEEP_TIMER_NOTIFICATION_TAG || tag.startsWith(`${SLEEP_TIMER_NOTIFICATION_TAG}-`)
 }
 
+/** Chrome's own "This site has been updated in the background" notification. */
+export const CHROME_AUTO_NOTIFICATION_TAG = 'user_visible_auto_notification'
+
 /** Opens the Activity screen with the running sleep timer on top. */
 export const SLEEP_TIMER_URL = '/?timer=sleep'
 

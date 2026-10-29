@@ -1,4 +1,4 @@
-import type { DocumentReference, Firestore } from 'firebase-admin/firestore'
+import { Timestamp, type DocumentReference, type Firestore } from 'firebase-admin/firestore'
 
 /**
  * Just enough of the Admin Firestore API for the schedulers' tests: documents
@@ -30,6 +30,8 @@ export class FakeFirestore {
   readonly docs = new Map<string, Data>()
   readonly deleted: string[] = []
   failOn: (path: string) => boolean = () => false
+  /** The server time of every query read (`QuerySnapshot.readTime`). */
+  readTime = Timestamp.fromDate(new Date('2026-03-05T22:30:00Z'))
 
   constructor(docs: Record<string, Data> = {}) {
     for (const [path, data] of Object.entries(docs)) this.docs.set(path, data)
@@ -139,7 +141,7 @@ export class FakeQuery {
     return new FakeQuery(this.firestore, this.path, this.filters, max)
   }
 
-  async get(): Promise<{ docs: FakeDocSnapshot[]; empty: boolean; size: number }> {
+  async get(): Promise<{ docs: FakeDocSnapshot[]; empty: boolean; size: number; readTime: Timestamp }> {
     this.firestore.check(this.path)
     const depth = this.path.split('/').length + 1
     let docs = [...this.firestore.docs.entries()]
@@ -147,7 +149,7 @@ export class FakeQuery {
       .filter(([, data]) => this.filters.every(([field, op, value]) => matches(data[field], op, value)))
       .map(([path, data]) => new FakeDocSnapshot(new FakeDocRef(this.firestore, path), data))
     if (this.max != null) docs = docs.slice(0, this.max)
-    return { docs, empty: docs.length === 0, size: docs.length }
+    return { docs, empty: docs.length === 0, size: docs.length, readTime: this.firestore.readTime }
   }
 }
 
