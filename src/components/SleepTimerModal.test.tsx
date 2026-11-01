@@ -114,18 +114,26 @@ describe('SleepTimerModal', () => {
   })
 
   it('has no notes field and keeps the notes of the running sleep when it is stopped, edited and saved', async () => {
-    const setActive = mockActiveSleeps([{ ...runningSleep, notes: 'started on the other phone' }])
-    const user = userEvent.setup()
+    // Stopped 2h10 after the start, so setting 5 minutes is always an edit (with the real clock,
+    // the duration's minutes could already be the value typed, and nothing would be saved).
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-05T22:10:00.000Z'))
+    try {
+      const setActive = mockActiveSleeps([{ ...runningSleep, notes: 'started on the other phone' }])
+      const user = userEvent.setup()
 
-    const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
-    expect(screen.queryByLabelText('Notes (optional)')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
-    setActive([])
-    rerender(<SleepTimerModal onClose={vi.fn()} />)
-    fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '30' } })
-    await user.click(screen.getByRole('button', { name: 'Save' }))
+      const { rerender } = render(<SleepTimerModal onClose={vi.fn()} />)
+      expect(screen.queryByLabelText('Notes (optional)')).not.toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: 'Stop Timer' }))
+      setActive([])
+      rerender(<SleepTimerModal onClose={vi.fn()} />)
+      fireEvent.change(screen.getByLabelText('Minutes'), { target: { value: '5' } })
+      await user.click(screen.getByRole('button', { name: 'Save' }))
 
-    expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', expect.objectContaining({ notes: 'started on the other phone' }))
+      expect(updateSleepEntry).toHaveBeenCalledWith('h1', 'b1', 'sleep1', expect.objectContaining({ notes: 'started on the other phone' }))
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("keeps the server's stop time when a stopped sleep is saved unedited", async () => {
