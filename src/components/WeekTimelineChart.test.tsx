@@ -182,21 +182,23 @@ describe('WeekTimelineChart', () => {
     const { container, rerender } = render(
       <WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />,
     )
-    // Drawn behind the axis and behind the day columns.
+    // Drawn behind the axis and behind the day columns. Compared as numbers: how many decimals
+    // a style keeps once set is up to the DOM implementation.
+    const percent = (value: string) => Number(parseFloat(value).toFixed(3))
     const bands = () =>
       Array.from(container.querySelectorAll<HTMLElement>('.timeline-grid-scroller .timeline-grid-night')).map(
-        (el) => [el.style.top, el.style.height],
+        (el) => [percent(el.style.top), percent(el.style.height)],
       )
     expect(container.querySelectorAll('.timeline-grid-night')).toHaveLength(4)
     expect(bands()).toEqual([
-      ['0%', `${(8 / 24) * 100}%`],
-      [`${(20 / 24) * 100}%`, `${(4 / 24) * 100}%`],
+      [0, percent(`${(8 / 24) * 100}`)],
+      [percent(`${(20 / 24) * 100}`), percent(`${(4 / 24) * 100}`)],
     ])
 
     const nightOwl = { ...defaultBaby, nighttimeHours: { start: '19:00', end: '07:00' } }
     mockHousehold({ babies: [nightOwl], selectedBaby: nightOwl })
     rerender(<WeekTimelineChart onSelectDay={vi.fn()} selectedDayKey={dayKey(new Date())} />)
-    expect(bands()[1][0]).toBe(`${(19 / 24) * 100}%`)
+    expect(bands()[1][0]).toBe(percent(`${(19 / 24) * 100}`))
   })
 })
 

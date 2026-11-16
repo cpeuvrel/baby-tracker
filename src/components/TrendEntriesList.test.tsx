@@ -113,7 +113,8 @@ describe('TrendEntriesList', () => {
       const { container } = renderSleep([twoHours, nap])
 
       const bars = Array.from(container.querySelectorAll<HTMLElement>('.trend-entry-bar'))
-      expect(bars.map((bar) => bar.style.width)).toEqual(['70%', `${0.08 * 70}%`])
+      // Compared as numbers: how many decimals a style keeps once set is up to the DOM implementation.
+      expect(bars.map((bar) => parseFloat(bar.style.width))).toEqual([70, expect.closeTo(0.08 * 70, 3)])
     })
 
     it('lists a sleep under the day given by dayKeyOf (sleep days start at night)', () => {
